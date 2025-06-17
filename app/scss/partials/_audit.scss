@@ -1,0 +1,126 @@
+@use "sass:color";
+
+// Color palette - using a harmonious set of colors
+$colors: (
+  'event': #f5f7fa,    // Very light blue-gray
+  'profile': #2c5282,  // Muted blue
+  'resource': #805ad5, // Muted purple
+  'email': #2d3748,    // Dark blue-gray
+  'text-light': #f7fafc, // Almost white
+  'text-dark': #1a365d,  // Deep blue
+  'border': #e2e8f0    // Light gray border
+);
+
+// Spacing scale
+$spacing: (
+  'xs': 0.5rem,
+  'sm': 1rem,
+  'md': 1.5rem,
+  'lg': 2rem
+);
+
+.audit-page {
+  .wrap {
+    margin: 1.5rem;
+  }
+
+  .card {
+    margin: 1.5rem 0;
+    padding: 1.5rem;
+    background: color.adjust(#f7fafc, $alpha: -0.02);
+    border: 1px solid #e2e8f0;
+  }
+
+  .widefat {
+    margin: 0.5rem 0;
+  }
+
+  .menu-link {
+    margin-right: 1rem;
+  }
+
+  .award-link {
+    color: #333;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .award-narratives {
+    color: #333;
+    .award-narrative {
+      margin-bottom: 1rem;
+    }
+  }
+
+  .debug-data {
+    background: color.adjust(#f7fafc, $alpha: -0.02);
+    padding: 1rem;
+    overflow: auto;
+    max-height: 500px;
+  }
+
+  // Row styles
+  .event-row {
+    background: #333;
+    color: #fff;
+    a { 
+      color: #fff;
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+  }
+
+  .profile-row {
+    background: #2c5282;
+    color: #fff;
+    a { 
+      color: #fff;
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+  }
+
+  .resource-row {
+    background: #805ad5;
+    color: #fff;
+    a { 
+      color: #fff;
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+  }
+
+  .email-row {
+    background: #2d3748;
+    color: #fff;
+    a { 
+      color: #fff;
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+  }
+
+  // Text colors based on nesting level
+  .level-2 {
+    color: #fff;
+  }
+
+  .level-3 {
+    color: #fff;
+  }
+
+  .level-4 {
+    color: #fff;
+  }
+
+  .event-title {
+    font-weight: bold;
+  }
+} 

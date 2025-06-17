@@ -1,0 +1,101 @@
+// Color palette
+$colors: (
+  'event': #f5f5f5,    // Light gray for events
+  'profile': #2c3e50,  // Deep blue for profiles
+  'resource': #f1c40f, // Warm yellow for resources
+  'email': #34495e,    // Dark blue-gray for email rows
+  'white': #fff,
+  'border': #e0e0e0,
+  'debug-bg': #f8f9fa,
+  'text-dark': #2c3e50,  // Dark text for light backgrounds
+  'text-light': #ecf0f1  // Light text for dark backgrounds
+);
+
+// Spacing scale
+$spacing: (
+  'xs': 0.5rem,
+  'sm': 1rem,
+  'md': 1.5rem,
+  'lg': 2rem
+);
+
+.audit-page {
+  .wrap {
+    margin: map-get($spacing, 'md');
+  }
+
+  .card {
+    margin: map-get($spacing, 'md') 0;
+    padding: map-get($spacing, 'md');
+    background: map-get($colors, 'white');
+    border: 1px solid map-get($colors, 'border');
+  }
+
+  .widefat {
+    margin: map-get($spacing, 'xs') 0;
+  }
+
+  .menu-link {
+    margin-right: map-get($spacing, 'sm');
+  }
+
+  .award-link {
+    color: map-get($colors, 'profile');
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .award-narratives {
+    .award-narrative {
+      margin-bottom: map-get($spacing, 'sm');
+    }
+  }
+
+  .debug-data {
+    background: map-get($colors, 'debug-bg');
+    padding: map-get($spacing, 'sm');
+    overflow: auto;
+    max-height: 500px;
+  }
+
+  // Row styles with proper text contrast
+  .event-row {
+    background-color: map-get($colors, 'event');
+    color: map-get($colors, 'text-dark');
+  }
+
+  .profile-row {
+    background-color: map-get($colors, 'profile');
+    color: map-get($colors, 'text-light');
+  }
+
+  .resource-row {
+    background-color: map-get($colors, 'resource');
+    color: map-get($colors, 'text-dark');
+  }
+
+  .email-row {
+    background-color: map-get($colors, 'email');
+    color: map-get($colors, 'text-light');
+  }
+
+  // Text colors based on nesting level
+  .level-2 {
+    color: darken(map-get($colors, 'profile'), 10%);
+  }
+
+  .level-3 {
+    color: darken(map-get($colors, 'resource'), 15%);
+  }
+
+  .level-4 {
+    color: darken(map-get($colors, 'event'), 30%);
+  }
+
+  .event-title {
+    font-weight: bold;
+  }
+} 

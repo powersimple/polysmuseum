@@ -1,0 +1,95 @@
+.gate-item {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    padding: 15px;
+}
+
+.gate-columns {
+    display: grid;
+    grid-template-columns: 50px 2fr 2fr 1fr;
+    gap: 20px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.gate-column {
+    padding: 5px;
+}
+
+.gate-number {
+    font-weight: bold;
+    color: #666;
+}
+
+.gate-post-title {
+    font-weight: 500;
+}
+
+.gate-menu-title {
+    font-weight: 500;
+    color: #0073aa;
+}
+
+.gate-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.gate-content {
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    margin-top: 5px;
+}
+
+.gate-description {
+    margin: 0 0 10px 0;
+    color: #666;
+}
+
+.gate-post {
+    margin: 0;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.gate-post a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.gate-post a:hover {
+    color: #00a0d2;
+    text-decoration: underline;
+}
+
+.gate-item .gate-header h4 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.gate-item .gate-header h4 .post-title {
+    font-size: 0.9em;
+    color: #666;
+    font-weight: normal;
+}
+
+.gate-item .gate-content .gate-post {
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.gate-item .gate-content .gate-post a {
+    color: #0073aa;
+    text-decoration: none;
+}
+
+.gate-item .gate-content .gate-post a:hover {
+    color: #00a0d2;
+    text-decoration: underline;
+} 

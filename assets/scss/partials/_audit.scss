@@ -1,0 +1,24 @@
+// Audit page specific styles
+.award-link {
+    color: var(--dark-blue, #183369);
+    text-decoration: none;
+    
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.trophy-data {
+    font-size: 0.85em;
+    color: #666;
+}
+
+.video-data {
+    font-size: 0.85em;
+    
+    .missing {
+        color: $haven-red;
+    }
+}
+
+// Move any other audit-specific styles here 
