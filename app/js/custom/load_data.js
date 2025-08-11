@@ -42,12 +42,12 @@ function getStaticJSON(filename, callback, dest) {
     // route =  the type 
     // param = url arguments for the REST API
     // callback = dynamic function name 
-    // Pass in the name of a function and it will return the data to that function
+    // Pass in the name of a function and it will return the data to your custom function
 
     // local absolute path to the REST API + routing arguments
     //data_path is configured in header.php
     var json_data = data_path + filename + ".json"
-      //  console.log("data_path", data_path)
+     console.log("data_path", json_data)
         // console.log("jsonfile", json_data);
     jQuery.ajax({
         url: json_data, // the url
@@ -55,13 +55,13 @@ function getStaticJSON(filename, callback, dest) {
         success: function(data, textStatus, request) {
            // console.log("load "+filename, data);
             //      data_loaded.push(callback);
-            return data,
-
-                callback(data, dest) // this is the callback that sends the data to your custom function
-
+            callback(data, dest) // this is the callback that sends the data to your custom function
         },
-        error: function(data, textStatus, request) {
-            //console.log(endpoint,data.responseText)
+        error: function(xhr, textStatus, errorThrown) {
+            // console.warn('Failed to load ' + filename + '.json:', textStatus, errorThrown);
+            // console.warn('URL attempted:', json_data);
+            // Call callback with empty data to prevent further errors
+            callback({}, dest);
         },
 
         cache: false
@@ -90,14 +90,19 @@ getStaticJSON('menus', setMenus) // returns the tags
 getStaticJSON('media', setMedia) // returns the tags
 */
 if (menus_loaded == false) {
-    getStaticJSON('menus', loadMenus) // returns all content
+    // getStaticJSON('menus', loadMenus) // returns all content
 }
 if (data_loaded == false) {
     getStaticJSON('content', setData) // returns all content
 }
 function loadMenus(data){
-   // console.log(data.menus)
-    setMenus(data.menus)
+   // console.log('loadMenus received data:', data);
+    if (data && data.menus) {
+        setMenus(data.menus)
+    } else {
+        // console.log('Data structure received:', JSON.stringify(data, null, 2));
+        // console.warn('No menu data received or data.menus is undefined');
+    }
    // initSite()
     menus_loaded = true;
 }

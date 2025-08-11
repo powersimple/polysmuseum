@@ -129,9 +129,15 @@ var hide_social_icons = getUrlParameter('hide-social-icons')
 var event_class = ''
 function initSite() {
    // console.log("megamenu");
-    megaMenu()
+    // Only call megaMenu if menus data is available
+    if (menus && menus.megamenu && menus.megamenu.menu_levels) {
+        megaMenu()
+    }
    // sponsorFooter()
-   displayFooterMenu()
+   // Only call displayFooterMenu if menus data is available
+   if (menus && menus.footermenu) {
+       displayFooterMenu()
+   }
 
     getVideo();
 /*
@@ -176,7 +182,7 @@ function initSite() {
 }  
 */
 //console.log("Run of Show DATA")
-    if(section_menu_slug != ''){
+    if(section_menu_slug != '' && menus && menus[section_menu_slug]){
      //   console.log("app/menuname menu",menu_name,menus[menu_name])
         
         
@@ -210,7 +216,7 @@ function initSite() {
 
     
     if (menus == undefined) {
-        window.setTimeout(initSite(), 100);
+        // window.setTimeout(initSite(), 100);
     }
     //var filters = "collaboration_type,platform"
 
@@ -274,6 +280,10 @@ jQuery(function() {
 }); //ready func.
 
 function displayFooterMenu() {
+    // Check if menus data is available
+    if (!menus || !menus.footermenu || !menus.footermenu.menu_array) {
+        return;
+    }
 
     var menu_data = menus['footermenu'].menu_array
     var menu_links = '<ul>'
@@ -1108,28 +1118,6 @@ function openDrawer(){
     jQuery(this).hide();
 }
 
-// HMR Client Handler
-if (import.meta.hot) {
-  import.meta.hot.on('style-update', (data) => {
-    console.log('Style update received:', data);
-    const links = document.getElementsByTagName('link');
-    for (let i = 0; i < links.length; i++) {
-      const link = links[i];
-      if (link.rel === 'stylesheet' && link.href.includes(data.path)) {
-        const url = new URL(link.href);
-        url.searchParams.set('t', data.timestamp);
-        link.href = url.toString();
-        break;
-      }
-    }
-  });
-
-  import.meta.hot.on('script-update', (data) => {
-    console.log('Script update received:', data);
-    // Reload the page for script changes
-    window.location.reload();
-  });
-} 
 // AMD support (Thanks to @FagnerMartinsBrack)
 ;(function(factory) {
     'use strict';
@@ -1472,12 +1460,12 @@ function getStaticJSON(filename, callback, dest) {
     // route =  the type 
     // param = url arguments for the REST API
     // callback = dynamic function name 
-    // Pass in the name of a function and it will return the data to that function
+    // Pass in the name of a function and it will return the data to your custom function
 
     // local absolute path to the REST API + routing arguments
     //data_path is configured in header.php
     var json_data = data_path + filename + ".json"
-      //  console.log("data_path", data_path)
+     console.log("data_path", json_data)
         // console.log("jsonfile", json_data);
     jQuery.ajax({
         url: json_data, // the url
@@ -1485,13 +1473,13 @@ function getStaticJSON(filename, callback, dest) {
         success: function(data, textStatus, request) {
            // console.log("load "+filename, data);
             //      data_loaded.push(callback);
-            return data,
-
-                callback(data, dest) // this is the callback that sends the data to your custom function
-
+            callback(data, dest) // this is the callback that sends the data to your custom function
         },
-        error: function(data, textStatus, request) {
-            //console.log(endpoint,data.responseText)
+        error: function(xhr, textStatus, errorThrown) {
+            // console.warn('Failed to load ' + filename + '.json:', textStatus, errorThrown);
+            // console.warn('URL attempted:', json_data);
+            // Call callback with empty data to prevent further errors
+            callback({}, dest);
         },
 
         cache: false
@@ -1520,14 +1508,19 @@ getStaticJSON('menus', setMenus) // returns the tags
 getStaticJSON('media', setMedia) // returns the tags
 */
 if (menus_loaded == false) {
-    getStaticJSON('menus', loadMenus) // returns all content
+    // getStaticJSON('menus', loadMenus) // returns all content
 }
 if (data_loaded == false) {
     getStaticJSON('content', setData) // returns all content
 }
 function loadMenus(data){
-   // console.log(data.menus)
-    setMenus(data.menus)
+   // console.log('loadMenus received data:', data);
+    if (data && data.menus) {
+        setMenus(data.menus)
+    } else {
+        // console.log('Data structure received:', JSON.stringify(data, null, 2));
+        // console.warn('No menu data received or data.menus is undefined');
+    }
    // initSite()
     menus_loaded = true;
 }
@@ -1731,7 +1724,6 @@ function setPosts(data) { // special function for the any post type
         });
 
         $(window).scroll(function() {
-            console.l
             effectsHomeSection(homeSection, this);
             navbarAnimation(navbar, homeSection, navHeight);
         });
@@ -2922,6 +2914,13 @@ $(".close").click(function(event) {
 });
 
 function megaMenu() {
+    // Check if menus data is available
+    if (!menus || !menus.megamenu || !menus.megamenu.menu_levels) {
+        // If menus data is not loaded yet, try again in a moment
+        setTimeout(megaMenu, 100);
+        return;
+    }
+    
     var classes = ''
     var megamenu = '<nav id="megamenu" class="content">'
     megamenu += '<ul class="exo-menu">';
@@ -3131,6 +3130,11 @@ function xrunOfShow(id){
 
 function setMenus(data) {
    // console.log("raw menu data",data)
+
+    if (!data || !Array.isArray(data)) {
+        console.warn('setMenus: data is not an array or is undefined');
+        return;
+    }
 
     for (var i = 0; i < data.length; i++) {
         menus[data[i].slug] = {}
@@ -4120,7 +4124,6 @@ function loadProfileData(data){
     $('#appearances').html(appearances)
    }
 
-
 var ros_meta = {
     timezone: []
 }
@@ -4141,7 +4144,7 @@ function runOfShow(menu){
                 session = show[s].children[n]
                 session.info = events[show[s].children[n].object_id]
              
-            //   session.info = events[show[s].children[n].object_id]
+            //   session.info = events[show[s].sessions[n].object_id]
         
 
                 session.profiles = []
@@ -4446,7 +4449,7 @@ function displayRunOfShowMonolith(runOfShow){
             duration = parseInt(runOfShow.sessions[n].info.event_info.duration)*60
             event_time = showtime// this passes it below
             classes = runOfShow.sessions[n].classes
-            console.log("classes"+n,classes)
+            // console.log("classes"+n,classes)
             display_event_time = localTime(showtime)//converst
             start_time = showtime
             showtime = parseInt(showtime)+duration; //add duration for next 
@@ -4541,20 +4544,26 @@ cell_width = 100/runOfShow.sessions[n].profiles.length+'%';
                     }
                     sessions += '<span class="profile-info">'
                 
-                    sessions += '<span class="profile-name ' +this_profile.slug+'">'+this_profile.title+'</span>'
-                    
-                   
-                sessions += getProfileCard(this_profile,event_time);
+                    sessions += '<span class="profile-name ' +this_profile.slug+'">'+this_profile.title
+                                // console.log(
+
+                                //     "classes",
+                                //     this_profile.classes
+                                // )
+                                sessions += '<br>'+this_profile.classes
+                                sessions +='</span>'
+                
+                    sessions += getProfileCard(this_profile,event_time);
                 
                 if(width_override == 'presentation'){
                //    sessions += '</div><div class="col-sm-12 col-md-8 talk-blurb">'
-                /*
-               
-                     if(this_profile.profile.info.talk_description != undefined){
-                    sessions += '<span class="blurb">'+this_profile.profile.info.talk_description+'</span>'
-                }*/
-            }
-                sessions += '</span>'
+                    
+                //       console.log(this_profile.profile);
+                    if(this_profile.profile.meta.talk_description != undefined){
+                    //    sessions += '<span class="blurb">'+this_profile.profile.meta.talk_description+'</span>'
+                    }
+                     }
+                    sessions += '</span>'
                 
                 } else {
                     if(getUrlParameter('hold') == 'show'){
@@ -4766,7 +4775,7 @@ function displayRunOfShowTable(runOfShow){
        
    }
     
-   console.log("sesion_ids", session_ids)
+   // console.log("sesion_ids", session_ids)
 
 
 
@@ -5007,7 +5016,7 @@ function playProfileVideo(a,index){
 
  function setROS(slug){//passes wp slug;
             var menu_name = ros_list[slug]//converts it to menu_name;
-           console.log("SetROS menu name",slug,ros_list,menu_name,menus[slug])
+           // console.log("SetROS menu name",slug,ros_list,menu_name,menus[slug])
            
             currentROS = runOfShow(menus[slug])
         //  console.log("set",currentROS)
@@ -5051,11 +5060,11 @@ function playProfileVideo(a,index){
 function playSessionVideo(src,session_id,attrs){
    
     var session = setSessionByID(src,session_id,attrs);
-  console.log("session",src,session_id,attrs)
+  // console.log("session",src,session_id,attrs)
     var event_class = currentROS.slug;
     var event = '<div class="'+currentROS.slug+'" title="'+currentROS.title+'">'+currentROS.title+'</div>'
     var header = ''
-    console.log("session is",session_id.title)
+    // console.log("session is",session_id.title)
     header = event+'<h4>'+session_id+'</h4>'
 
 
@@ -5226,7 +5235,7 @@ function displayRunOfShowCards(runOfShow){
   //  console.log("SHOWTIME",showtime)
     $("#show").html(show)
     var duration = 0;
-    console.log(format)
+    // console.log(format)
     if(format == 'hd'){
         var sessions = '<div id="ros-accordion" class="hd">'
     
@@ -5298,7 +5307,7 @@ function displayRunOfShowCards(runOfShow){
 //           sessions+='<BR><BR><BR><BR><BR><BR><input type="text" value="'+this_title+'" size="100">'+this_title.length+' | '+title_with_lastnames.length +'<BR>'
   //          sessions+='<textarea cols="100" rows="10">' +description+'</textarea><BR><BR><BR><BR><BR><BR><BR><BR><BR><BR>'
 
-           console.log("ROS",n,runOfShow.sessions[n].info.meta.video_url)
+           // console.log("ROS",n,runOfShow.sessions[n].info.meta.video_url)
            
            if(runOfShow.sessions[n].info.meta.video_url != undefined){
           // var linkedin_description = 'Thank you to '+profile_list+' for being part of the discussion "'+runOfShow.sessions[n].title+'" at the WebXR Production Summit'+ stripHTML(runOfShow.sessions[n].info.content)+'\nWatch the video on YouTube:'+runOfShow.sessions[n].info.meta.video_url
@@ -5373,7 +5382,7 @@ function displayRunOfShowCards(runOfShow){
             }
         }
         var confirmed_profile_count = runOfShow.sessions[n].card_count
-        console.log(runOfShow.sessions[n].title,confirmed_profile_count)
+        // console.log(runOfShow.sessions[n].title,confirmed_profile_count)
         
         if(confirmed_profile_count == 5){
             width_override = 'fifth'
@@ -5427,11 +5436,6 @@ function displayRunOfShowCards(runOfShow){
                     sessions += '<span class="profile-info">'
                 
                     sessions += '<span class="profile-name ' +this_profile.slug+'">'+this_profile.title
-                                console.log(
-
-                                    "classes",
-                                    this_profile.classes
-                                )
                                 sessions += '<br>'+this_profile.classes
                                 sessions +='</span>'
                     

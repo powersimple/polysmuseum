@@ -493,6 +493,11 @@ function profile_appearances() {
 function display_menu_structure($menu_slug) {
     global $wpdb;
     
+    // Debug output
+    echo '<div style="background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">';
+    echo '<strong>Debug Info:</strong><br>';
+    echo 'Menu Slug: ' . esc_html($menu_slug) . '<br>';
+    
     // Get menu term by slug
     $menu_term = $wpdb->get_row($wpdb->prepare("
         SELECT t.*, tt.term_taxonomy_id
@@ -503,14 +508,23 @@ function display_menu_structure($menu_slug) {
     ", $menu_slug));
 
     if (!$menu_term) {
+        echo 'Menu not found in database<br>';
+        echo '</div>';
         return '<div class="notice notice-error"><p>Menu not found: ' . esc_html($menu_slug) . '</p></div>';
     }
+
+    echo 'Menu found: ' . esc_html($menu_term->name) . ' (ID: ' . $menu_term->term_id . ')<br>';
 
     $results = check_menu_relationships($menu_term->term_taxonomy_id);
 
     if (is_string($results)) {
+        echo 'Error getting menu relationships: ' . esc_html($results) . '<br>';
+        echo '</div>';
         return '<div class="notice notice-error"><p>' . esc_html($results) . '</p></div>';
     }
+
+    echo 'Menu items found: ' . count($results['menu_items']) . '<br>';
+    echo '</div>';
 
     $output = '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
     $output .= '<h2>Menu: ' . esc_html($results['menu']->name) . '</h2>';
@@ -520,6 +534,75 @@ function display_menu_structure($menu_slug) {
     $output .= '<li>Slug: ' . esc_html($menu_term->slug) . '</li>';
     $output .= '</ul>';
     
+    // Create summary table for winners
+    $winners = array();
+    foreach ($results['menu_items'] as $item) {
+        $meta_data = $wpdb->get_results($wpdb->prepare("
+            SELECT meta_key, meta_value 
+            FROM {$wpdb->postmeta} 
+            WHERE post_id = %d
+            ORDER BY meta_key
+        ", $item->ID));
+        
+        $css_classes = '';
+        $winner_class = '';
+        foreach ($meta_data as $meta) {
+            if ($meta->meta_key === '_menu_item_classes') {
+                $classes = maybe_unserialize($meta->meta_value);
+                if (is_array($classes)) {
+                    $css_classes = implode(' ', $classes);
+                    foreach ($classes as $class) {
+                        if (strpos($class, 'winner') !== false) {
+                            $winner_class = $class;
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        
+        if ($winner_class) {
+            if (!isset($winners[$winner_class])) {
+                $winners[$winner_class] = array();
+            }
+            $winners[$winner_class][] = array(
+                'title' => $item->post_title,
+                'object_id' => $item->object_id,
+                'css_classes' => $css_classes
+            );
+        }
+    }
+    
+    // Display summary table
+    if (!empty($winners)) {
+        $output .= '<h3>Winner Summary</h3>';
+        $output .= '<table class="widefat" style="margin: 10px 0; border-collapse: collapse; width: 100%;">';
+        $output .= '<thead><tr>';
+        $output .= '<th style="padding: 8px; border: 1px solid #ddd;">Winner Type</th>';
+        $output .= '<th style="padding: 8px; border: 1px solid #ddd;">Profile Title</th>';
+        $output .= '<th style="padding: 8px; border: 1px solid #ddd;">Object ID</th>';
+        $output .= '<th style="padding: 8px; border: 1px solid #ddd;">CSS Classes</th>';
+        $output .= '</tr></thead><tbody>';
+        
+        foreach ($winners as $winner_type => $profiles) {
+            foreach ($profiles as $index => $profile) {
+                $output .= '<tr>';
+                if ($index === 0) {
+                    $output .= '<td style="padding: 8px; border: 1px solid #ddd;" rowspan="' . count($profiles) . '">' . esc_html($winner_type) . '</td>';
+                }
+                $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($profile['title']) . '</td>';
+                $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($profile['object_id']) . '</td>';
+                $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($profile['css_classes']) . '</td>';
+                $output .= '</tr>';
+            }
+        }
+        
+        $output .= '</tbody></table>';
+    } else {
+        $output .= '<p>No winners found in this menu.</p>';
+    }
+    
     $output .= '<h3>Menu Items</h3>';
     $output .= '<table class="widefat" style="margin: 10px 0; border-collapse: collapse; width: 100%;">';
     $output .= '<thead><tr>';
@@ -528,11 +611,12 @@ function display_menu_structure($menu_slug) {
     $output .= '<th style="padding: 8px; border: 1px solid #ddd;">Type</th>';
     $output .= '<th style="padding: 8px; border: 1px solid #ddd;">Object ID</th>';
     $output .= '<th style="padding: 8px; border: 1px solid #ddd;">Parent ID</th>';
+    $output .= '<th style="padding: 8px; border: 1px solid #ddd;">CSS Classes</th>';
     $output .= '<th style="padding: 8px; border: 1px solid #ddd;">Meta Data</th>';
     $output .= '</tr></thead><tbody>';
     
     foreach ($results['menu_items'] as $item) {
-        // Get menu item meta
+        // Get menu item meta including CSS classes
         $meta_data = $wpdb->get_results($wpdb->prepare("
             SELECT meta_key, meta_value 
             FROM {$wpdb->postmeta} 
@@ -540,12 +624,39 @@ function display_menu_structure($menu_slug) {
             ORDER BY meta_key
         ", $item->ID));
         
+        // Extract CSS classes
+        $css_classes = '';
+        $winner_class = '';
+        foreach ($meta_data as $meta) {
+            if ($meta->meta_key === '_menu_item_classes') {
+                $classes = maybe_unserialize($meta->meta_value);
+                if (is_array($classes)) {
+                    $css_classes = implode(' ', $classes);
+                    // Look for winner-related classes
+                    foreach ($classes as $class) {
+                        if (strpos($class, 'winner') !== false) {
+                            $winner_class = $class;
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+        
+        // Determine display type
+        $display_type = $item->actual_post_type;
+        if ($winner_class) {
+            $display_type = $winner_class;
+        }
+        
         $output .= '<tr>';
         $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($item->menu_order) . '</td>';
         $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($item->post_title) . '</td>';
-        $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($item->actual_post_type) . '</td>';
+        $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($display_type) . '</td>';
         $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($item->object_id) . '</td>';
         $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($item->menu_item_parent) . '</td>';
+        $output .= '<td style="padding: 8px; border: 1px solid #ddd;">' . esc_html($css_classes) . '</td>';
         $output .= '<td style="padding: 8px; border: 1px solid #ddd; max-width: 300px; overflow-x: auto;">';
         if (!empty($meta_data)) {
             $output .= '<div style="max-height: 200px; overflow-y: auto;">';

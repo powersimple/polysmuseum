@@ -1,4 +1,8 @@
-// HMR Client Handler
+// HMR Client Handler - Development only
+// This file should not be included in production builds
+// Uncomment the following code for development mode only
+
+/*
 if (import.meta.hot) {
   import.meta.hot.on('style-update', (data) => {
     console.log('Style update received:', data);
@@ -19,4 +23,5 @@ if (import.meta.hot) {
     // Reload the page for script changes
     window.location.reload();
   });
-} 
+}
+*/ 

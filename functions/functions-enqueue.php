@@ -1,11 +1,5 @@
 <?php
 
-    // Load translations at init
-    function load_powersimple_textdomain() {
-        load_theme_textdomain( 'powersimple', get_template_directory() . '/languages' );
-    }
-    add_action( 'init', 'load_powersimple_textdomain' );
-
     function enqueue_style() {
 
         //because without this, there is no site, at least not a coherent one.
@@ -100,8 +94,7 @@ $path= parse_url(get_stylesheet_directory_uri())['path'];
 
        wp_register_script('vendor',$path . '/vendor.min.js', array('jquery'),rand(100000,999999), false); 
        wp_enqueue_script('vendor');
-       wp_register_script('main',$path . '/main.min.js', array('jquery'),rand(100000,999999), true); 
-       wp_enqueue_script('main');
+
        /*
            wp_register_script('xrapp',get_stylesheet_directory_uri() . '/xr-app.js', array('jquery'),rand(100000,999999), true); 
 
@@ -144,5 +137,6 @@ function style_loader_src_make_relative ( $src, $handle ) {
   }
   add_filter('style_loader_src', 'style_loader_src_make_relative', 10, 2 );
 //phpinfo(); die();
+
 
 ?>

@@ -128,9 +128,15 @@ var hide_social_icons = getUrlParameter('hide-social-icons')
 var event_class = ''
 function initSite() {
    // console.log("megamenu");
-    megaMenu()
+    // Only call megaMenu if menus data is available
+    if (menus && menus.megamenu && menus.megamenu.menu_levels) {
+        megaMenu()
+    }
    // sponsorFooter()
-   displayFooterMenu()
+   // Only call displayFooterMenu if menus data is available
+   if (menus && menus.footermenu) {
+       displayFooterMenu()
+   }
 
     getVideo();
 /*
@@ -175,7 +181,7 @@ function initSite() {
 }  
 */
 //console.log("Run of Show DATA")
-    if(section_menu_slug != ''){
+    if(section_menu_slug != '' && menus && menus[section_menu_slug]){
      //   console.log("app/menuname menu",menu_name,menus[menu_name])
         
         
@@ -209,7 +215,7 @@ function initSite() {
 
     
     if (menus == undefined) {
-        window.setTimeout(initSite(), 100);
+        // window.setTimeout(initSite(), 100);
     }
     //var filters = "collaboration_type,platform"
 
@@ -273,6 +279,10 @@ jQuery(function() {
 }); //ready func.
 
 function displayFooterMenu() {
+    // Check if menus data is available
+    if (!menus || !menus.footermenu || !menus.footermenu.menu_array) {
+        return;
+    }
 
     var menu_data = menus['footermenu'].menu_array
     var menu_links = '<ul>'

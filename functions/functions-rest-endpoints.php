@@ -127,6 +127,10 @@ require_once("functions-wpml-languages.php");
 
             }
             
+            // Special case for menus endpoint - no query parameters needed
+            if($key == 'menus' && $value == 'menus'){
+                $url = $url_path.$key;
+            }
             
            $server = $server_path.$key.".json";
            if(@$_GET['publish']){
@@ -156,8 +160,6 @@ require_once("functions-wpml-languages.php");
 
                  } else {
                      $this_api_hit = json_decode(getJSON($url),true);
-                     var_dump($url);
-                     die();
                      foreach($this_api_hit as $nextkey=>$value){
                      array_push($result_array,$value);
                        
@@ -195,6 +197,17 @@ require_once("functions-wpml-languages.php");
         }
         if(@$_GET['publish']){
             header('Content-Type: application/json');
+            
+            // Special case for menus-only publishing
+            if(@$_GET['publish'] === 'menus'){
+                $menu_url = $url_path."menus";
+                $menu_data = json_decode(getJSON($menu_url), true);
+                $menus_json = json_encode($menu_data, true);
+                writeJSON($server_path."menus.json", $menus_json);
+                print $menus_json;
+                die();
+            }
+            
             $menus = json_encode($content['menus'],true);
             writeJSON($server_path."menus.json",$menus);
 

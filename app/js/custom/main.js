@@ -66,7 +66,6 @@
         });
 
         $(window).scroll(function() {
-            console.l
             effectsHomeSection(homeSection, this);
             navbarAnimation(navbar, homeSection, navHeight);
         });

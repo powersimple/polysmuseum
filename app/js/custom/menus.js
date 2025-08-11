@@ -78,6 +78,11 @@ function xrunOfShow(id){
 function setMenus(data) {
    // console.log("raw menu data",data)
 
+    if (!data || !Array.isArray(data)) {
+        console.warn('setMenus: data is not an array or is undefined');
+        return;
+    }
+
     for (var i = 0; i < data.length; i++) {
         menus[data[i].slug] = {}
         menus[data[i].slug].menu_array = []

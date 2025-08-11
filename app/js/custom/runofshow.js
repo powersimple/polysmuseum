@@ -1,4 +1,3 @@
-
 var ros_meta = {
     timezone: []
 }
@@ -19,7 +18,7 @@ function runOfShow(menu){
                 session = show[s].children[n]
                 session.info = events[show[s].children[n].object_id]
              
-            //   session.info = events[show[s].children[n].object_id]
+            //   session.info = events[show[s].sessions[n].object_id]
         
 
                 session.profiles = []
@@ -324,7 +323,7 @@ function displayRunOfShowMonolith(runOfShow){
             duration = parseInt(runOfShow.sessions[n].info.event_info.duration)*60
             event_time = showtime// this passes it below
             classes = runOfShow.sessions[n].classes
-            console.log("classes"+n,classes)
+            // console.log("classes"+n,classes)
             display_event_time = localTime(showtime)//converst
             start_time = showtime
             showtime = parseInt(showtime)+duration; //add duration for next 
@@ -419,20 +418,26 @@ cell_width = 100/runOfShow.sessions[n].profiles.length+'%';
                     }
                     sessions += '<span class="profile-info">'
                 
-                    sessions += '<span class="profile-name ' +this_profile.slug+'">'+this_profile.title+'</span>'
-                    
-                   
-                sessions += getProfileCard(this_profile,event_time);
+                    sessions += '<span class="profile-name ' +this_profile.slug+'">'+this_profile.title
+                                // console.log(
+
+                                //     "classes",
+                                //     this_profile.classes
+                                // )
+                                sessions += '<br>'+this_profile.classes
+                                sessions +='</span>'
+                
+                    sessions += getProfileCard(this_profile,event_time);
                 
                 if(width_override == 'presentation'){
                //    sessions += '</div><div class="col-sm-12 col-md-8 talk-blurb">'
-                /*
-               
-                     if(this_profile.profile.info.talk_description != undefined){
-                    sessions += '<span class="blurb">'+this_profile.profile.info.talk_description+'</span>'
-                }*/
-            }
-                sessions += '</span>'
+                    
+                //       console.log(this_profile.profile);
+                    if(this_profile.profile.meta.talk_description != undefined){
+                    //    sessions += '<span class="blurb">'+this_profile.profile.meta.talk_description+'</span>'
+                    }
+                     }
+                    sessions += '</span>'
                 
                 } else {
                     if(getUrlParameter('hold') == 'show'){
@@ -644,7 +649,7 @@ function displayRunOfShowTable(runOfShow){
        
    }
     
-   console.log("sesion_ids", session_ids)
+   // console.log("sesion_ids", session_ids)
 
 
 
@@ -885,7 +890,7 @@ function playProfileVideo(a,index){
 
  function setROS(slug){//passes wp slug;
             var menu_name = ros_list[slug]//converts it to menu_name;
-           console.log("SetROS menu name",slug,ros_list,menu_name,menus[slug])
+           // console.log("SetROS menu name",slug,ros_list,menu_name,menus[slug])
            
             currentROS = runOfShow(menus[slug])
         //  console.log("set",currentROS)
@@ -929,11 +934,11 @@ function playProfileVideo(a,index){
 function playSessionVideo(src,session_id,attrs){
    
     var session = setSessionByID(src,session_id,attrs);
-  console.log("session",src,session_id,attrs)
+  // console.log("session",src,session_id,attrs)
     var event_class = currentROS.slug;
     var event = '<div class="'+currentROS.slug+'" title="'+currentROS.title+'">'+currentROS.title+'</div>'
     var header = ''
-    console.log("session is",session_id.title)
+    // console.log("session is",session_id.title)
     header = event+'<h4>'+session_id+'</h4>'
 
 
@@ -1104,7 +1109,7 @@ function displayRunOfShowCards(runOfShow){
   //  console.log("SHOWTIME",showtime)
     $("#show").html(show)
     var duration = 0;
-    console.log(format)
+    // console.log(format)
     if(format == 'hd'){
         var sessions = '<div id="ros-accordion" class="hd">'
     
@@ -1176,7 +1181,7 @@ function displayRunOfShowCards(runOfShow){
 //           sessions+='<BR><BR><BR><BR><BR><BR><input type="text" value="'+this_title+'" size="100">'+this_title.length+' | '+title_with_lastnames.length +'<BR>'
   //          sessions+='<textarea cols="100" rows="10">' +description+'</textarea><BR><BR><BR><BR><BR><BR><BR><BR><BR><BR>'
 
-           console.log("ROS",n,runOfShow.sessions[n].info.meta.video_url)
+           // console.log("ROS",n,runOfShow.sessions[n].info.meta.video_url)
            
            if(runOfShow.sessions[n].info.meta.video_url != undefined){
           // var linkedin_description = 'Thank you to '+profile_list+' for being part of the discussion "'+runOfShow.sessions[n].title+'" at the WebXR Production Summit'+ stripHTML(runOfShow.sessions[n].info.content)+'\nWatch the video on YouTube:'+runOfShow.sessions[n].info.meta.video_url
@@ -1251,7 +1256,7 @@ function displayRunOfShowCards(runOfShow){
             }
         }
         var confirmed_profile_count = runOfShow.sessions[n].card_count
-        console.log(runOfShow.sessions[n].title,confirmed_profile_count)
+        // console.log(runOfShow.sessions[n].title,confirmed_profile_count)
         
         if(confirmed_profile_count == 5){
             width_override = 'fifth'
@@ -1305,11 +1310,6 @@ function displayRunOfShowCards(runOfShow){
                     sessions += '<span class="profile-info">'
                 
                     sessions += '<span class="profile-name ' +this_profile.slug+'">'+this_profile.title
-                                console.log(
-
-                                    "classes",
-                                    this_profile.classes
-                                )
                                 sessions += '<br>'+this_profile.classes
                                 sessions +='</span>'
                     

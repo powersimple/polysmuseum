@@ -7,9 +7,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.min.js"></script>
 <script>
 $(document).ready(function() {
+    var $slider; // Declare at function scope
 
 function setupHeroSlider() {
-    var $slider = $('.hero-slideshow');
+    $slider = $('.hero-slideshow');
     var viewportWidth = $(window).width();
     
     // Check if slick has been initialized, and unslick it
@@ -68,6 +69,7 @@ function setupHeroSlider() {
 
 // Call the function right away
 setupHeroSlider();
+
 function debounce(func, wait, immediate) {
     var timeout;
     return function() {
@@ -88,13 +90,6 @@ var resized = debounce(function() {
 }, 250);
 
 $(window).on('resize', resized);
-// On resize, run the function again
-$(window).on('resize', function() {
-    if ($slider.hasClass('slick-initialized')) {
-        $slider.slick('unslick');
-    }
-    setupHeroSlider();
-});
 
 });
 

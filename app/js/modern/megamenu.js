@@ -2,7 +2,8 @@
 class MegaMenu {
     constructor(containerId = 'main-menu') {
         this.container = document.getElementById(containerId);
-        this.menuData = window.menus?.megamenu?.menu_levels || [];
+        // Check if menus data is available, otherwise use empty array
+        this.menuData = (window.menus && window.menus.megamenu && window.menus.megamenu.menu_levels) || [];
         this.isInitialized = false;
         
         // Use IntersectionObserver for animations

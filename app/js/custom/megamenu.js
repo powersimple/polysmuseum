@@ -1,4 +1,11 @@
 function megaMenu() {
+    // Check if menus data is available
+    if (!menus || !menus.megamenu || !menus.megamenu.menu_levels) {
+        // If menus data is not loaded yet, try again in a moment
+        setTimeout(megaMenu, 100);
+        return;
+    }
+    
     var classes = ''
     var megamenu = '<nav id="megamenu" class="content">'
     megamenu += '<ul class="exo-menu">';

@@ -21,7 +21,7 @@ function processLegacyJS() {
         // Process custom files
         console.log('Processing custom JavaScript...');
         const customFiles = fs.readdirSync(customDir)
-            .filter(file => file.endsWith('.js'))
+            .filter(file => file.endsWith('.js') && file !== 'hmr-client.js') // Exclude HMR client
             .map(file => path.join(customDir, file));
         
         const customContent = customFiles

@@ -48,9 +48,14 @@
 
 
 
-wp_footer(); ?>
+wp_footer(); 
 
-<script type='text/javascript' src='<?php echo get_stylesheet_directory_uri();?>/main.js?ver=916120' id='main-js'></script>
+// Check if we're in development (port 3000) or production
+$is_dev = (strpos($_SERVER['HTTP_HOST'], ':3000') !== false);
+$main_script = $is_dev ? 'main.js' : 'main.min.js';
+?>
+
+<script type='text/javascript' src='<?php echo get_stylesheet_directory_uri();?>/<?php echo $main_script; ?>?ver=<?php echo rand(100000,999999); ?>' id='main-js'></script>
 
 </body>
 

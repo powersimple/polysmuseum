@@ -51,7 +51,7 @@ viewer.entities.add({
 });
 
 // Make sure the viewer is initialized
-console.log('Cesium viewer initialized:', viewer);
+// console.log('Cesium viewer initialized:', viewer);
 
 // Export viewer for potential use in other modules
 export { viewer };
