@@ -131,6 +131,7 @@ if (isset($_GET['event_menu'])) {
             echo '<th>Type</th>';
             echo '<th>Post Title</th>';
             echo '<th>Menu Title</th>';
+            echo '<th>Winner</th>';
             echo '</tr></thead><tbody>';
         }
         
@@ -365,6 +366,8 @@ if (isset($_GET['event_menu'])) {
                     echo esc_html($item->post_title);
                 }
                 echo '</td>';
+                // Winner column: print classes for this menu item
+                echo '<td>' . (is_array($classes) ? esc_html(implode(', ', $classes)) : '') . '</td>';
                 echo '</tr>';
             }
         }
