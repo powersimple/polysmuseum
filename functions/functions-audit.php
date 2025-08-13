@@ -9,6 +9,24 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+/**
+ * Join array items with commas and a final conjunction (e.g., "A, B and C").
+ *
+ * @param array $items
+ * @param string $conjunction Typically 'and'
+ * @param string $separator Typically ', '
+ * @return string
+ */
+function human_join(array $items, $conjunction = 'and', $separator = ', ') {
+    $items = array_values(array_filter(array_map('trim', $items), function($v){ return $v !== ''; }));
+    $count = count($items);
+    if ($count === 0) return '';
+    if ($count === 1) return $items[0];
+    if ($count === 2) return $items[0] . ' ' . $conjunction . ' ' . $items[1];
+    $last = array_pop($items);
+    return implode($separator, $items) . $separator . $conjunction . ' ' . $last;
+}
+
 // Function to get menu item's parent menu with full relationship chain
 function get_menu_item_parent_menu($menu_item_id) {
     global $wpdb;
@@ -754,8 +772,134 @@ function get_nesting_level($menu_items, $item_id, $level = 0) {
 function test_menu_pattern($menu_slug, $base_pattern) {
     // Create a regex pattern that matches the base followed by either a number or *
     $pattern = '/^' . preg_quote($base_pattern, '/') . '(?:\d+|\*)$/';
-    return preg_match($pattern, $menu_slug) === 1;
+    return preg_match($pattern, $menu_slug) > 0;
 } 
+ 
+// ---------------------------------------------
+// Menu helpers for audit template (safe, reusable)
+// ---------------------------------------------
+ 
+/**
+ * Get all nav menus ordered by name.
+ *
+ * @return array List of term rows (objects) with taxonomy nav_menu
+ */
+function get_all_nav_menus() {
+    global $wpdb;
+    return $wpdb->get_results("
+        SELECT t.*, tt.term_taxonomy_id
+        FROM {$wpdb->terms} t
+        JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+        WHERE tt.taxonomy = 'nav_menu'
+        ORDER BY t.name ASC
+    ");
+}
+ 
+/**
+ * Resolve one or more menu slugs from an input that may include a wildcard (*).
+ *
+ * Examples:
+ * - 'polys3' => ['polys3']
+ * - 'polys*' => all matching DB slugs under 'nav_menu'
+ *
+ * @param string $menu_slug
+ * @return array List of slugs (strings). Empty array if none.
+ */
+function resolve_menu_slugs($menu_slug) {
+    global $wpdb;
+
+    if (strpos($menu_slug, '*') !== false) {
+        $pattern = str_replace('*', '', $menu_slug) . '%';
+        $slugs = $wpdb->get_col($wpdb->prepare("
+            SELECT t.slug
+            FROM {$wpdb->terms} t
+            JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+            WHERE tt.taxonomy = 'nav_menu'
+            AND t.slug LIKE %s
+            ORDER BY t.slug ASC
+        ", $pattern));
+        return is_array($slugs) ? $slugs : array();
+    }
+
+    return array($menu_slug);
+}
+ 
+/**
+ * Wrapper: given a menu slug, fetch its term and menu items using check_menu_relationships().
+ *
+ * @param string $slug
+ * @return array|string Either ['menu'=>..., 'menu_items'=>...] or error string
+ */
+function get_menu_items_for_slug($slug) {
+    global $wpdb;
+
+    $menu_term = $wpdb->get_row($wpdb->prepare("
+        SELECT t.*, tt.term_taxonomy_id
+        FROM {$wpdb->terms} t
+        JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+        WHERE tt.taxonomy = 'nav_menu'
+        AND t.slug = %s
+    ", $slug));
+
+    if (!$menu_term) {
+        return "Menu not found: " . $slug;
+    }
+
+    $results = check_menu_relationships($menu_term->term_taxonomy_id);
+    if (is_string($results)) {
+        return $results; // propagate error string
+    }
+
+    return $results;
+}
+ 
+/**
+ * Render the Available Menus link list as HTML.
+ * Caller is expected to echo the returned string.
+ *
+ * @param array $menus Rows returned by get_all_nav_menus()
+ * @return string HTML markup
+ */
+function render_available_menus($menus) {
+    $out = '';
+    $out .= '<h1>Available Menus</h1>';
+    $out .= '<p>';
+    foreach ($menus as $menu) {
+        $out .= '<a href="?event_menu=' . esc_attr($menu->slug) . '" class="menu-link">' .
+                esc_html($menu->name) . '</a>';
+    }
+    $out .= '</p>';
+    return $out;
+}
+
+/**
+ * Central dispatcher for GET-triggered audit actions.
+ * Keeps page-audit.php clean and ensures capability checks are centralized.
+ *
+ * @param array $params Typically $_GET
+ * @return void
+ */
+function audit_dispatch_actions($params) {
+    if (!is_array($params)) {
+        return;
+    }
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+
+    if (isset($params['update_videos']) && function_exists('update_award_videos')) {
+        update_award_videos();
+    }
+    if (isset($params['find_titles']) && function_exists('find_award_titles')) {
+        find_award_titles();
+    }
+    if (isset($params['update_narratives']) && function_exists('update_award_narratives')) {
+        update_award_narratives();
+    }
+    if (isset($params['preview_narratives']) && function_exists('preview_award_narratives')) {
+        preview_award_narratives();
+    }
+}
  
 // Moved from page-audit.php: Update award videos based on embed_video_url
 function update_award_videos() {

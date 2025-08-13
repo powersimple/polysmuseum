@@ -20,8 +20,10 @@ if (!current_user_can('manage_options')) {
     wp_die('Unauthorized access');
 }
 
-// Add the metadata
-add_event_type_metadata();
+// Add the metadata (gated for safety)
+if (isset($_GET['update_event_types']) && current_user_can('manage_options')) {
+    add_event_type_metadata();
+}
 
 // Initialize awards array
 $awards = array();
@@ -30,25 +32,12 @@ $awards = array();
 profile_appearances();
 
 // Get all menus for the top list
-global $wpdb;
-$all_menus = $wpdb->get_results("
-    SELECT t.*, tt.term_taxonomy_id
-    FROM {$wpdb->terms} t
-    JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
-    WHERE tt.taxonomy = 'nav_menu'
-    ORDER BY t.name ASC
-");
+$all_menus = get_all_nav_menus();
 
 // Only show full menu analysis if not in summary view
 if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
     echo '<div class="wrap audit-page">';
-    echo '<h1>Available Menus</h1>';
-    echo '<p>';
-    foreach ($all_menus as $menu) {
-        echo '<a href="?event_menu=' . esc_attr($menu->slug) . '" class="menu-link">' . 
-             esc_html($menu->name) . '</a>';
-    }
-    echo '</p>';
+    echo render_available_menus($all_menus);
 }
 
 // Only run menu analysis if event_menu parameter is present
@@ -56,25 +45,12 @@ if (isset($_GET['event_menu'])) {
     // Get all menu slugs
     $menu_slug = $_GET['event_menu'];
     
-    // Handle wildcard patterns
-    if (strpos($menu_slug, '*') !== false) {
-        $pattern = str_replace('*', '', $menu_slug) . '%';  // Remove * and add % at the end
-        $menu_slugs = $wpdb->get_col($wpdb->prepare("
-            SELECT t.slug
-            FROM {$wpdb->terms} t
-            JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
-            WHERE tt.taxonomy = 'nav_menu'
-            AND t.slug LIKE %s
-            ORDER BY t.slug ASC
-        ", $pattern));
-        
-        if (empty($menu_slugs)) {
-            echo '<div class="notice notice-error"><p>No menus found matching pattern: ' . esc_html($menu_slug) . '</p></div>';
-            get_footer();
-            return;
-        }
-    } else {
-        $menu_slugs = array($menu_slug);
+    // Resolve wildcard patterns
+    $menu_slugs = resolve_menu_slugs($menu_slug);
+    if (empty($menu_slugs)) {
+        echo '<div class="notice notice-error"><p>No menus found matching pattern: ' . esc_html($menu_slug) . '</p></div>';
+        get_footer();
+        return;
     }
 
     if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
@@ -82,21 +58,8 @@ if (isset($_GET['event_menu'])) {
     }
 
     foreach ($menu_slugs as $slug) {
-        // Get menu term by slug
-        $menu_term = $wpdb->get_row($wpdb->prepare("
-            SELECT t.*, tt.term_taxonomy_id
-            FROM {$wpdb->terms} t
-            JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
-            WHERE tt.taxonomy = 'nav_menu'
-            AND t.slug = %s
-        ", $slug));
-
-        if (!$menu_term) {
-            echo '<div class="notice notice-error"><p>Menu not found: ' . esc_html($slug) . '</p></div>';
-            continue;
-        }
-
-        $results = check_menu_relationships($menu_term->term_taxonomy_id);
+        // Get menu and items by slug via helper
+        $results = get_menu_items_for_slug($slug);
 
         if (is_string($results)) {
             echo '<div class="notice notice-error"><p>' . esc_html($results) . '</p></div>';
@@ -200,7 +163,51 @@ if (isset($_GET['event_menu'])) {
             
             // Get nesting level using the existing function
             $level = get_nesting_level($menu_items, $item->ID);
-            
+
+            // If this is a winner/honoree at level 2, collect its level 3/4 descendants as winner details
+            if ($level === 2 && ($is_winner || $is_honoree) && $current_award !== null) {
+                $winner_info = array(
+                    'title' => $item->post_title ?: $post_title,
+                    'company' => '',
+                    'people' => array()
+                );
+
+                // Check for inline "Title by Company"
+                if (preg_match('/^(.*?)\s+by\s+(.*?)$/', $winner_info['title'], $matches)) {
+                    $winner_info['title'] = trim($matches[1]);
+                    $winner_info['company'] = trim($matches[2]);
+                }
+
+                // Walk direct children (level 3)
+                foreach ($results['menu_items'] as $child_item) {
+                    if ($child_item->menu_item_parent == $item->ID) {
+                        $child_post = get_post($child_item->object_id);
+                        if ($child_post) {
+                            if ($child_item->actual_post_type === 'resource') {
+                                // Company node (level 3), gather its people (level 4)
+                                $winner_info['company'] = $child_post->post_title;
+                                foreach ($results['menu_items'] as $grandchild_item) {
+                                    if ($grandchild_item->menu_item_parent == $child_item->ID) {
+                                        $grandchild_post = get_post($grandchild_item->object_id);
+                                        if ($grandchild_post && $grandchild_item->actual_post_type === 'profile') {
+                                            $winner_info['people'][] = $grandchild_post->post_title;
+                                        }
+                                    }
+                                }
+                            } elseif ($child_item->actual_post_type === 'profile') {
+                                // Person directly under winner
+                                $winner_info['people'][] = $child_post->post_title;
+                            }
+                        }
+                    }
+                }
+
+                $current_award['winners'][] = $winner_info;
+                $current_award['winner_ids'][] = $item->object_id;
+                $current_award['current_winner'] = $item->ID;
+                $current_award['award_type'] = $is_winner ? 'WINNER' : 'HONOREE';
+            }
+
             if ($item->actual_post_type === 'event' && $level === 2) {
                 if ($current_award !== null) {
                     $awards[] = $current_award;
@@ -225,54 +232,6 @@ if (isset($_GET['event_menu'])) {
                 if ($type_info === 'award-presenter') {
                     $current_award['presenters'][] = $item->post_title ?: $post_title;
                     $current_award['presenter_ids'][] = $item->object_id;
-                }
-                // Check if this is a winner/honoree
-                elseif ($is_winner || $is_honoree) {
-                    $winner_info = array(
-                        'title' => $item->post_title ?: $post_title,
-                        'company' => '',
-                        'people' => array()
-                    );
-
-                    // Check for company in the title
-                    if (preg_match('/^(.*?)\s+by\s+(.*?)$/', $winner_info['title'], $matches)) {
-                        $winner_info['title'] = trim($matches[1]);
-                        $winner_info['company'] = trim($matches[2]);
-                    }
-
-                    // Get level 4 items (company or person)
-                    foreach ($menu_items as $child_item) {
-                        if ($child_item->menu_item_parent == $item->ID) {
-                            $child_post = get_post($child_item->object_id);
-                            if ($child_post) {
-                                // If this is a company (level 4), get its people (level 5)
-                                if ($child_item->actual_post_type === 'resource') {
-                                    $winner_info['company'] = $child_post->post_title;
-                                    // Get level 5 people
-                                    foreach ($menu_items as $grandchild_item) {
-                                        if ($grandchild_item->menu_item_parent == $child_item->ID) {
-                                            $grandchild_post = get_post($grandchild_item->object_id);
-                                            if ($grandchild_post) {
-                                                $winner_info['people'][] = $grandchild_post->post_title;
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    // If level 4 is a person, add them directly
-                                    $winner_info['people'][] = $child_post->post_title;
-                                }
-                            }
-                        }
-                    }
-
-                    $current_award['winners'][] = $winner_info;
-                    $current_award['winner_ids'][] = $item->object_id;
-                    $current_award['current_winner'] = $item->ID;
-                    if ($is_winner) {
-                        $current_award['award_type'] = 'WINNER';
-                    } else {
-                        $current_award['award_type'] = 'HONOREE';
-                    }
                 }
                 // If not a presenter or winner, it's a nominee
                 else {
@@ -471,6 +430,7 @@ if (isset($_GET['event_menu'])) {
             echo '</td>';
             echo '<td>' . esc_html($award['award_type'] ?? '') . '</td>';
             echo '<td>';
+            $winners_text = '';
             if (!empty($award['winners'])) {
                 $winner_parts = array();
                 foreach ($award['winners'] as $winner) {
@@ -479,11 +439,14 @@ if (isset($_GET['event_menu'])) {
                         $winner_str .= ' by ' . $winner['company'];
                     }
                     if (!empty($winner['people'])) {
-                        $winner_str .= '; ' . implode(', ', $winner['people']);
+                        $winner_str .= '; ' . human_join($winner['people']);
                     }
                     $winner_parts[] = $winner_str;
                 }
                 $winners_text = implode('; ', $winner_parts);
+            }
+            if ($winners_text !== '') {
+                echo esc_html($winners_text);
             }
             echo '</td>';
             if (isset($_GET['event_menu']) && test_menu_pattern($_GET['event_menu'], 'polys')) {
@@ -571,30 +534,7 @@ if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
     echo '</div>'; // End wrap
 }
 
+// Centralized action dispatcher for audit actions
+audit_dispatch_actions($_GET);
 
-
-// Add this line before get_footer() to run the update
-if (isset($_GET['update_videos']) && current_user_can('manage_options')) {
-    update_award_videos();
-}
-
-
-// Add this line before get_footer() to run the search
-if (isset($_GET['find_titles']) && current_user_can('manage_options')) {
-    find_award_titles();
-}
-
-
-
-
-// Add this line before get_footer() to run the update
-if (isset($_GET['update_narratives']) && current_user_can('manage_options')) {
-    update_award_narratives();
-}
-
-// Update the preview link to include the event_menu parameter
-if (isset($_GET['preview_narratives']) && current_user_can('manage_options')) {
-    preview_award_narratives();
-}
-
-get_footer(); 
+get_footer();
