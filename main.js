@@ -131,7 +131,7 @@ function initSite() {
    // console.log("megamenu");
     // Only call megaMenu if menus data is available
     if (menus && menus.megamenu && menus.megamenu.menu_levels) {
-        megaMenu()
+        //megaMenu()
     }
    // sponsorFooter()
    // Only call displayFooterMenu if menus data is available

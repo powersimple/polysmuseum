@@ -1061,21 +1061,35 @@ function generate_award_narrative($award) {
         }
     }
 
-    // Format winners
+    // Format winners (mirror summary winners syntax)
     $winners_text = '';
     if (!empty($award['winners'])) {
-        $winner_parts = array();
-        foreach ($award['winners'] as $winner) {
-            $winner_str = $winner['title'];
-            if (!empty($winner['company'])) {
-                $winner_str .= ' by ' . $winner['company'];
+        $base_title = isset($award['winners'][0]['title']) ? $award['winners'][0]['title'] : '';
+        $group_parts = array();
+        foreach ($award['winners'] as $idx => $winner) {
+            $company = isset($winner['company']) ? trim($winner['company']) : '';
+            $people = isset($winner['people']) && is_array($winner['people']) ? $winner['people'] : array();
+            $part = '';
+            if ($company !== '') {
+                $part .= ($idx === 0 ? 'by ' : '') . $company;
+                if (!empty($people)) {
+                    $part .= ': ' . implode(', ', $people);
+                }
+            } else {
+                if (!empty($people)) {
+                    $part .= implode(', ', $people);
+                }
             }
-            if (!empty($winner['people'])) {
-                $winner_str .= '; ' . implode(', ', $winner['people']);
-            }
-            $winner_parts[] = $winner_str;
+            if ($part !== '') { $group_parts[] = $part; }
         }
-        $winners_text = implode('; ', $winner_parts);
+        if ($base_title !== '') {
+            $winners_text = $base_title;
+            if (!empty($group_parts)) {
+                $winners_text .= ' ' . implode(' ; ', $group_parts);
+            }
+        } else {
+            $winners_text = implode(' ; ', $group_parts);
+        }
     }
 
     // Get award date from post meta if available
@@ -1087,21 +1101,53 @@ function generate_award_narrative($award) {
         }
     }
 
-    // Format nominees
+    // Format nominees (mirror winners syntax): base title with grouped company/people; exclude titles matching winners
     $nominees_text = '';
     if (!empty($award['nominees'])) {
-        $nominee_parts = array();
-        foreach ($award['nominees'] as $nominee) {
-            $nominee_str = $nominee['title'];
-            if (!empty($nominee['company'])) {
-                $nominee_str .= ' by ' . $nominee['company'];
+        $winner_title_set = array();
+        if (!empty($award['winners']) && is_array($award['winners'])) {
+            foreach ($award['winners'] as $w) {
+                $t = isset($w['title']) ? strtolower(trim($w['title'])) : '';
+                if ($t !== '') { $winner_title_set[$t] = true; }
             }
-            if (!empty($nominee['people'])) {
-                $nominee_str .= '; ' . implode(', ', $nominee['people']);
-            }
-            $nominee_parts[] = $nominee_str;
         }
-        $nominees_text = implode('; ', $nominee_parts);
+
+        // Group nominee entries by title
+        $groups_by_title = array();
+        $order_titles = array();
+        foreach ($award['nominees'] as $n) {
+            $title = isset($n['title']) ? trim($n['title']) : '';
+            if ($title === '') { continue; }
+            $norm = strtolower($title);
+            if (isset($winner_title_set[$norm])) { continue; }
+            if (!isset($groups_by_title[$title])) { $groups_by_title[$title] = array(); $order_titles[] = $title; }
+            $groups_by_title[$title][] = array(
+                'company' => isset($n['company']) ? trim($n['company']) : '',
+                'people' => (isset($n['people']) && is_array($n['people'])) ? $n['people'] : array()
+            );
+        }
+
+        $rendered = array();
+        foreach ($order_titles as $title) {
+            $parts = array();
+            foreach ($groups_by_title[$title] as $idx => $g) {
+                $company = $g['company'];
+                $people = $g['people'];
+                $part = '';
+                if ($company !== '') {
+                    $part .= ($idx === 0 ? 'by ' : '') . $company;
+                    if (!empty($people)) { $part .= ': ' . implode(', ', $people); }
+                } elseif (!empty($people)) {
+                    $part .= implode(', ', $people);
+                }
+                if ($part !== '') { $parts[] = $part; }
+            }
+            $s = $title;
+            if (!empty($parts)) { $s .= ' ' . implode(' ; ', $parts); }
+            $rendered[] = $s;
+        }
+
+        if (!empty($rendered)) { $nominees_text = implode(' ; ', $rendered); }
     }
 
     // Build the narrative
@@ -1124,6 +1170,48 @@ function generate_award_narrative($award) {
     }
 
     return $narrative;
+}
+
+// Function to recursively extract nominee info from level 2 down
+function extract_nominee_info($nominee_item, $menu_items) {
+    $nominee_info = array(
+        'title' => $nominee_item->post_title ?: '',
+        'company' => '',
+        'people' => array()
+    );
+
+    // Check for company in the title
+    if (preg_match('/^(.*?)\s+by\s+(.*?)$/', $nominee_info['title'], $matches)) {
+        $nominee_info['title'] = trim($matches[1]);
+        $nominee_info['company'] = trim($matches[2]);
+    }
+
+    // Get level 3/4 items (company or person) recursively
+    foreach ($menu_items as $child_item) {
+        if ($child_item->menu_item_parent == $nominee_item->ID) {
+            $child_post = get_post($child_item->object_id);
+            if ($child_post) {
+                // If this is a company (level 3), get its people (level 4)
+                if ($child_item->actual_post_type === 'resource') {
+                    $nominee_info['company'] = $child_post->post_title;
+                    // Get level 4 people
+                    foreach ($menu_items as $grandchild_item) {
+                        if ($grandchild_item->menu_item_parent == $child_item->ID) {
+                            $grandchild_post = get_post($grandchild_item->object_id);
+                            if ($grandchild_post) {
+                                $nominee_info['people'][] = $grandchild_post->post_title;
+                            }
+                        }
+                    }
+                } else {
+                    // If level 3 is a person, add them directly
+                    $nominee_info['people'][] = $child_post->post_title;
+                }
+            }
+        }
+    }
+
+    return $nominee_info;
 }
 
 // Moved from page-audit.php: Update award narratives for polys1 from menu items
@@ -1207,7 +1295,8 @@ function update_award_narratives() {
                 'object_id' => $item->object_id,
                 'presenter_ids' => array(),
                 'winner_ids' => array(),
-                'current_winner' => null
+                'current_winner' => null,
+                'items' => array()
             );
         } elseif ($level === 3 && $current_award !== null) {
             // Handle level 3 items (presenters, winners, and nominees)
@@ -1217,6 +1306,17 @@ function update_award_narratives() {
             if ($type_info === 'award-presenter') {
                 $current_award['presenters'][] = $item->post_title ?: $post_title;
                 $current_award['presenter_ids'][] = $item->object_id;
+                // Track item
+                $current_award['items'][] = array(
+                    'level' => $level,
+                    'title' => $item->post_title ?: $post_title,
+                    'type' => $item->actual_post_type,
+                    'is_winner' => false,
+                    'is_honoree' => false,
+                    'is_presenter' => true,
+                    'company' => '',
+                    'people' => array()
+                );
             }
             // Check if this is a winner/honoree
             elseif ($is_winner || $is_honoree) {
@@ -1265,46 +1365,21 @@ function update_award_narratives() {
                 } else {
                     $current_award['award_type'] = 'HONOREE';
                 }
+                // Track item
+                $current_award['items'][] = array(
+                    'level' => $level,
+                    'title' => $winner_info['title'],
+                    'type' => $item->actual_post_type,
+                    'is_winner' => true,
+                    'is_honoree' => $is_honoree,
+                    'is_presenter' => false,
+                    'company' => $winner_info['company'],
+                    'people' => $winner_info['people']
+                );
             }
             // If not a presenter or winner, it's a nominee
             else {
-                $nominee_info = array(
-                    'title' => $item->post_title ?: $post_title,
-                    'company' => '',
-                    'people' => array()
-                );
-
-                // Check for company in the title
-                if (preg_match('/^(.*?)\s+by\s+(.*?)$/', $nominee_info['title'], $matches)) {
-                    $nominee_info['title'] = trim($matches[1]);
-                    $nominee_info['company'] = trim($matches[2]);
-                }
-
-                // Get level 4 items (company or person)
-                foreach ($menu_items as $child_item) {
-                    if ($child_item->menu_item_parent == $item->ID) {
-                        $child_post = get_post($child_item->object_id);
-                        if ($child_post) {
-                            // If this is a company (level 4), get its people (level 5)
-                            if ($child_item->actual_post_type === 'resource') {
-                                $nominee_info['company'] = $child_post->post_title;
-                                // Get level 5 people
-                                foreach ($menu_items as $grandchild_item) {
-                                    if ($grandchild_item->menu_item_parent == $child_item->ID) {
-                                        $grandchild_post = get_post($grandchild_item->object_id);
-                                        if ($grandchild_post) {
-                                            $nominee_info['people'][] = $grandchild_post->post_title;
-                                        }
-                                    }
-                                }
-                            } else {
-                                // If level 4 is a person, add them directly
-                                $nominee_info['people'][] = $child_post->post_title;
-                            }
-                        }
-                    }
-                }
-
+                $nominee_info = extract_nominee_info($item, $menu_items);
                 $current_award['nominees'][] = $nominee_info;
             }
         }
@@ -1344,38 +1419,70 @@ function update_award_narratives() {
             }
         }
 
-        // Format winners
+        // Format winners (mirror summary winners syntax)
         $winners_text = '';
         if (!empty($award['winners'])) {
-            $winner_parts = array();
-            foreach ($award['winners'] as $winner) {
-                $winner_str = $winner['title'];
-                if (!empty($winner['company'])) {
-                    $winner_str .= ' by ' . $winner['company'];
+            $base_title = isset($award['winners'][0]['title']) ? $award['winners'][0]['title'] : '';
+            $group_parts = array();
+            foreach ($award['winners'] as $idx => $winner) {
+                $company = isset($winner['company']) ? trim($winner['company']) : '';
+                $people = isset($winner['people']) && is_array($winner['people']) ? $winner['people'] : array();
+                $part = '';
+                if ($company !== '') {
+                    $part .= ($idx === 0 ? 'by ' : '') . $company;
+                    if (!empty($people)) {
+                        $part .= ': ' . implode(', ', $people);
+                    }
+                } else {
+                    if (!empty($people)) {
+                        $part .= implode(', ', $people);
+                    }
                 }
-                if (!empty($winner['people'])) {
-                    $winner_str .= '; ' . implode(', ', $winner['people']);
-                }
-                $winner_parts[] = $winner_str;
+                if ($part !== '') { $group_parts[] = $part; }
             }
-            $winners_text = implode('; ', $winner_parts);
+            if ($base_title !== '') {
+                $winners_text = $base_title;
+                if (!empty($group_parts)) {
+                    $winners_text .= ' ' . implode(' ; ', $group_parts);
+                }
+            } else {
+                $winners_text = implode(' ; ', $group_parts);
+            }
         }
 
-        // Format nominees
+        // Format nominees (mirror winners syntax): exclude titles matching winners
         $nominees_text = '';
         if (!empty($award['nominees'])) {
-            $nominee_parts = array();
-            foreach ($award['nominees'] as $nominee) {
-                $nominee_str = $nominee['title'];
-                if (!empty($nominee['company'])) {
-                    $nominee_str .= ' by ' . $nominee['company'];
+            $winner_title_set = array();
+            if (!empty($award['winners'])) {
+                foreach ($award['winners'] as $w) {
+                    $t = isset($w['title']) ? strtolower(trim($w['title'])) : '';
+                    if ($t !== '') { $winner_title_set[$t] = true; }
                 }
-                if (!empty($nominee['people'])) {
-                    $nominee_str .= '; ' . implode(', ', $nominee['people']);
-                }
-                $nominee_parts[] = $nominee_str;
             }
-            $nominees_text = implode('; ', $nominee_parts);
+
+            $rendered = array();
+            foreach ($award['nominees'] as $nominee) {
+                $title = isset($nominee['title']) ? trim($nominee['title']) : '';
+                if ($title === '') { continue; }
+                $norm = strtolower($title);
+                if (isset($winner_title_set[$norm])) { continue; } // Exclude winners from nominees
+
+                $company = isset($nominee['company']) ? trim($nominee['company']) : '';
+                $people = isset($nominee['people']) && is_array($nominee['people']) ? $nominee['people'] : array();
+                
+                $s = $title;
+                $part = '';
+                if ($company !== '') {
+                    $part .= 'by ' . $company;
+                    if (!empty($people)) { $part .= ': ' . implode(', ', $people); }
+                } elseif (!empty($people)) {
+                    $part .= implode(', ', $people);
+                }
+                if ($part !== '') { $s .= ' ' . $part; }
+                $rendered[] = $s;
+            }
+            if (!empty($rendered)) { $nominees_text = implode(' ; ', $rendered); }
         }
 
         // Build the narrative
@@ -1511,53 +1618,29 @@ function preview_award_narratives() {
             $current_award = array(
                 'title' => $item->post_title ?: $post_title,
                 'type' => $type_info,
-                'items' => array(), // Store all items in order with their levels
+                'presenters' => array(),
+                'winners' => array(),
+                'nominees' => array(),
                 'object_id' => $item->object_id
             );
-        } elseif ($current_award !== null) {
-            $item_info = array(
-                'level' => $level,
-                'title' => $item->post_title ?: $post_title,
-                'type' => $item->actual_post_type,
-                'is_winner' => $is_winner,
-                'is_honoree' => $is_honoree,
-                'is_presenter' => get_post_meta($item->ID, '_guest_type', true) === 'award-presenter',
-                'company' => '',
-                'people' => array()
-            );
-
-            // Check for company in the title
-            if (preg_match('/^(.*?)\s+by\s+(.*?)$/', $item_info['title'], $matches)) {
-                $item_info['title'] = trim($matches[1]);
-                $item_info['company'] = trim($matches[2]);
+        } elseif ($current_award !== null && $level === 3) {
+            // Handle level 3 items (presenters, winners, and nominees) - these are the actual people/entries
+            $type_info = get_post_meta($item->ID, '_guest_type', true);
+            
+            // Check if this is a presenter
+            if ($type_info === 'award-presenter') {
+                $current_award['presenters'][] = $item->post_title ?: $post_title;
             }
-
-            // Get level 4 items (company or person)
-            foreach ($menu_items as $child_item) {
-                if ($child_item->menu_item_parent == $item->ID) {
-                    $child_post = get_post($child_item->object_id);
-                    if ($child_post) {
-                        // If this is a company (level 4), get its people (level 5)
-                        if ($child_item->actual_post_type === 'resource') {
-                            $item_info['company'] = $child_post->post_title;
-                            // Get level 5 people
-                            foreach ($menu_items as $grandchild_item) {
-                                if ($grandchild_item->menu_item_parent == $child_item->ID) {
-                                    $grandchild_post = get_post($grandchild_item->object_id);
-                                    if ($grandchild_post) {
-                                        $item_info['people'][] = $grandchild_post->post_title;
-                                    }
-                                }
-                            }
-                        } else {
-                            // If level 4 is a person, add them directly
-                            $item_info['people'][] = $child_post->post_title;
-                        }
-                    }
-                }
+            // Check if this is a winner/honoree
+            elseif ($is_winner || $is_honoree) {
+                $winner_info = extract_nominee_info($item, $menu_items); // Same extraction logic
+                $current_award['winners'][] = $winner_info;
             }
-
-            $current_award['items'][] = $item_info;
+            // If not a presenter or winner, it's a nominee
+            else {
+                $nominee_info = extract_nominee_info($item, $menu_items);
+                $current_award['nominees'][] = $nominee_info;
+            }
         }
     }
 
@@ -1587,39 +1670,61 @@ function preview_award_narratives() {
         $award_name = preg_replace('/\b20\d{2}\b/', '', $award['title']);
         $award_name = trim($award_name);
 
-        // Build the narrative by processing items in order
+        // Extract presenters, winners, and nominees from the award data
+        $presenters = isset($award['presenters']) ? $award['presenters'] : array();
+        $winners = isset($award['winners']) ? $award['winners'] : array();
+        $nominees = isset($award['nominees']) ? $award['nominees'] : array();
+        
+        // DEBUG: Show what we collected
+        echo '<div style="background: #ffffcc; padding: 10px; margin: 10px 0; border: 1px solid #ccc;">';
+        echo '<strong>DEBUG - Award: ' . esc_html($award['title']) . '</strong><br>';
+        echo 'Presenters (' . count($presenters) . '): ' . implode(', ', $presenters) . '<br>';
+        echo 'Winners (' . count($winners) . '): ';
+        foreach ($winners as $w) {
+            echo '[' . (isset($w['title']) ? $w['title'] : 'NO_TITLE') . '] ';
+        }
+        echo '<br>';
+        echo 'Nominees (' . count($nominees) . '): ';
+        foreach ($nominees as $n) {
+            echo '[' . (isset($n['title']) ? $n['title'] : 'NO_TITLE') . '] ';
+        }
+        echo '<br></div>';
+
+        // Build the narrative
         $narrative = '';
         if ($year) {
             $narrative .= "The {$year} ";
         }
         $narrative .= $award_name;
 
-        $presenters = array();
-        $winners = array();
-        $nominees = array();
-
-        // Process all items in order
-        foreach ($award['items'] as $item) {
-            if ($item['is_presenter']) {
-                $presenters[] = $item['title'];
-            } elseif ($item['is_winner'] || $item['is_honoree']) {
-                $winner_str = $item['title'];
-                if (!empty($item['company'])) {
-                    $winner_str .= ' by ' . $item['company'];
+        // Format winners (mirror summary winners syntax)
+        $winners_text = '';
+        if (!empty($winners)) {
+            $base_title = isset($winners[0]['title']) ? $winners[0]['title'] : '';
+            $group_parts = array();
+            foreach ($winners as $idx => $winner) {
+                $company = isset($winner['company']) ? trim($winner['company']) : '';
+                $people = isset($winner['people']) && is_array($winner['people']) ? $winner['people'] : array();
+                $part = '';
+                if ($company !== '') {
+                    $part .= ($idx === 0 ? 'by ' : '') . $company;
+                    if (!empty($people)) {
+                        $part .= ': ' . implode(', ', $people);
+                    }
+                } else {
+                    if (!empty($people)) {
+                        $part .= implode(', ', $people);
+                    }
                 }
-                if (!empty($item['people'])) {
-                    $winner_str .= '; ' . implode(', ', $item['people']);
+                if ($part !== '') { $group_parts[] = $part; }
+            }
+            if ($base_title !== '') {
+                $winners_text = $base_title;
+                if (!empty($group_parts)) {
+                    $winners_text .= ' ' . implode(' ; ', $group_parts);
                 }
-                $winners[] = $winner_str;
             } else {
-                $nominee_str = $item['title'];
-                if (!empty($item['company'])) {
-                    $nominee_str .= ' by ' . $item['company'];
-                }
-                if (!empty($item['people'])) {
-                    $nominee_str .= '; ' . implode(', ', $item['people']);
-                }
-                $nominees[] = $nominee_str;
+                $winners_text = implode(' ; ', $group_parts);
             }
         }
 
@@ -1634,13 +1739,47 @@ function preview_award_narratives() {
         }
 
         // Add winners
-        if (!empty($winners)) {
-            $narrative .= " to " . implode('; ', $winners);
+        if (!empty($winners_text)) {
+            $narrative .= " to " . $winners_text;
         }
 
-        // Add nominees
+        // Format nominees (mirror winners syntax): exclude titles matching winners
+        $nominees_text = '';
         if (!empty($nominees)) {
-            $narrative .= ". Nominees were: " . implode('; ', $nominees);
+            $winner_title_set = array();
+            if (!empty($winners)) {
+                foreach ($winners as $w) {
+                    $t = isset($w['title']) ? strtolower(trim($w['title'])) : '';
+                    if ($t !== '') { $winner_title_set[$t] = true; }
+                }
+            }
+
+            $rendered = array();
+            foreach ($nominees as $nominee) {
+                $title = isset($nominee['title']) ? trim($nominee['title']) : '';
+                if ($title === '') { continue; }
+                $norm = strtolower($title);
+                if (isset($winner_title_set[$norm])) { continue; } // Exclude winners from nominees
+
+                $company = isset($nominee['company']) ? trim($nominee['company']) : '';
+                $people = isset($nominee['people']) && is_array($nominee['people']) ? $nominee['people'] : array();
+                
+                $s = $title;
+                $part = '';
+                if ($company !== '') {
+                    $part .= 'by ' . $company;
+                    if (!empty($people)) { $part .= ': ' . implode(', ', $people); }
+                } elseif (!empty($people)) {
+                    $part .= implode(', ', $people);
+                }
+                if ($part !== '') { $s .= ' ' . $part; }
+                $rendered[] = $s;
+            }
+            if (!empty($rendered)) { $nominees_text = implode(' ; ', $rendered); }
+        }
+        // Add nominees
+        if (!empty($nominees_text)) {
+            $narrative .= ". Nominees were: " . $nominees_text;
         }
 
         echo '<div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background: #f9f9f9;">';

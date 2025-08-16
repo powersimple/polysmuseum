@@ -59,7 +59,6 @@
      
     }
 
-
 ?>
 <!--<a-entity id="golden-gizmo-wrapper" position="-2 -7 -3" rotation="0 45 0" scale="6 6 6" visible="true">
        <a-entity id="golden-gizmo-ring-x" class="center-obj-zone" static-body
@@ -101,10 +100,7 @@
 
          
 
-<!--
-
-
-               
+<!--               
                 <a-entity id="nav" class="center-obj-zone" static-body
                 scale=".6 .6 .6 "
                 position="0.124 .8 3.97"

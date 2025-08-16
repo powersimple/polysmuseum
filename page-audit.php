@@ -166,44 +166,71 @@ if (isset($_GET['event_menu'])) {
 
             // If this is a winner/honoree at level 2, collect its level 3/4 descendants as winner details
             if ($level === 2 && ($is_winner || $is_honoree) && $current_award !== null) {
-                $winner_info = array(
-                    'title' => $item->post_title ?: $post_title,
-                    'company' => '',
-                    'people' => array()
-                );
-
-                // Check for inline "Title by Company"
-                if (preg_match('/^(.*?)\s+by\s+(.*?)$/', $winner_info['title'], $matches)) {
-                    $winner_info['title'] = trim($matches[1]);
-                    $winner_info['company'] = trim($matches[2]);
+                // Parse the level-2 title/company once
+                $base_title = $item->post_title ?: $post_title;
+                $base_company = '';
+                if (preg_match('/^(.*?)\s+by\s+(.*?)$/', $base_title, $matches)) {
+                    $base_title = trim($matches[1]);
+                    $base_company = trim($matches[2]);
                 }
 
-                // Walk direct children (level 3)
+                $winners_for_node = array();
+
+                // Walk direct children (level 3) in menu order
                 foreach ($results['menu_items'] as $child_item) {
                     if ($child_item->menu_item_parent == $item->ID) {
                         $child_post = get_post($child_item->object_id);
-                        if ($child_post) {
-                            if ($child_item->actual_post_type === 'resource') {
-                                // Company node (level 3), gather its people (level 4)
-                                $winner_info['company'] = $child_post->post_title;
-                                foreach ($results['menu_items'] as $grandchild_item) {
-                                    if ($grandchild_item->menu_item_parent == $child_item->ID) {
-                                        $grandchild_post = get_post($grandchild_item->object_id);
-                                        if ($grandchild_post && $grandchild_item->actual_post_type === 'profile') {
-                                            $winner_info['people'][] = $grandchild_post->post_title;
-                                        }
+                        if (!$child_post) { continue; }
+
+                        // Detect if this level-3 child has its own children (treat as company group)
+                        $child_has_children = false;
+                        foreach ($results['menu_items'] as $probe_item) {
+                            if ($probe_item->menu_item_parent == $child_item->ID) { $child_has_children = true; break; }
+                        }
+
+                        // Case 1: Company node at level 3 (resource or any item that has children)
+                        if ($child_item->actual_post_type === 'resource' || $child_has_children) {
+                            $wi = array(
+                                'title' => $base_title,
+                                'company' => $child_post->post_title ?: $base_company,
+                                'people' => array()
+                            );
+                            // Gather level 4 people under this company
+                            foreach ($results['menu_items'] as $grandchild_item) {
+                                if ($grandchild_item->menu_item_parent == $child_item->ID) {
+                                    $grandchild_post = get_post($grandchild_item->object_id);
+                                    if ($grandchild_post && $grandchild_item->actual_post_type === 'profile') {
+                                        $wi['people'][] = $grandchild_post->post_title;
                                     }
                                 }
-                            } elseif ($child_item->actual_post_type === 'profile') {
-                                // Person directly under winner
-                                $winner_info['people'][] = $child_post->post_title;
                             }
+                            $winners_for_node[] = $wi;
+                        }
+                        // Case 2: Person directly under the winner at level 3
+                        elseif ($child_item->actual_post_type === 'profile') {
+                            $wi = array(
+                                'title' => $base_title,
+                                'company' => $base_company,
+                                'people' => array($child_post->post_title)
+                            );
+                            $winners_for_node[] = $wi;
                         }
                     }
                 }
 
-                $current_award['winners'][] = $winner_info;
-                $current_award['winner_ids'][] = $item->object_id;
+                // If no level-3 children, fallback to a single entry using parsed base title/company
+                if (empty($winners_for_node)) {
+                    $winners_for_node[] = array(
+                        'title' => $base_title,
+                        'company' => $base_company,
+                        'people' => array()
+                    );
+                }
+
+                foreach ($winners_for_node as $wi) {
+                    $current_award['winners'][] = $wi;
+                    $current_award['winner_ids'][] = $item->object_id;
+                }
                 $current_award['current_winner'] = $item->ID;
                 $current_award['award_type'] = $is_winner ? 'WINNER' : 'HONOREE';
             }
@@ -430,23 +457,49 @@ if (isset($_GET['event_menu'])) {
             echo '</td>';
             echo '<td>' . esc_html($award['award_type'] ?? '') . '</td>';
             echo '<td>';
-            $winners_text = '';
             if (!empty($award['winners'])) {
-                $winner_parts = array();
-                foreach ($award['winners'] as $winner) {
-                    $winner_str = $winner['title'];
-                    if (!empty($winner['company'])) {
-                        $winner_str .= ' by ' . $winner['company'];
-                    }
-                    if (!empty($winner['people'])) {
-                        $winner_str .= '; ' . human_join($winner['people']);
-                    }
-                    $winner_parts[] = $winner_str;
+                // Print the base title once (from the first winner entry)
+                $base_title = isset($award['winners'][0]['title']) ? $award['winners'][0]['title'] : '';
+                if ($base_title !== '') {
+                    echo '<strong>' . esc_html($base_title) . '</strong><br>';
                 }
-                $winners_text = implode('; ', $winner_parts);
-            }
-            if ($winners_text !== '') {
-                echo esc_html($winners_text);
+
+                $group_parts = array();
+                foreach ($award['winners'] as $idx => $winner) {
+                    $company = isset($winner['company']) ? trim($winner['company']) : '';
+                    $people = isset($winner['people']) && is_array($winner['people']) ? $winner['people'] : array();
+
+                    // Escape people names
+                    $people_escaped = array();
+                    foreach ($people as $person_name) {
+                        if ($person_name !== '') { $people_escaped[] = esc_html($person_name); }
+                    }
+
+                    $part = '';
+                    if ($company !== '') {
+                        // First company group gets 'by', subsequent ones omit 'by'
+                        if ($idx === 0) {
+                            $part .= 'by ' . esc_html($company);
+                        } else {
+                            $part .= esc_html($company);
+                        }
+                        if (!empty($people_escaped)) {
+                            $part .= ': ' . implode(', ', $people_escaped);
+                        }
+                    } else {
+                        if (!empty($people_escaped)) {
+                            $part .= implode(', ', $people_escaped);
+                        }
+                    }
+
+                    if ($part !== '') {
+                        $group_parts[] = $part;
+                    }
+                }
+
+                if (!empty($group_parts)) {
+                    echo implode(' ; ', $group_parts);
+                }
             }
             echo '</td>';
             if (isset($_GET['event_menu']) && test_menu_pattern($_GET['event_menu'], 'polys')) {
