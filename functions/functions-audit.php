@@ -1092,64 +1092,6 @@ function generate_award_narrative($award) {
         }
     }
 
-    // Get award date from post meta if available
-    $award_date = '';
-    if (!empty($award['object_id'])) {
-        $award_date = get_post_meta($award['object_id'], 'award_date', true);
-        if ($award_date) {
-            $award_date = date('F j, Y', strtotime($award_date));
-        }
-    }
-
-    // Format nominees (mirror winners syntax): base title with grouped company/people; exclude titles matching winners
-    $nominees_text = '';
-    if (!empty($award['nominees'])) {
-        $winner_title_set = array();
-        if (!empty($award['winners']) && is_array($award['winners'])) {
-            foreach ($award['winners'] as $w) {
-                $t = isset($w['title']) ? strtolower(trim($w['title'])) : '';
-                if ($t !== '') { $winner_title_set[$t] = true; }
-            }
-        }
-
-        // Group nominee entries by title
-        $groups_by_title = array();
-        $order_titles = array();
-        foreach ($award['nominees'] as $n) {
-            $title = isset($n['title']) ? trim($n['title']) : '';
-            if ($title === '') { continue; }
-            $norm = strtolower($title);
-            if (isset($winner_title_set[$norm])) { continue; }
-            if (!isset($groups_by_title[$title])) { $groups_by_title[$title] = array(); $order_titles[] = $title; }
-            $groups_by_title[$title][] = array(
-                'company' => isset($n['company']) ? trim($n['company']) : '',
-                'people' => (isset($n['people']) && is_array($n['people'])) ? $n['people'] : array()
-            );
-        }
-
-        $rendered = array();
-        foreach ($order_titles as $title) {
-            $parts = array();
-            foreach ($groups_by_title[$title] as $idx => $g) {
-                $company = $g['company'];
-                $people = $g['people'];
-                $part = '';
-                if ($company !== '') {
-                    $part .= ($idx === 0 ? 'by ' : '') . $company;
-                    if (!empty($people)) { $part .= ': ' . implode(', ', $people); }
-                } elseif (!empty($people)) {
-                    $part .= implode(', ', $people);
-                }
-                if ($part !== '') { $parts[] = $part; }
-            }
-            $s = $title;
-            if (!empty($parts)) { $s .= ' ' . implode(' ; ', $parts); }
-            $rendered[] = $s;
-        }
-
-        if (!empty($rendered)) { $nominees_text = implode(' ; ', $rendered); }
-    }
-
     // Build the narrative
     $narrative = '';
     if ($year) {
@@ -1163,10 +1105,6 @@ function generate_award_narrative($award) {
 
     if ($winners_text) {
         $narrative .= " to {$winners_text}";
-    }
-
-    if ($nominees_text) {
-        $narrative .= ". Nominees were: {$nominees_text}";
     }
 
     return $narrative;

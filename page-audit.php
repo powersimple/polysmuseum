@@ -99,6 +99,11 @@ if (isset($_GET['event_menu'])) {
         }
         
         $current_award = null;
+        // Track starting index of awards contributed by this menu
+        $awards_menu_start = isset($awards) ? count($awards) : 0;
+        // Build a quick index map for menu item ID -> position
+        $index_by_id = array();
+        foreach ($results['menu_items'] as $pos => $mi) { $index_by_id[$mi->ID] = $pos; }
         foreach ($results['menu_items'] as $item) {
             // Get the actual post title
             $post_title = '';
@@ -363,6 +368,127 @@ if (isset($_GET['event_menu'])) {
             $awards[] = $current_award;
         }
 
+        // Post-process: compute nominees text for awards added by this menu.
+        // Concatenate all level 2/3/4 items following the winner until we return to level 1.
+        if (!empty($results['menu_items'])) {
+            $mi_list = $results['menu_items'];
+            // Helper to get nesting level quickly
+            $get_level = function($id) use ($menu_items) { return get_nesting_level($menu_items, $id); };
+            for ($ai = $awards_menu_start; $ai < count($awards); $ai++) {
+                if (empty($awards[$ai]['current_winner'])) { continue; }
+                $winner_id = (int)$awards[$ai]['current_winner'];
+                if (!isset($index_by_id[$winner_id])) { continue; }
+                $startIdx = $index_by_id[$winner_id];
+
+                // Helper: is j-th item a descendant of winner?
+                $is_descendant = function($nodeId, $ancestorId) use ($parent_map) {
+                    $guard = 0;
+                    while (!empty($nodeId) && $guard < 20) {
+                        if ((int)$nodeId === (int)$ancestorId) { return true; }
+                        $nodeId = isset($parent_map[$nodeId]) ? (int)$parent_map[$nodeId] : 0;
+                        $guard++;
+                    }
+                    return false;
+                };
+
+                // Advance to the first item AFTER the winner's entire subtree
+                $firstNomIdx = $startIdx + 1;
+                for (; $firstNomIdx < count($mi_list); $firstNomIdx++) {
+                    $cand = $mi_list[$firstNomIdx];
+                    if (!$is_descendant($cand->ID, $winner_id)) { break; }
+                }
+
+                // Build grouped nominees: level-2 groups separated by ';', with level-3/4 comma-separated
+                $groups = array();            // rendered strings per group
+                $groups_struct = array();     // structured groups for reuse
+                $current_group = '';
+                $current_group_items = array();
+                $visited = array(); // prevent duplicate additions when traversing
+                for ($j = $firstNomIdx; $j < count($mi_list); $j++) {
+                    $itm = $mi_list[$j];
+                    $lvl = $get_level($itm->ID);
+                    // Stop when we return to level 1
+                    if ($lvl === 1) { break; }
+                    if ($lvl < 2 || $lvl > 4) { continue; }
+
+                    // Build a readable piece for this item
+                    $post = !empty($itm->object_id) ? get_post($itm->object_id) : null;
+                    $title = $post ? $post->post_title : (isset($itm->post_title) ? $itm->post_title : '');
+                    $piece = '';
+
+                    if ($lvl === 2) {
+                        // Close previous group
+                        if ($current_group !== '') {
+                            $groups[] = $current_group;
+                            $groups_struct[] = array('label' => $current_group_label, 'items' => $current_group_items);
+                        }
+
+                        // Base label for level-2
+                        if (preg_match('/^(.*?)\s+by\s+(.*?)$/i', (string)$title, $m)) {
+                            $current_group_label = esc_html(trim($m[1])) . ' by ' . esc_html(trim($m[2]));
+                        } else {
+                            $current_group_label = esc_html(trim($title));
+                        }
+                        $current_group_items = array();
+                        // Start group string with label and colon (even if no items may follow)
+                        $current_group = $current_group_label; // keep label for now; add colon only when first item arrives
+                        $added_colon = false;
+                        continue;
+                    }
+
+                    // Level 3/4 aggregation into current_group with commas
+                    if (isset($itm->actual_post_type) && $itm->actual_post_type === 'resource') {
+                        // Company node: include any direct child profiles
+                        $people = array();
+                        $visited[$itm->ID] = true; // mark company as visited
+                        foreach ($mi_list as $probe) {
+                            if ((int)$probe->menu_item_parent === (int)$itm->ID && isset($probe->actual_post_type) && $probe->actual_post_type === 'profile') {
+                                $pp = !empty($probe->object_id) ? get_post($probe->object_id) : null;
+                                if ($pp) { $people[] = trim($pp->post_title); }
+                                $visited[$probe->ID] = true; // mark direct profile children as visited
+                            }
+                        }
+                        $piece = esc_html(trim($title));
+                        if (!empty($people)) { $piece .= ': ' . esc_html(implode(', ', $people)); }
+                    } else if (isset($itm->actual_post_type) && $itm->actual_post_type === 'profile') {
+                        if (isset($visited[$itm->ID])) { continue; } // already captured under a resource
+                        $piece = esc_html(trim($title));
+                    } else {
+                        // Generic: normalize "Title by Company" when present
+                        if (preg_match('/^(.*?)\s+by\s+(.*?)$/i', (string)$title, $m)) {
+                            $piece = esc_html(trim($m[1])) . ' by ' . esc_html(trim($m[2]));
+                        } else {
+                            $piece = esc_html(trim($title));
+                        }
+                    }
+
+                    if ($piece !== '') {
+                        if ($current_group === '') {
+                            // If no current level-2 group yet, start one implicitly
+                            $current_group_label = '';
+                            $current_group = $piece;
+                            $current_group_items = array($piece);
+                        } else {
+                            // Append with colon before the first item, then commas
+                            if (!isset($added_colon) || $added_colon === false) {
+                                $current_group .= ': ' . $piece;
+                                $added_colon = true;
+                            } else {
+                                $current_group .= ', ' . $piece;
+                            }
+                            $current_group_items[] = $piece;
+                        }
+                    }
+                }
+                if ($current_group !== '') {
+                    $groups[] = $current_group;
+                    $groups_struct[] = array('label' => isset($current_group_label)?$current_group_label:'', 'items' => $current_group_items);
+                }
+                $awards[$ai]['nominees_text'] = implode(' ; ', $groups);
+                $awards[$ai]['nominees_groups'] = $groups_struct;
+            }
+        }
+
         if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
             echo '</tbody></table>';
             echo '</div>';
@@ -402,6 +528,7 @@ if (isset($_GET['event_menu'])) {
         echo '<th>Presenter(s)</th>';
         echo '<th>Type</th>';
         echo '<th>Winner(s)</th>';
+        echo '<th>Nominees</th>';
         if (isset($_GET['event_menu']) && test_menu_pattern($_GET['event_menu'], 'polys')) {
             echo '<th>Blocks</th>';
         }
@@ -457,19 +584,16 @@ if (isset($_GET['event_menu'])) {
             echo '</td>';
             echo '<td>' . esc_html($award['award_type'] ?? '') . '</td>';
             echo '<td>';
+            // Winners column rendering with ' | ' separator and non-empty fallback
+            $winners_html = '';
             if (!empty($award['winners'])) {
-                // Print the base title once (from the first winner entry)
                 $base_title = isset($award['winners'][0]['title']) ? $award['winners'][0]['title'] : '';
-                if ($base_title !== '') {
-                    echo '<strong>' . esc_html($base_title) . '</strong><br>';
-                }
 
                 $group_parts = array();
                 foreach ($award['winners'] as $idx => $winner) {
                     $company = isset($winner['company']) ? trim($winner['company']) : '';
                     $people = isset($winner['people']) && is_array($winner['people']) ? $winner['people'] : array();
 
-                    // Escape people names
                     $people_escaped = array();
                     foreach ($people as $person_name) {
                         if ($person_name !== '') { $people_escaped[] = esc_html($person_name); }
@@ -477,30 +601,60 @@ if (isset($_GET['event_menu'])) {
 
                     $part = '';
                     if ($company !== '') {
-                        // First company group gets 'by', subsequent ones omit 'by'
-                        if ($idx === 0) {
-                            $part .= 'by ' . esc_html($company);
-                        } else {
-                            $part .= esc_html($company);
-                        }
-                        if (!empty($people_escaped)) {
-                            $part .= ': ' . implode(', ', $people_escaped);
-                        }
-                    } else {
-                        if (!empty($people_escaped)) {
-                            $part .= implode(', ', $people_escaped);
-                        }
+                        $part .= ($idx === 0 ? 'by ' : '') . esc_html($company);
+                        if (!empty($people_escaped)) { $part .= ': ' . implode(', ', $people_escaped); }
+                    } else if (!empty($people_escaped)) {
+                        $part .= implode(', ', $people_escaped);
                     }
 
-                    if ($part !== '') {
-                        $group_parts[] = $part;
-                    }
+                    if ($part !== '') { $group_parts[] = $part; }
                 }
 
+                if ($base_title !== '') {
+                    $winners_html .= '<strong>' . esc_html($base_title) . '</strong>';
+                    if (!empty($group_parts)) { $winners_html .= ' | '; }
+                }
                 if (!empty($group_parts)) {
-                    echo implode(' ; ', $group_parts);
+                    $winners_html .= implode(' ; ', $group_parts);
                 }
             }
+            echo ($winners_html !== '') ? $winners_html : '&nbsp;';
+            echo '</td>';
+
+            // Nominees column (concatenate level 2/3/4 nominee structures)
+            echo '<td class="nominees-data">';
+            $nominees_html = '';
+            // Prefer computed nominees_text if available
+            if (!empty($award['nominees_text'])) {
+                $nominees_html = esc_html($award['nominees_text']);
+            } elseif (!empty($award['nominees']) && is_array($award['nominees'])) {
+                $nom_parts = array();
+                foreach ($award['nominees'] as $nom) {
+                    $n_title = isset($nom['title']) ? trim((string)$nom['title']) : '';
+                    $n_company = isset($nom['company']) ? trim((string)$nom['company']) : '';
+                    $n_people = array();
+                    if (!empty($nom['people']) && is_array($nom['people'])) {
+                        foreach ($nom['people'] as $pn) {
+                            $pn = trim((string)$pn);
+                            if ($pn !== '') { $n_people[] = esc_html($pn); }
+                        }
+                    }
+
+                    $piece = '';
+                    if ($n_title !== '') { $piece .= esc_html($n_title); }
+                    if ($n_company !== '') {
+                        $piece .= ($piece !== '' ? ' ' : '');
+                        $piece .= 'by ' . esc_html($n_company);
+                    }
+                    if (!empty($n_people)) {
+                        $piece .= (!empty($n_company) ? ': ' : ' ');
+                        $piece .= implode(', ', $n_people);
+                    }
+                    if ($piece !== '') { $nom_parts[] = $piece; }
+                }
+                if (!empty($nom_parts)) { $nominees_html = implode(' ; ', $nom_parts); }
+            }
+            echo ($nominees_html !== '') ? $nominees_html : '&nbsp;';
             echo '</td>';
             if (isset($_GET['event_menu']) && test_menu_pattern($_GET['event_menu'], 'polys')) {
                 echo '<td class="trophy-data">';
@@ -510,40 +664,28 @@ if (isset($_GET['event_menu'])) {
                     if ($trophy || $trophy_base) {
                         $output = array();
                         if ($trophy) {
-                            $output[] = '<a href="https://blocks.glass/thepolys/' . esc_attr($trophy) . '" target="_blank" class="award-link">trophy</a>';
+                            $trophy_url = 'https://blocks.glass/thepolys/' . $trophy;
+                            $output[] = '<a href="' . esc_url($trophy_url) . '" target="_blank" class="award-link">' . esc_html($trophy_url) . '</a>';
                         }
                         if ($trophy_base) {
-                            $output[] = '<a href="https://blocks.glass/thepolys/' . esc_attr($trophy_base) . '" target="_blank" class="award-link">base</a>';
+                            $base_url = 'https://blocks.glass/thepolys/' . $trophy_base;
+                            $output[] = '<a href="' . esc_url($base_url) . '" target="_blank" class="award-link">' . esc_html($base_url) . '</a>';
                         }
                         echo implode(' | ', $output);
                     } else {
-                        echo 'No trophy data';
+                        echo '&nbsp;';
                     }
                 }
                 echo '</td>';
             }
             echo '<td class="video-data">';
             if (!empty($award['object_id'])) {
-                $video_url = get_post_meta($award['object_id'], 'video_url', true);
                 $embed_video_url = get_post_meta($award['object_id'], 'embed_video_url', true);
-                
-                $output = array();
-                
-                // Handle video URL
-                if ($video_url) {
-                    $output[] = '<a href="' . esc_url($video_url) . '" target="_blank" class="award-link">link</a>';
-                } else {
-                    $output[] = '<span class="missing">no link</span>';
-                }
-                
-                // Handle embed video URL
                 if ($embed_video_url) {
-                    $output[] = '<a href="' . esc_url($embed_video_url) . '" target="_blank" class="award-link">embed</a>';
+                    echo '<a href="' . esc_url($embed_video_url) . '" target="_blank" class="award-link">' . esc_html($embed_video_url) . '</a>';
                 } else {
-                    $output[] = '<span class="missing">no embed</span>';
+                    echo '&nbsp;';
                 }
-                
-                echo implode(' | ', $output);
             }
             echo '</td>';
             echo '</tr>';
@@ -561,6 +703,33 @@ if (isset($_GET['event_menu'])) {
             if ($narrative) {
                 echo '<div class="award-narrative" style="margin-bottom: 15px;">';
                 echo '<p>' . esc_html($narrative) . '</p>';
+                // Inject nominees line using computed nominees_text (fallback to structured nominees)
+                $nominees_line = '';
+                if (!empty($award['nominees_text'])) {
+                    $nominees_line = $award['nominees_text'];
+                } elseif (!empty($award['nominees']) && is_array($award['nominees'])) {
+                    $nom_parts = array();
+                    foreach ($award['nominees'] as $nom) {
+                        $n_title = isset($nom['title']) ? trim((string)$nom['title']) : '';
+                        $n_company = isset($nom['company']) ? trim((string)$nom['company']) : '';
+                        $n_people = array();
+                        if (!empty($nom['people']) && is_array($nom['people'])) {
+                            foreach ($nom['people'] as $pn) {
+                                $pn = trim((string)$pn);
+                                if ($pn !== '') { $n_people[] = $pn; }
+                            }
+                        }
+                        $piece = '';
+                        if ($n_title !== '') { $piece .= $n_title; }
+                        if ($n_company !== '') { $piece .= ($piece !== '' ? ' ' : '') . 'by ' . $n_company; }
+                        if (!empty($n_people)) { $piece .= (!empty($n_company) ? ': ' : ' ') . implode(', ', $n_people); }
+                        if ($piece !== '') { $nom_parts[] = $piece; }
+                    }
+                    if (!empty($nom_parts)) { $nominees_line = implode(' ; ', $nom_parts); }
+                }
+                if ($nominees_line !== '') {
+                    echo '<p><em>Nominees were:</em> ' . esc_html($nominees_line) . '</p>';
+                }
                 echo '</div>';
             }
         }
