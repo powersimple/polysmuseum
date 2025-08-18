@@ -368,7 +368,7 @@ if (isset($_GET['event_menu'])) {
             $awards[] = $current_award;
         }
 
-        // Post-process: compute nominees text for awards added by this menu.
+        // Post-process: compute nominees text and resource URLs for awards added by this menu.
         // Concatenate all level 2/3/4 items following the winner until we return to level 1.
         if (!empty($results['menu_items'])) {
             $mi_list = $results['menu_items'];
@@ -486,6 +486,18 @@ if (isset($_GET['event_menu'])) {
                 }
                 $awards[$ai]['nominees_text'] = implode(' ; ', $groups);
                 $awards[$ai]['nominees_groups'] = $groups_struct;
+
+                // Compute Resource URLs for the winner: collect all level-3 resource items directly under the winner
+                $resource_urls = array();
+                foreach ($mi_list as $probe) {
+                    if ((int)$probe->menu_item_parent === (int)$winner_id && isset($probe->actual_post_type) && $probe->actual_post_type === 'resource') {
+                        if (!empty($probe->object_id)) {
+                            $ru = get_post_meta($probe->object_id, 'resource_url', true);
+                            if (!empty($ru)) { $resource_urls[] = $ru; }
+                        }
+                    }
+                }
+                $awards[$ai]['resource_urls'] = $resource_urls;
             }
         }
 
@@ -532,6 +544,7 @@ if (isset($_GET['event_menu'])) {
         if (isset($_GET['event_menu']) && test_menu_pattern($_GET['event_menu'], 'polys')) {
             echo '<th>Blocks</th>';
         }
+        echo '<th>Resource URL</th>';
         echo '<th>Video</th>';
         echo '</tr></thead><tbody>';
         
@@ -678,6 +691,18 @@ if (isset($_GET['event_menu'])) {
                 }
                 echo '</td>';
             }
+            // Resource URL column (full clickable URL(s) if available)
+            echo '<td class="resource-url">';
+            if (!empty($award['resource_urls']) && is_array($award['resource_urls'])) {
+                $links = array();
+                foreach ($award['resource_urls'] as $ru) {
+                    $links[] = '<a href="' . esc_url($ru) . '" target="_blank" class="award-link">' . esc_html($ru) . '</a>';
+                }
+                echo !empty($links) ? implode(' | ', $links) : '&nbsp;';
+            } else {
+                echo '&nbsp;';
+            }
+            echo '</td>';
             echo '<td class="video-data">';
             if (!empty($award['object_id'])) {
                 $embed_video_url = get_post_meta($award['object_id'], 'embed_video_url', true);

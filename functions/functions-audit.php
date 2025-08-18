@@ -1083,7 +1083,8 @@ function generate_award_narrative($award) {
             if ($part !== '') { $group_parts[] = $part; }
         }
         if ($base_title !== '') {
-            $winners_text = $base_title;
+            // Add a colon after the level-2 winner name
+            $winners_text = $base_title . ':';
             if (!empty($group_parts)) {
                 $winners_text .= ' ' . implode(' ; ', $group_parts);
             }
@@ -1098,6 +1099,11 @@ function generate_award_narrative($award) {
         $narrative .= "The {$year} ";
     }
     $narrative .= $award_name;
+    // If the award name ends with "of the Year", append the word "award" before "was presented"
+    $needs_award_word = preg_match('/\bof the Year\b$/i', $award_name) === 1;
+    if ($needs_award_word) {
+        $narrative .= ' award';
+    }
 
     if ($presenters_text) {
         $narrative .= " was presented by {$presenters_text}";
