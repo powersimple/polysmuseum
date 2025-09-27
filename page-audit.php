@@ -723,11 +723,12 @@ if (isset($_GET['event_menu'])) {
         echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
         echo '<h2>Award Narratives</h2>';
         echo '<div class="award-narratives">';
-        foreach ($awards as $award) {
+        foreach ($awards as $idx => $award) {
             $narrative = generate_award_narrative($award);
             if ($narrative) {
                 echo '<div class="award-narrative" style="margin-bottom: 15px;">';
-                echo '<p>' . esc_html($narrative) . '</p>';
+                // Build single-paragraph output with index prefix and inline nominees after a line break
+                $content = esc_html(($idx + 1) . ' | ' . $narrative);
                 // Inject nominees line using computed nominees_text (fallback to structured nominees)
                 $nominees_line = '';
                 if (!empty($award['nominees_text'])) {
@@ -753,8 +754,9 @@ if (isset($_GET['event_menu'])) {
                     if (!empty($nom_parts)) { $nominees_line = implode(' ; ', $nom_parts); }
                 }
                 if ($nominees_line !== '') {
-                    echo '<p><em>Nominees were:</em> ' . esc_html($nominees_line) . '</p>';
+                    $content .= '<br><em>Nominees were:</em> ' . esc_html($nominees_line);
                 }
+                echo '<p>' . $content . '</p>';
                 echo '</div>';
             }
         }

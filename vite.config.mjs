@@ -135,6 +135,10 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(`/${serverName}`, ''),
+         headers: {
+      'X-Forwarded-Proto': 'https',
+      'X-Forwarded-Host':  serverName+':3000',
+    }
       },
     },
     hmr: {
