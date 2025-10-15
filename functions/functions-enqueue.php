@@ -58,9 +58,22 @@
 
        
 
-        wp_register_script('three', '//cdnjs.cloudflare.com/ajax/libs/three.js/r75/three.min.js'); 
+        // Avoid conflicting with A-Frame (which bundles its own Three.js).
+        // Only enqueue standalone Three.js on pages NOT using A-Frame.
+        global $post;
+        $use_aframe = 0;
+        if (isset($post) && is_object($post)) {
+            $use_aframe = intval(get_post_meta($post->ID, 'use_aframe', true));
+        }
 
-        wp_enqueue_script('three');
+        if ($use_aframe !== 1) {
+            wp_register_script('three', '//cdnjs.cloudflare.com/ajax/libs/three.js/r75/three.min.js'); 
+            wp_enqueue_script('three');
+        } else {
+            // If registered/enqueued earlier by plugins or other hooks, remove to prevent duplicate Three.
+            wp_dequeue_script('three');
+            wp_deregister_script('three');
+        }
 
 
 

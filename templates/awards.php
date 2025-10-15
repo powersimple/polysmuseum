@@ -1,7 +1,6 @@
 <div id='top'></div>
 <?php
-    // included from winners pages
-    $GLOBALS['participants'] = [];
+    $GLOBALS['participants'] = is_array($GLOBALS['participants'] ?? null) ? $GLOBALS['participants'] : [];
    foreach($awards as $key => $award){// outer menu loop
     print "<ul class='awards-list'>";
     foreach($award['children'] as $c =>$child){// EVENTS

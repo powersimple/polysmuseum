@@ -956,7 +956,7 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
             
     foreach($children as $c =>$child){
       extract($child);
-      if(!array_key_exists($child['post']->ID,$GLOBALS['participants'])){
+      if(!array_key_exists($child['post']->ID,@$GLOBALS['participants'])){
         $GLOBALS['participants'][$child['post']->ID] = [
           "name"=>$child['title'],
           "email"=>@$child['meta']['email'][0],

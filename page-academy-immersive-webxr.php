@@ -21,7 +21,7 @@
    </div>
 <?php
 }
- //  include "webxr/polys5/drawer-experiences.php";
+ //  include "webxr/academy/drawer-experiences.php";
  //   include "webxr/polys2/drawer-nominations.php";
 ?>
 
@@ -42,8 +42,8 @@
     <a-entity tracked-controls="controller: 1; idPrefix: OpenVR"></a-entity>
         <!-- Loads assets -->
         <?php
-            include "webxr/polys5/assets.php";
-            include "webxr/polys5/mixins.php";
+            include "webxr/academy/assets.php";
+            include "webxr/academy/mixins.php";
             
         ?>
 
@@ -51,7 +51,7 @@
     <a-sky src="#sky" animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 1200000; loop: true;"></a-sky>
 
     <?php
-            include "webxr/polys5/rigging.php";
+            include "webxr/academy/rigging.php";
            
     $showplatform="true";        
     if(@$_GET['showplatform']){
@@ -60,7 +60,7 @@
     }
 
 
-?>
+?><!--
 <a-entity id="golden-gizmo-wrapper" position="-2 -7 -3" rotation="0 45 0" scale="6 6 6" visible="true">
        <a-entity id="golden-gizmo-ring-x" class="center-obj-zone" static-body
                 gltf-model="#golden-gizmo-ring" class="collision" visible="true"
@@ -90,148 +90,50 @@
                 animation="property: object3D.rotation.x; to: 360; easing: linear; dur: 24000; loop: true;"
 
                 ></a-entity>
-</a-entity><!-- golden gizmo ring -->
+</a-entity> golden gizmo ring -->
   
 
-
-<a-entity id="awards-2022" position="-1.264 -8 -6.661" rotation="0 0 0" scale="1 1 1" visible="true">
-    <a-entity id="platform-wrap"  scale="2 2 2" position="0 0 0" rotation="0 25 0" visible="<?=$showplatform?>">
-      
-
-
-         
-
-<!--
-
-
-               
-                <a-entity id="nav" class="center-obj-zone" static-body
-                scale=".6 .6 .6 "
-                position="0.124 .8 3.97"
-                material="shader: standard; metalness: 0.8;" 
-                gltf-model="#ring" class="collision" visible="true"></a-entity>-->
-                </a-entity><!-- platform
-                  animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 24000; loop: true;"  
-                -->
-    <a-entity id="pedestals" position="0 4.2 0" rotation="0 0 0" >
-    
-  <?php
-      include "webxr/polys5/pedestals.php";
-        if($showplatform == "true"){
+<?php
+             include "webxr/academy/lights.php"; 
           
-        }
-
-        ?>
-        </a-entity><!-- pedestals  -->
-        <?php
-             include "webxr/polys5/lights.php"; 
-             if($showplatform == "true"){
             ?>
-        <a-entity id="trophy-rotation" class="center-obj-zone" 
-                visible="true"
-                scale="1 1 1"
-                position="0 -43.5 -29"
-                rotation="0 0 0" 
-              
-               >
 
-                
-          
-                       
-                     
-                    
-                <?php
-             }
-                ?>
 
-         
-</a-entity>
+ 
 
-            <a-entity id="polys5-logo-model" class="center-obj-zone" static-body
-                        gltf-model="#AcademyLogo"  visible="true"
-                        scale="8 8 8" position="0 36 0" rotation="0 0
-                         0"
-                        ></a-entity>
-   
-  
-
-                        <a-entity id="ring-wrapper" class="center-obj-zone" static-body
-                visible="true"
-                scale="1 1 1"
-                position="0 0 0"
-                static-body="shape: box;" 
-                >
-    <a-entity id="ring1" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="-26 0 0"
-                static-body="shape: box;" 
-                ></a-entity>
-
-                <a-entity id="ring2" class="center-obj-zone" static-body
-                gltf-model="#ring"  visible="true"
-                scale="4 4 4"
-                position="0 0 -26"
-                static-body="shape: box;" 
-                >  </a-entity>
-                
-                <a-entity id="ring3" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="0 0 26"
-                static-body="shape: box;" 
-                >  </a-entity>
-                
-                <a-entity id="ring4" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="26 0 0"
-                static-body="shape: box;" 
-                >  </a-entity>
-
-                <a-entity id="ring5" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="0 2 0"
-                static-body="shape: box;" 
-                >  </a-entity>
-                </a-entity>
-                </a-entity><!-- awards 2022-->
-
-          
-        <a-entity id="trophy-rotation" class="center-obj-zone" 
+<a-entity id="trophy-rotation" class="center-obj-zone" 
                 visible="true"
                 scale="1 1 1"
                 position="-0.77 -3.88154 -6.23"
                 rotation="0 0 0" 
                 animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 24000; loop: true;">
-
-        <a-entity id="trophy-model" class="center-obj-zone" 
-                gltf-model="#trophy"  visible="true"
-                scale="10 10 10"
+            </a-entity> 
+        <a-entity id="academy-logo-model" class="center-obj-zone" 
+                gltf-model="#AcademyLogo"  visible="true"
+                scale="20 20 20"
                 position="0 0 0"
                 rotation="0 0 0" 
            >
-
-        </a-entity>
-                
+          <a-entity id="presentedby" troika-text='value:A Presentation of;  align:center; color:#fff; fontSize:10;align:center;maxWidth:10;font:/wp-content/themes/polysmuseum/fonts/Raleway-Regular.ttf'
+               material="shader: standard; metalness: 0.8;" position="0 0 0" rotation="0 0 0">
+           </a-entity>
        
-        
-  
+       <a-light id="light-p5c-3" color="white" light="color: #fffff; angle: 59.94; intensity: 1.74; distance: 10.57" visible="">
+</a-light>
+    <!-- Left Angle Light (45 degrees) -->
+<a-light id="light-p5c-2" color="white" light="color: #ffffff; angle: 45; type: spot; intensity: 0.76; distance: 17.71" visible="" rotation="0 -25.4 0">
+    </a-light>
 
+    <!-- Right Angle Light (-45 degrees) -->
+   <a-light id="light-p5c-3" color="white" light="color: #ffffff; angle: 23.95; intensity: 11.41; distance: 10.29" visible="" rotation="0 18.05 0">
+    </a-light>
+   
 
 
     </a-entity>
-</a-entity>
        
-        <?php
              
-             if(@$_GET['showtrophy'] == "true"){
-           
-             }
-                ?>
-
-            </a-entity>
+        
 
 
 
@@ -255,4 +157,4 @@
   </main>
 <?php
      get_footer();
-?>`
+?>

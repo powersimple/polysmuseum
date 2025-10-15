@@ -145,14 +145,14 @@
                 ?>
 
          
-</a-entity>
-
             <a-entity id="polys5-logo-model" class="center-obj-zone" static-body
                         gltf-model="#The5thPolysLogo"  visible="true"
                         scale="8 8 8" position="0 36 0" rotation="0 0
                          0"
                         ></a-entity>
    
+                        </a-entity>
+
   
 
                         <a-entity id="ring-wrapper" class="center-obj-zone" static-body

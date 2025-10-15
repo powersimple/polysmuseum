@@ -46,13 +46,14 @@
   <!--  <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls/dist/aframe-blink-controls.min.js"></script>
    
     </script>
-    <script src="<?php echo get_stylesheet_directory_uri();?>/assets/js/aframe-troika-text.min.js"></script>
+    <!-- <script src="<?php echo get_stylesheet_directory_uri();?>/assets/js/aframe-troika-text.min.js"></script> -->
+    
     <script src="<?php echo get_stylesheet_directory_uri();?>/assets/js/msc_basis_transcoder.js"></script>
 
     <script src="https://unpkg.com/aframe-fps-counter-component/dist/aframe-fps-counter-component.min.js"></script>
 -->
 
-    <style>
+<style>
   .a-enter-ar-button{
            display: none !important;/* */
             
