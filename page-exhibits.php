@@ -12,6 +12,7 @@
  */
 
 require_once get_template_directory() . '/functions/functions-audit.php';
+require_once get_template_directory() . '/functions/functions-exhibits.php';
 
 get_header();
 
@@ -20,24 +21,22 @@ if (!current_user_can('manage_options')) {
     wp_die('Unauthorized access');
 }
 
-// Add the metadata (gated for safety)
-if (isset($_GET['update_event_types']) && current_user_can('manage_options')) {
-    add_event_type_metadata();
-}
+// Exhibits page: force summary mode and suppress debug output
+$_GET['view'] = 'summary';
+if (isset($_GET['debug'])) { unset($_GET['debug']); }
 
-// Initialize awards array
+// Initialize Awards array
 $awards = array();
 
-// Display duplicate profiles
-profile_appearances();
+// Exhibits: do not print duplicate profiles table
+// profile_appearances();
 
 // Get all menus for the top list
 $all_menus = get_all_nav_menus();
 
 // Only show full menu analysis if not in summary view
 if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
-    echo '<div class="wrap audit-page">';
-    echo render_available_menus($all_menus);
+    echo '<h1>Menu Structures</h1>';
 }
 
 // Only run menu analysis if event_menu parameter is present
@@ -45,10 +44,9 @@ if (isset($_GET['event_menu'])) {
     // Get all menu slugs
     $menu_slug = $_GET['event_menu'];
     
-    // Resolve wildcard patterns
-    $menu_slugs = resolve_menu_slugs($menu_slug);
+    // Resolve wildcard patterns (strict Polys filtering for polys*)
+    $menu_slugs = exhibits_resolve_menu_slugs($menu_slug, function_exists('resolve_menu_slugs') ? resolve_menu_slugs($menu_slug) : array($menu_slug));
     if (empty($menu_slugs)) {
-        echo '<div class="notice notice-error"><p>No menus found matching pattern: ' . esc_html($menu_slug) . '</p></div>';
         get_footer();
         return;
     }
@@ -56,7 +54,6 @@ if (isset($_GET['event_menu'])) {
     if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
         echo '<h1>Menu Structures</h1>';
     }
-
     foreach ($menu_slugs as $slug) {
         // Get menu and items by slug via helper
         $results = get_menu_items_for_slug($slug);
@@ -154,8 +151,34 @@ if (isset($_GET['event_menu'])) {
                         'object_id' => $item->object_id,
                         'presenter_ids' => array(),
                         'winner_ids' => array(),
-                        'current_winner' => null
+                        'current_winner' => null,
+                        'presenter_image_url' => '',
+                        'acceptance_image_url' => ''
                     );
+                    // Preload presenter_image and acceptance_image from event meta
+                    if (!empty($current_award['object_id'])) {
+                        $pmeta = get_post_meta($current_award['object_id'], 'presenter_image', true);
+                        $purl = '';
+                        if (is_array($pmeta) && !empty($pmeta)) {
+                            $first = $pmeta[0];
+                            $att_id = is_array($first) && isset($first['ID']) ? intval($first['ID']) : intval($first);
+                            if ($att_id) { $purl = wp_get_attachment_image_url($att_id, 'full'); }
+                        } elseif (is_numeric($pmeta)) {
+                            $purl = wp_get_attachment_image_url(intval($pmeta), 'full');
+                        }
+                        if ($purl) { $current_award['presenter_image_url'] = $purl; }
+
+                        $ameta = get_post_meta($current_award['object_id'], 'acceptance_image', true);
+                        $aurl = '';
+                        if (is_array($ameta) && !empty($ameta)) {
+                            $firsta = $ameta[0];
+                            $aid = is_array($firsta) && isset($firsta['ID']) ? intval($firsta['ID']) : intval($firsta);
+                            if ($aid) { $aurl = wp_get_attachment_image_url($aid, 'full'); }
+                        } elseif (is_numeric($ameta)) {
+                            $aurl = wp_get_attachment_image_url(intval($ameta), 'full');
+                        }
+                        if ($aurl) { $current_award['acceptance_image_url'] = $aurl; }
+                    }
                 }
             } elseif ($item->actual_post_type === 'profile') {
                 $type_info = get_post_meta($item->ID, '_guest_type', true);
@@ -633,6 +656,17 @@ if (isset($_GET['event_menu'])) {
             }
             echo ($winners_html !== '') ? $winners_html : '&nbsp;';
             echo '</td>';
+            // Debug columns: presenter and acceptance image URLs
+            echo '<td class="presenter-image-url">';
+            if (!empty($award['presenter_image_url'])) {
+                echo '<a href="' . esc_url($award['presenter_image_url']) . '" target="_blank" class="award-link">presenter_image</a>';
+            } else { echo '&nbsp;'; }
+            echo '</td>';
+            echo '<td class="acceptance-image-url">';
+            if (!empty($award['acceptance_image_url'])) {
+                echo '<a href="' . esc_url($award['acceptance_image_url']) . '" target="_blank" class="award-link">acceptance_image</a>';
+            } else { echo '&nbsp;'; }
+            echo '</td>';
 
             // Nominees column (concatenate level 2/3/4 nominee structures)
             echo '<td class="nominees-data">';
@@ -762,19 +796,15 @@ if (isset($_GET['event_menu'])) {
         }
         echo '</div>';
         echo '</div>';
-    }
-} else {
-    if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
-        echo '<div class="wrap">';
-        echo '<h1>Menu Analysis</h1>';
-        echo '<p>To analyze a menu, add the event_menu parameter to the URL. For example:</p>';
-        echo '<ul>';
-        echo '<li><a href="?event_menu=polys3">Analyze Polys3 Menu</a></li>';
-        echo '<li><a href="?event_menu=polys4">Analyze Polys4 Menu</a></li>';
-        echo '<li><a href="?event_menu=polys5">Analyze Polys5 Menu</a></li>';
-        echo '<li><a href="?event_menu=polys*">Analyze All Polys Menus</a></li>';
-        echo '<li><a href="?event_menu=virtual-red-carpet-*">Analyze All Virtual Red Carpet Menus</a></li>';
-        echo '</ul>';
+
+        // Award Exhibits grid (1024x1024 tiles with small text)
+        echo '<div class="exhibits-wrapper">';
+        echo '<h2>Award Exhibits</h2>';
+        echo '<div class="exhibits-grid">';
+        foreach ($awards as $idx => $award) {
+            echo exhibits_render_award_tile($award, $idx);
+        }
+        echo '</div>';
         echo '</div>';
     }
 }

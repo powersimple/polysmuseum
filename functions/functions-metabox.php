@@ -832,8 +832,22 @@ function eventProperties( $meta_boxes ) {
                 'name' => esc_html__( 'Event Reel URL', 'online-generator' ),
                 'id'   => $prefix . 'event_reel_url',
 			],
-			
-			
+			[
+                'id'               => 'presenter_image',
+                'type'             => 'image_advanced',
+                'name'             => esc_html__( 'Presented by', 'your-textdomain' ),
+                'desc'             => esc_html__( 'Image of the Presenter', 'your-textdomain' ),
+                'force_delete'     => true,
+                'max_file_uploads' => 1,     // use integer, not string
+            ],
+            [
+                'id'               => 'acceptance_image',
+                'type'             => 'image_advanced',
+                'name'             => esc_html__( 'Acceptance Image', 'your-textdomain' ),
+                'desc'             => esc_html__( 'Image from Acceptance Speech', 'your-textdomain' ),
+                'force_delete'     => true,
+                'max_file_uploads' => 1,
+            ],
 			[
                 'type' => 'checkbox',
                 'name' => esc_html__( 'Suppress Speaker List', 'online-generator' ),
