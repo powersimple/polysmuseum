@@ -63,9 +63,13 @@ if (isset($_GET['event_menu'])) {
             continue;
         }
 
+        
+
         // Build parent-child relationships
         $menu_items = array();
         $parent_map = array();
+        $current_event_logo_url = '';
+        $current_tile_bg_url = '';
         foreach ($results['menu_items'] as $item) {
             $menu_items[$item->ID] = $item;
             if ($item->menu_item_parent) {
@@ -135,6 +139,32 @@ if (isset($_GET['event_menu'])) {
             // Get type info based on post type
             if ($item->actual_post_type === 'event') {
                 $type_info = get_post_meta($item->ID, '_event_type', true);
+                // Capture event-level logo once and reuse across awards in this menu
+                if (!empty($item->object_id) && $current_event_logo_url === '') {
+                    $elogom = get_post_meta($item->object_id, 'event_logo', true);
+                    $elogo = '';
+                    if (is_array($elogom) && !empty($elogom)) {
+                        $firstl = $elogom[0];
+                        $lid = is_array($firstl) && isset($firstl['ID']) ? intval($firstl['ID']) : intval($firstl);
+                        if ($lid) { $elogo = wp_get_attachment_image_url($lid, 'full'); }
+                    } elseif (is_numeric($elogom)) {
+                        $elogo = wp_get_attachment_image_url(intval($elogom), 'full');
+                    }
+                    if ($elogo) { $current_event_logo_url = $elogo; }
+                }
+                // Capture event-level tile background once and reuse across awards
+                if (!empty($item->object_id) && $current_tile_bg_url === '') {
+                    $tbgm = get_post_meta($item->object_id, 'tile_bg', true);
+                    $tbg = '';
+                    if (is_array($tbgm) && !empty($tbgm)) {
+                        $firstt = $tbgm[0];
+                        $tid = is_array($firstt) && isset($firstt['ID']) ? intval($firstt['ID']) : intval($firstt);
+                        if ($tid) { $tbg = wp_get_attachment_image_url($tid, 'full'); }
+                    } elseif (is_numeric($tbgm)) {
+                        $tbg = wp_get_attachment_image_url(intval($tbgm), 'full');
+                    }
+                    if ($tbg) { $current_tile_bg_url = $tbg; }
+                }
                 $row_style = 'background-color: #fff;'; // Add white background for events
                 // Track award categories
                 if ($type_info === 'nomination-category' || $type_info === 'honors-presentation') {
@@ -153,7 +183,9 @@ if (isset($_GET['event_menu'])) {
                         'winner_ids' => array(),
                         'current_winner' => null,
                         'presenter_image_url' => '',
-                        'acceptance_image_url' => ''
+                        'acceptance_image_url' => '',
+                        'event_logo_url' => $current_event_logo_url,
+                        'tile_bg_url' => $current_tile_bg_url
                     );
                     // Preload presenter_image and acceptance_image from event meta
                     if (!empty($current_award['object_id'])) {
@@ -178,6 +210,31 @@ if (isset($_GET['event_menu'])) {
                             $aurl = wp_get_attachment_image_url(intval($ameta), 'full');
                         }
                         if ($aurl) { $current_award['acceptance_image_url'] = $aurl; }
+
+                        // Preload event_logo (image_advanced)
+                        $elogom = get_post_meta($current_award['object_id'], 'event_logo', true);
+                        $elogo = '';
+                        if (is_array($elogom) && !empty($elogom)) {
+                            $firstl = $elogom[0];
+                            $lid = is_array($firstl) && isset($firstl['ID']) ? intval($firstl['ID']) : intval($firstl);
+                            if ($lid) { $elogo = wp_get_attachment_image_url($lid, 'full'); }
+                        } elseif (is_numeric($elogom)) {
+                            $elogo = wp_get_attachment_image_url(intval($elogom), 'full');
+                        }
+                        if ($elogo) { $current_award['event_logo_url'] = $elogo; }
+                        elseif ($current_event_logo_url !== '') { $current_award['event_logo_url'] = $current_event_logo_url; }
+                        // Preload tile background for this event object if any
+                        $tbgm = get_post_meta($current_award['object_id'], 'tile_bg', true);
+                        $tbg = '';
+                        if (is_array($tbgm) && !empty($tbgm)) {
+                            $firstt = $tbgm[0];
+                            $tid = is_array($firstt) && isset($firstt['ID']) ? intval($firstt['ID']) : intval($firstt);
+                            if ($tid) { $tbg = wp_get_attachment_image_url($tid, 'full'); }
+                        } elseif (is_numeric($tbgm)) {
+                            $tbg = wp_get_attachment_image_url(intval($tbgm), 'full');
+                        }
+                        if ($tbg) { $current_award['tile_bg_url'] = $tbg; }
+                        elseif ($current_tile_bg_url !== '') { $current_award['tile_bg_url'] = $current_tile_bg_url; }
                     }
                 }
             } elseif ($item->actual_post_type === 'profile') {
@@ -277,8 +334,47 @@ if (isset($_GET['event_menu'])) {
                     'object_id' => $item->object_id,
                     'presenter_ids' => array(),
                     'winner_ids' => array(),
-                    'current_winner' => null
+                    'current_winner' => null,
+                    'presenter_image_url' => '',
+                    'acceptance_image_url' => '',
+                    'event_logo_url' => $current_event_logo_url,
+                    'tile_bg_url' => $current_tile_bg_url
                 );
+                // Preload images for this award as well
+                if (!empty($current_award['object_id'])) {
+                    $pmeta = get_post_meta($current_award['object_id'], 'presenter_image', true);
+                    $purl = '';
+                    if (is_array($pmeta) && !empty($pmeta)) {
+                        $first = $pmeta[0];
+                        $att_id = is_array($first) && isset($first['ID']) ? intval($first['ID']) : intval($first);
+                        if ($att_id) { $purl = wp_get_attachment_image_url($att_id, 'full'); }
+                    } elseif (is_numeric($pmeta)) {
+                        $purl = wp_get_attachment_image_url(intval($pmeta), 'full');
+                    }
+                    if ($purl) { $current_award['presenter_image_url'] = $purl; }
+
+                    $ameta = get_post_meta($current_award['object_id'], 'acceptance_image', true);
+                    $aurl = '';
+                    if (is_array($ameta) && !empty($ameta)) {
+                        $firsta = $ameta[0];
+                        $aid = is_array($firsta) && isset($firsta['ID']) ? intval($firsta['ID']) : intval($firsta);
+                        if ($aid) { $aurl = wp_get_attachment_image_url($aid, 'full'); }
+                    } elseif (is_numeric($ameta)) {
+                        $aurl = wp_get_attachment_image_url(intval($ameta), 'full');
+                    }
+                    if ($aurl) { $current_award['acceptance_image_url'] = $aurl; }
+
+                    $elogom = get_post_meta($current_award['object_id'], 'event_logo', true);
+                    $elogo = '';
+                    if (is_array($elogom) && !empty($elogom)) {
+                        $firstl = $elogom[0];
+                        $lid = is_array($firstl) && isset($firstl['ID']) ? intval($firstl['ID']) : intval($firstl);
+                        if ($lid) { $elogo = wp_get_attachment_image_url($lid, 'full'); }
+                    } elseif (is_numeric($elogom)) {
+                        $elogo = wp_get_attachment_image_url(intval($elogom), 'full');
+                    }
+                    if ($elogo) { $current_award['event_logo_url'] = $elogo; }
+                }
             } elseif ($level === 3 && $current_award !== null) {
                 // Handle level 3 items (presenters, winners, and nominees)
                 $type_info = get_post_meta($item->ID, '_guest_type', true);
@@ -753,6 +849,7 @@ if (isset($_GET['event_menu'])) {
         echo '</tbody></table>';
         echo '</div>';
 
+
         // Add narrative section
         echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
         echo '<h2>Award Narratives</h2>';
@@ -796,6 +893,120 @@ if (isset($_GET['event_menu'])) {
         }
         echo '</div>';
         echo '</div>';
+
+        // Grouped Award Categories AFTER initial award cards
+        // Build code mappings and group awards by code/year
+        $category_labels = array(
+            'XOTY' => 'Experience of the Year',
+            'EDOTY' => 'Education Experience of the Year',
+            'EEOTY' => 'Entertainment Experience of the Year',
+            'DOTY' => 'Developer of the Year',
+            'IOTY' => 'Innovator of the Year',
+            'GOTY' => 'Game of the Year',
+            'Lifetime' => 'Lifetime Achievement Award',
+            'Ombudsperson' => 'Ombudsperson of the Year',
+            'Community' => 'Community Honoree'
+        );
+        // Exclusive detector: EDOTY/EEOTY first; XOTY only when plain 'Experience of the Year' without 'Education' or 'Entertainment'
+        $norm_code2 = function($title) {
+            $t = (string)$title;
+            if (stripos($t, 'Education Experience of the Year') !== false) { return 'EDOTY'; }
+            if (stripos($t, 'Entertainment Experience of the Year') !== false) { return 'EEOTY'; }
+            if (stripos($t, 'Game of the Year') !== false) { return 'GOTY'; }
+            if (stripos($t, 'Developer of the Year') !== false) { return 'DOTY'; }
+            if (stripos($t, 'Innovator of the Year') !== false || stripos($t, 'Innovation of the Year') !== false) { return 'IOTY'; }
+            if (stripos($t, 'Lifetime Achievement Award') !== false) { return 'Lifetime'; }
+            if (stripos($t, 'Ombudsperson of the Year') !== false) { return 'Ombudsperson'; }
+            if (stripos($t, 'Community Honore') !== false || stripos($t, 'Community Honoree') !== false || stripos($t, 'Community Honorée') !== false) { return 'Community'; }
+            if (stripos($t, 'Experience of the Year') !== false && stripos($t, 'Education') === false && stripos($t, 'Entertainment') === false) { return 'XOTY'; }
+            return '';
+        };
+        $extract_year2 = function($title) { if (preg_match('/\\b(20[0-5][0-9])\\b/', (string)$title, $m)) { return $m[1]; } return ''; };
+        $strip_year2 = function($title) use ($extract_year2) { $y=$extract_year2($title); return $y!=='' ? trim(preg_replace('/\\b'.$y.'\\b/','',(string)$title)) : (string)$title; };
+        $cards2 = array();
+        foreach ($awards as $aw) {
+            if (!is_array($aw)) { continue; }
+            $code = $norm_code2(isset($aw['title']) ? $aw['title'] : ''); if ($code==='') { continue; }
+            $year = $extract_year2(isset($aw['title']) ? $aw['title'] : ''); if ($year==='') { continue; }
+            if (!isset($cards2[$code])) { $cards2[$code]=array(); }
+            if (!isset($cards2[$code][$year])) { $cards2[$code][$year]=array(); }
+            $hero=''; if (!empty($aw['acceptance_image_url'])) { $hero=$aw['acceptance_image_url']; }
+            if ($hero==='' && !empty($aw['winner_ids']) && is_array($aw['winner_ids'])) { $wid0=intval($aw['winner_ids'][0]); if ($wid0) { $fi=get_the_post_thumbnail_url($wid0,'full'); if ($fi) { $hero=$fi; } } }
+            $featured=''; if (!empty($aw['winner_ids']) && is_array($aw['winner_ids'])) { $wid0=intval($aw['winner_ids'][0]); if ($wid0) { $feat=get_the_post_thumbnail_url($wid0,'full'); if ($feat) { $featured=$feat; } } }
+            // Winner/Honoree base name
+            $winner_title = '';
+            if (!empty($aw['winners']) && is_array($aw['winners']) && !empty($aw['winners'][0]['title'])) { $winner_title = (string)$aw['winners'][0]['title']; }
+            $cards2[$code][$year][] = array(
+                'object_id' => isset($aw['object_id']) ? $aw['object_id'] : '',
+                'title' => $strip_year2(isset($aw['title']) ? $aw['title'] : ''),
+                'year' => $year,
+                'hero' => $hero,
+                'acceptance' => isset($aw['acceptance_image_url']) ? $aw['acceptance_image_url'] : '',
+                'featured' => $featured,
+                'winner_title' => $winner_title,
+            );
+        }
+        if (!empty($cards2)) {
+            // Dump the grouped array for inspection
+            echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
+            echo '<h2>Grouped Data (Debug)</h2>';
+            echo '<pre style="background:#f5f5f5;padding:12px;max-height:400px;overflow:auto;">' . esc_html(json_encode($cards2, JSON_PRETTY_PRINT)) . '</pre>';
+            echo '</div>';
+            echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
+            echo '<h2>Grouped Award Categories</h2>';
+            echo "<style>
+                .cat-tile{width:1024px;height:1024px;margin:16px 0;background:#0b1226;color:#e6f0ff;position:relative;border-radius:8px;overflow:hidden}
+                .cat-tile-head.ex-award-name{position:absolute;top:0;left:0;width:100%;height:72px;display:flex;align-items:center;justify-content:center;background:#121a35;font-weight:800;font-size:28px;letter-spacing:.5px}
+                .cat-tile-grid{position:absolute;inset:72px 0 0 0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:8px;padding:12px}
+                .cat-cell{display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+                .cat-laurel{width:100%;height:80%;position:relative;background:url(images/bg/laurel-center-1024.webp) center/contain no-repeat;display:flex;align-items:center;justify-content:center}
+                .cat-hero{width:66%;aspect-ratio:1/1;border-radius:50%;object-fit:cover;box-shadow:0 6px 12px rgba(0,0,0,.45)}
+                .cat-cap{margin:6px 0 0;text-align:center}
+                .cat-cap h4{margin:4px 0 0;font-size:1rem;font-weight:700;line-height:1.2}
+                .cat-cap .year{font-size:.9rem;color:#c7d6ff;margin-bottom:4px}
+            </style>";
+            // Helper to sanitize title: remove dashes and extra spaces
+            $sanitize_title = function($t){
+                $t = preg_replace('/[\x{2013}\x{2014}\-]+/u',' ', (string)$t); // remove en/em dashes and hyphens
+                $t = preg_replace('/\s+/', ' ', $t);
+                return trim($t);
+            };
+            foreach ($cards2 as $code => $years) {
+                // Flatten latest six entries by year desc
+                krsort($years);
+                $flat = array();
+                foreach ($years as $yr => $entries) {
+                    foreach ($entries as $entry) { $flat[] = $entry; if (count($flat) >= 6) break; }
+                    if (count($flat) >= 6) break;
+                }
+                if (empty($flat)) { continue; }
+                echo '<div class="cat-tile">';
+                // Header should render once on top with the award name (not code)
+                $label = isset($category_labels[$code]) ? $category_labels[$code] : $code;
+                $label = $sanitize_title($label);
+                echo '<div class="cat-tile-head ex-award-name">' . esc_html($label) . '</div>';
+                echo '<div class="cat-tile-grid">';
+                foreach ($flat as $entry) {
+                    $hero = $entry['hero'] ?: $entry['featured'] ?: $entry['acceptance'];
+                    $title_clean = $sanitize_title($entry['title']);
+                    echo '<div class="cat-cell">';
+                    // Year above the image
+                    echo '<div class="cat-cap"><div class="year">' . esc_html($entry['year']) . '</div></div>';
+                    echo '<div class="cat-laurel">';
+                    if (!empty($hero)) { echo '<img class="cat-hero" src="' . esc_url($hero) . '" alt="" />'; }
+                    echo '</div>';
+                    echo '<div class="cat-cap">';
+                    // Winner/Honoree name under the image
+                    $wn = isset($entry['winner_title']) ? $entry['winner_title'] : $title_clean;
+                    echo '<h4>' . esc_html($sanitize_title($wn)) . '</h4>';
+                    echo '</div>';
+                    echo '</div>';
+                }
+                echo '</div>';
+                echo '</div>';
+            }
+            echo '</div>';
+        }
 
         // Award Exhibits grid (1024x1024 tiles with small text)
         echo '<div class="exhibits-wrapper">';

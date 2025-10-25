@@ -12,7 +12,40 @@ function awards_metabox( $meta_boxes ) {
 		'priority' => 'high',
 		'autosave' => false,
 		'fields' => array(
-		
+					[
+                'id'               => 'presenter_image',
+                'type'             => 'image_advanced',
+                'name'             => esc_html__( 'Presented by', 'your-textdomain' ),
+                'desc'             => esc_html__( 'Image of the Presenter', 'your-textdomain' ),
+                'force_delete'     => true,
+                'max_file_uploads' => 2,     // use integer, not string
+            ],
+            [
+                'id'               => 'acceptance_image',
+                'type'             => 'image_advanced',
+                'name'             => esc_html__( 'Acceptance Image', 'your-textdomain' ),
+                'desc'             => esc_html__( 'Image from Acceptance Speech', 'your-textdomain' ),
+                'force_delete'     => true,
+                'max_file_uploads' => 6,
+            ],
+			[
+                'id'               => 'poly_trophy_image',
+                'type'             => 'image_advanced',
+                'name'             => esc_html__( 'Trophy Image', 'your-textdomain' ),
+                'desc'             => esc_html__( 'Image of Actual Poly Trophy', 'your-textdomain' ),
+                'force_delete'     => true,
+                'max_file_uploads' => 6,
+            ],
+			array(
+				'id' => 'polys_winner_model',
+				'type' => 'image_advanced',
+				'name' => esc_html__( '3D Model of the Award', 'metabox-online-generator' ), 
+				'desc' => esc_html__( '3D Model of the Winning Poly', 'metabox-online-generator' ),
+				'force_delete' => false,
+				'max_file_uploads' => '1',
+				'options' => array(),
+				'attributes' => array(),
+			),
 			array(
 				'id' => '3Dlaurel_screenshots',
 				'type' => 'image_advanced',
@@ -43,6 +76,18 @@ function awards_metabox( $meta_boxes ) {
 				'options' => array(),
 				'attributes' => array(),
 			),
+			[
+				'id' => $prefix . 'looking_glass_embed_trophy_base',
+				'type' => 'text',
+				'name' => esc_html__( 'Embed Trophy Base ID', 'metabox-online-generator' ),
+				'desc' => esc_html__( 'If Event has a Poly Recipient, this is the embed id for the trophy hologram by Looking Glass Blocks' ),
+			],
+			[
+				'id' => $prefix . 'looking_glass_embed_trophy',
+				'type' => 'text',
+				'name' => esc_html__( 'Embed Full Trophy ID', 'metabox-online-generator' ),
+				'desc' => esc_html__( 'If Event has a Poly Recipient, this is the embed id for the full trophy hologram by Looking Glass Blocks' ),
+			],
 			
 		),
 	);
@@ -491,6 +536,19 @@ function selectHeroImage( $meta_boxes ) {
 				'desc' => esc_html__( 'Square Image', 'metabox-online-generator' ),
 			),
 			array(
+				'id' => $prefix . 'event_logo',
+				'type' => 'image_advanced',
+				'name' => esc_html__( 'event logo', 'metabox-online-generator' ),
+				'desc' => esc_html__( 'should be a transparent png', 'metabox-online-generator' ),
+			),
+			array(
+				'id' => $prefix . 'tile_bg',
+				'type' => 'image_advanced',
+				'name' => esc_html__( 'tile Background', 'metabox-online-generator' ),
+				'desc' => esc_html__( '', 'metabox-online-generator' ),
+			),
+
+			array(
 				'id' => $prefix . 'page-background',
 				'type' => 'image_advanced',
 				'name' => esc_html__( 'Page Background', 'metabox-online-generator' ),
@@ -832,22 +890,7 @@ function eventProperties( $meta_boxes ) {
                 'name' => esc_html__( 'Event Reel URL', 'online-generator' ),
                 'id'   => $prefix . 'event_reel_url',
 			],
-			[
-                'id'               => 'presenter_image',
-                'type'             => 'image_advanced',
-                'name'             => esc_html__( 'Presented by', 'your-textdomain' ),
-                'desc'             => esc_html__( 'Image of the Presenter', 'your-textdomain' ),
-                'force_delete'     => true,
-                'max_file_uploads' => 1,     // use integer, not string
-            ],
-            [
-                'id'               => 'acceptance_image',
-                'type'             => 'image_advanced',
-                'name'             => esc_html__( 'Acceptance Image', 'your-textdomain' ),
-                'desc'             => esc_html__( 'Image from Acceptance Speech', 'your-textdomain' ),
-                'force_delete'     => true,
-                'max_file_uploads' => 1,
-            ],
+
 			[
                 'type' => 'checkbox',
                 'name' => esc_html__( 'Suppress Speaker List', 'online-generator' ),
@@ -1777,41 +1820,4 @@ function team_metabox( $meta_boxes ) {
 }
 //add_filter( 'rwmb_meta_boxes', 'team_metabox' );
 
-function looking_glass_metabox( $meta_boxes ) {
-	$prefix = '';
-
-	$meta_boxes[] = array(
-		'id' => 'section',
-		'title' => esc_html__( 'Looking Glass Blocks', 'metabox-online-generator' ),
-		'post_types' => array( 'page','event','resource','profile' ),
-		
-	
-		'autosave' => false,
-		'fields' => array(
-		   
-			[
-				'id' => $prefix . 'looking_glass_embed_trophy_base',
-				'type' => 'text',
-				'name' => esc_html__( 'Embed Trophy Base ID', 'metabox-online-generator' ),
-				'desc' => esc_html__( 'If Event has a Poly Recipient, this is the embed id for the trophy hologram by Looking Glass Blocks' ),
-			],
-			[
-				'id' => $prefix . 'looking_glass_embed_trophy',
-				'type' => 'text',
-				'name' => esc_html__( 'Embed Full Trophy ID', 'metabox-online-generator' ),
-				'desc' => esc_html__( 'If Event has a Poly Recipient, this is the embed id for the full trophy hologram by Looking Glass Blocks' ),
-			],
-			
-
-
-
-
-			
-		),
-	);
-
-	return $meta_boxes;
-}
-
-add_filter( 'rwmb_meta_boxes', 'looking_glass_metabox' );
 

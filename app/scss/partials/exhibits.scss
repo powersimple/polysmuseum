@@ -36,7 +36,7 @@
 }
 
 .exhibit-content {
-  font-size: 10px;
+  font-size: 1em;
   line-height: 1.3;
   color: #fff;
   padding: 12px;
@@ -44,7 +44,13 @@
   height: 100%;
   overflow: hidden; // ensure deterministic tile output
   font-family: 'AgencyFB', sans-serif;
+  position: relative;
 }
+
+// Normalize heading scales within exhibit content
+.exhibit-content h4 { font-size: 3.5rem; }
+.exhibit-content h5 { font-size: 2rem; }
+.exhibit-content h6 { font-size: 1.5rem; }
 
 .exhibit-content p {
   margin: 0;
@@ -63,16 +69,234 @@
   border: 1px solid #444;
 }
 
-// Winner thumbnails should be large for composition
-.ex-winners-list .ex-thumb {
-  width: 500px;
-  height: 500px;
+// Winner hero image and title presentation
+.ex-winners-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.ex-winner-hero {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 800px;
+}
+
+// Dual honoree layout inside laurel: two images at 66% size, diagonal arrangement
+.ex-winner-hero.duo {
+  position: relative;
+  justify-content: center;
+}
+.ex-winner-hero.duo .ex-winner-hero-img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 66%;
+  height: auto;
+  transform-origin: center center;
+}
+.ex-winner-hero.duo .ex-winner-hero-img.hero-a {
+  transform: translate(-70%, -70%) scale(0.66) rotate(-2deg);
+  z-index: 2;
+}
+.ex-winner-hero.duo .ex-winner-hero-img.hero-b {
+  transform: translate(-30%, -30%) scale(0.66) rotate(2deg);
+  z-index: 1;
+}
+
+.ex-winner-hero-wrap {
+  width: 570px;
+  height: 570px;
+  margin: 0 auto; // center horizontally
+  display: flex;
+  align-items: center; // center vertically
+  justify-content: center;
+  background: url('images/bg/laurel-center-1024.webp') center center no-repeat;
+  background-size: contain;
+  position: relative;
+}
+
+// Simulate a glow for the laurel background using a pseudo-element with drop-shadows
+.ex-winner-hero-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('images/bg/laurel-center-1024.webp') center center no-repeat;
+  background-size: contain;
+  filter:
+    drop-shadow(0 12px 24px rgba(0,0,0,0.5))
+    drop-shadow(0 0 35px rgba(56, 140, 255, 0.6))
+    drop-shadow(0 0 80px rgba(56, 140, 255, 0.35));
+  pointer-events: none;
+}
+
+.ex-winner-hero-img {
+  width: 61.8%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow:
+    0 20px 40px rgba(0,0,0,0.7),
+    0 0 35px rgba(56, 140, 255, 0.6),
+    0 0 80px rgba(56, 140, 255, 0.35);
+  transform: rotateY(8deg) rotateX(2deg);
+  transform-style: preserve-3d;
+}
+
+h4.ex-winner-base {
+  margin: 10px 0 12px;
+  text-align: center;
+  font-size: 3rem; // requested size
+  font-weight: 700;
+  perspective: 800px;
+  color: #d4af37;
+  text-shadow:
+    2px 2px 0 #7a5f00,
+    3px 3px 3px rgba(0,0,0,0.18),
+    0 0 9px rgba(212, 175, 55, 0.25);
+}
+
+h4.ex-winner-base span {
+  display: inline-block;
+  transform: translateZ(10px);
 }
 
 // Line-specific typography
 .ex-line { margin: 2px 0; }
-.ex-award-name { font-size: 48px; font-weight: 700; }
+h5.ex-winner-company { width: 570px; margin: 0 auto; text-align: center; font-size: 1.75rem; }
+.ex-award-number {
+  position: absolute;
+  top: 0;
+  right: 25px;
+  width: 64px;
+  height: 128px;
+  font-family: 'CreamCake', cursive;
+  font-size: 96px;
+  line-height: 1;
+  text-align: right;
+}
+.ex-award-name {
+  position: absolute;
+  top: 0px;
+  left: 0;
+  width: 1024px; // tile width
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 700;
+  text-align: center;
+  padding-left: 0; // remove left offset; number has explicit left:15px
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  -webkit-text-stroke: 1px rgba(0,0,0,0.2);
+  text-shadow:
+    1px 1px 0 #cfd8ff,
+    2px 2px 0 #b3c1ff,
+    3px 3px 0 #97abff,
+    4px 4px 0 #7a94ff,
+    5px 5px 0 #5e7dff,
+    3px 3px 6px rgba(0,0,0,0.22);
+}
 .ex-presenters { font-size: 28px; }
 .ex-winners, .ex-winners-list { font-size: 28px; }
 .ex-nominees, .ex-nominees-list { font-size: 24px; }
 
+
+// Presenter block pinned to the lower right
+.ex-presenter-block {
+  position: absolute;
+  bottom: 10px;
+  left: 1px; // moved to left edge
+  width: 256px;
+  text-align: center;
+  z-index: 2;
+}
+
+.ex-presenter-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; }
+.ex-presenter-item { width: 150px; }
+.ex-presenter-img { display: block; width: 100%; height: auto; aspect-ratio: 1/1; border-radius: 50%; object-fit: cover; box-shadow: 0 6px 12px rgba(0,0,0,0.5); }
+.ex-presenter-name { font-size: 20px; margin-top: 4px; }
+
+.ex-presenter-label {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+// Acceptance grid for multiple recipients (secondary to hero)
+.ex-acceptance-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+.ex-acceptance-item { text-align: center; }
+.ex-acceptance-img { width: 100%; height: auto; aspect-ratio: 1/1; border-radius: 50%; object-fit: cover; box-shadow: 0 6px 12px rgba(0,0,0,0.45); }
+.ex-acceptance-name { margin-top: 4px; font-size: 20px; }
+
+// Right-side acceptance image next to each h5 person line
+.ex-winner-people-wrap { position: relative; }
+.ex-acceptance-line { position: relative; padding-right: 140px; }
+.ex-winner-person { margin: 6px 0; }
+.ex-acceptance-side-img {
+  position: absolute;
+  right: 0;
+  top: 0; // aligns approximately with h5 top
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow:
+    0 12px 24px rgba(0,0,0,0.55),
+    0 0 24px rgba(56, 140, 255, 0.45);
+}
+
+// Acceptance wrapper on the right
+.ex-acceptance-right-wrap {
+  position: absolute;
+  right: 25px;
+  top: 100px;
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 3;
+}
+.ex-acceptance-header { font-weight: 700; text-align: center; margin-bottom: 6px; }
+.ex-acceptance-item { display: flex; flex-direction: column; align-items: center; }
+.ex-acceptance-right-img {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow:
+    0 12px 24px rgba(0,0,0,0.55),
+    0 0 24px rgba(56, 140, 255, 0.45);
+}
+.ex-acceptance-caption { margin-top: 6px; font-size: 12px; line-height: 1.2; text-align: center; color: #e6f0ff; }
+
+// Nominees shift to the right by 250px
+.ex-nominees, .ex-nominees-list { margin-left: 250px; }
+
+// Trophy (Poly) image on the left
+.ex-trophy-left-wrap {
+  position: absolute;
+  left: 20px;
+  top: 175px;
+  width: 150px;
+  z-index: 3;
+}
+.ex-trophy-left-img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+// Event logo (global for event), absolute from outer
+.ex-event-logo {
+  position: absolute;
+  left: 15px;
+  top: 90px;
+  width: 225px;
+}
+.ex-event-logo img { width: 225px; height: auto; object-fit: contain; display: block; }

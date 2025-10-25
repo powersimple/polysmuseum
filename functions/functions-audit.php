@@ -809,13 +809,14 @@ function resolve_menu_slugs($menu_slug) {
     global $wpdb;
 
     if (strpos($menu_slug, '*') !== false) {
-        $pattern = str_replace('*', '', $menu_slug) . '%';
+        $base = strtolower(str_replace('*', '', (string)$menu_slug));
+        $pattern = $base . '%';
         $slugs = $wpdb->get_col($wpdb->prepare("
             SELECT t.slug
             FROM {$wpdb->terms} t
             JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
             WHERE tt.taxonomy = 'nav_menu'
-            AND t.slug LIKE %s
+            AND LOWER(t.slug) LIKE %s
             ORDER BY t.slug ASC
         ", $pattern));
         return is_array($slugs) ? $slugs : array();
