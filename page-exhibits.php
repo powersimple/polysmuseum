@@ -387,9 +387,11 @@ if (isset($_GET['event_menu'])) {
                 // If not a presenter or winner, it's a nominee
                 else {
                     $nominee_info = array(
+                        'id' => intval($item->object_id),
                         'title' => $item->post_title ?: $post_title,
                         'company' => '',
-                        'people' => array()
+                        'people' => array(),
+                        'thumb_url' => ''
                     );
 
                     // Check for company in the title
@@ -423,6 +425,11 @@ if (isset($_GET['event_menu'])) {
                         }
                     }
 
+                    // Precompute nominee thumbnail (150x150) when possible
+                    if (!empty($nominee_info['id'])) {
+                        $turl = get_the_post_thumbnail_url(intval($nominee_info['id']), 'thumbnail');
+                        if ($turl) { $nominee_info['thumb_url'] = $turl; }
+                    }
                     $current_award['nominees'][] = $nominee_info;
                 }
             }
@@ -1017,6 +1024,71 @@ if (isset($_GET['event_menu'])) {
         }
         echo '</div>';
         echo '</div>';
+
+        // -----------------------------
+        // Host and Ambassador Cards
+        // -----------------------------
+        $host_cards = array();
+        $amb_cards = array();
+        foreach ($awards as $aw) {
+            if (!is_array($aw)) { continue; }
+            $atype = isset($aw['award_type']) ? strtolower((string)$aw['award_type']) : '';
+            $title = isset($aw['title']) ? (string)$aw['title'] : '';
+            $is_host = (strpos($atype,'host') !== false) || (strpos($atype,'keynote') !== false) || (stripos($title,'host') !== false) || (stripos($title,'keynote') !== false);
+            $is_amb = (strpos($atype,'ambassador') !== false) || (stripos($title,'ambassador') !== false) || (stripos($title,'ambassadoe') !== false);
+            if (!$is_host && !$is_amb) { continue; }
+            $img = '';
+            if (!empty($aw['object_id'])) {
+                $fi = get_the_post_thumbnail_url(intval($aw['object_id']), 'full');
+                if ($fi) { $img = $fi; }
+            }
+            $event_logo = !empty($aw['event_logo_url']) ? (string)$aw['event_logo_url'] : '';
+            $entry = array(
+                'title' => $title,
+                'img' => $img,
+                'event_logo' => $event_logo,
+            );
+            if ($is_host) { $host_cards[] = $entry; }
+            if ($is_amb) { $amb_cards[] = $entry; }
+        }
+
+        $render_simple_card = function($entry) {
+            $title = trim((string)$entry['title']);
+            $img = isset($entry['img']) ? (string)$entry['img'] : '';
+            $logo = isset($entry['event_logo']) ? (string)$entry['event_logo'] : '';
+            $html = '<div class="exhibit-tile"><div class="exhibit-content">';
+            if ($logo !== '') { $html .= '<div class="ex-event-logo"><img src="' . esc_url($logo) . '" alt="Event Logo" /></div>'; }
+            $html .= '<div class="ex-line ex-award-name">' . esc_html($title) . '</div>';
+            if ($img !== '') {
+                $html .= '<div style="width:100%;height:80%;display:flex;align-items:center;justify-content:center;">'
+                      . '<img src="' . esc_url($img) . '" alt="" style="max-width:70%;max-height:70%;object-fit:contain;box-shadow:0 12px 24px rgba(0,0,0,0.55)" />'
+                      . '</div>';
+            }
+            $html .= '</div></div>';
+            return $html;
+        };
+
+        if (!empty($host_cards) || !empty($amb_cards)) {
+            echo '<div class="exhibits-wrapper">';
+            if (!empty($host_cards)) {
+                echo '<h2>Hosts</h2><div class="exhibits-grid">';
+                foreach ($host_cards as $e) { echo $render_simple_card($e); }
+                echo '</div>';
+            }
+            if (!empty($amb_cards)) {
+                echo '<h2>Ambassadors</h2><div class="exhibits-grid">';
+                foreach ($amb_cards as $e) { echo $render_simple_card($e); }
+                echo '</div>';
+            }
+            // Aggregate
+            if (!empty($host_cards) || !empty($amb_cards)) {
+                echo '<h2>Hosts & Ambassadors (Aggregate)</h2><div class="exhibits-grid">';
+                foreach ($host_cards as $e) { echo $render_simple_card($e); }
+                foreach ($amb_cards as $e) { echo $render_simple_card($e); }
+                echo '</div>';
+            }
+            echo '</div>';
+        }
     }
 }
 

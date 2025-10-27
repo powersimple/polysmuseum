@@ -208,23 +208,23 @@ function exhibits_render_award_tile(array $award, int $index) {
     }
     // Decide hero image per rules and render inside laurel wrapper, then title below
     if ($base_title !== '') {
+        // Global single-acceptance override: one acceptance image matches the H4 base title
+        if (!$duo_honoree && is_array($acceptance_images) && count($acceptance_images) === 1 && $base_title !== '') {
+            $ai0 = $acceptance_images[0];
+            $cap0 = '';
+            if (!empty($ai0['title'])) { $cap0 = (string)$ai0['title']; }
+            elseif (!empty($ai0['filename'])) { $cap0 = preg_replace('/\.[^.]+$/', '', wp_basename((string)$ai0['filename'])); }
+            $cap0_norm = strtolower(trim($cap0));
+            $base_norm = strtolower(trim((string)$base_title));
+            if ($cap0_norm !== '' && $cap0_norm === $base_norm && !empty($ai0['url'])) {
+                $hero_img_url = (string)$ai0['url'];
+                $forced_hero_from_accept = true;
+            }
+        }
         // New conditions:
-        // - If HONOREE: use acceptance image
+        // - If HONOREE: use acceptance image logic (duo special cases)
         // - Else WINNER: try featured image of primary winner object; if none and profiles, fallback to acceptance image
         if ($is_honoree) {
-            // Single honoree special case: one acceptance image whose name matches the H4 base title
-            if (!$duo_honoree && is_array($acceptance_images) && count($acceptance_images) === 1 && $base_title !== '') {
-                $ai0 = $acceptance_images[0];
-                $cap0 = '';
-                if (!empty($ai0['title'])) { $cap0 = (string)$ai0['title']; }
-                elseif (!empty($ai0['filename'])) { $cap0 = preg_replace('/\.[^.]+$/', '', wp_basename((string)$ai0['filename'])); }
-                $cap0_norm = strtolower(trim($cap0));
-                $base_norm = strtolower(trim((string)$base_title));
-                if ($cap0_norm !== '' && $cap0_norm === $base_norm && !empty($ai0['url'])) {
-                    $hero_img_url = (string)$ai0['url'];
-                    $forced_hero_from_accept = true;
-                }
-            }
             // Special two-honoree exception: if exactly one acceptance image and it matches an honoree name
             if ($duo_honoree && is_array($recipient_names) && count($recipient_names) >= 2 && is_array($acceptance_images) && count($acceptance_images) === 1) {
                 $ai0 = $acceptance_images[0];
@@ -267,7 +267,7 @@ function exhibits_render_award_tile(array $award, int $index) {
             }
         } else {
             // Attempt featured image of main winner object
-            if (!empty($award['winner_ids'][0])) {
+            if (!$forced_hero_from_accept && !empty($award['winner_ids'][0])) {
                 $cand = get_the_post_thumbnail_url($award['winner_ids'][0], 'full');
                 if ($cand) { $hero_img_url = $cand; }
             }
@@ -301,7 +301,7 @@ function exhibits_render_award_tile(array $award, int $index) {
     }
     // Prepare acceptance images for a right-side wrapper (include all acceptance images)
     $acceptance_remaining = $acceptance_images;
-    // If we forced the hero from acceptance (single honoree match), suppress the right rail entirely
+    // If we forced the hero from acceptance (single-person match), suppress the right rail entirely
     if (!$duo_honoree && $forced_hero_from_accept) {
         $acceptance_remaining = array();
     }
@@ -358,24 +358,38 @@ function exhibits_render_award_tile(array $award, int $index) {
         $nominees_html = esc_html((string)$award['nominees_text']);
     } else {
         // Fallback: build from nominees structure if present
-        $nominee_lines = array();
+        $nominee_items = array();
         if (!empty($award['nominees']) && is_array($award['nominees'])) {
             $winner_id_set = array();
             if (!empty($award['winner_ids']) && is_array($award['winner_ids']) && !$is_honoree) {
                 foreach ($award['winner_ids'] as $wid) { $winner_id_set[intval($wid)] = true; }
             }
             foreach ($award['nominees'] as $nom) {
+                $n_id = 0;
+                if (isset($nom['id'])) { $n_id = intval($nom['id']); }
+                elseif (isset($nom['ID'])) { $n_id = intval($nom['ID']); }
+                elseif (isset($nom['object_id'])) { $n_id = intval($nom['object_id']); }
+                elseif (isset($nom['post_id'])) { $n_id = intval($nom['post_id']); }
                 $n_title = isset($nom['title']) ? trim((string)$nom['title']) : '';
                 $n_company = isset($nom['company']) ? trim((string)$nom['company']) : '';
                 $n_people = isset($nom['people']) && is_array($nom['people']) ? $nom['people'] : array();
-                $piece = '';
-                if ($n_title !== '') { $piece .= esc_html($n_title); }
-                if ($n_company !== '') { $piece .= ($piece !== '' ? ' ' : '') . 'by ' . esc_html($n_company); }
-                if (!empty($n_people)) { $piece .= (!empty($n_company) ? ': ' : ' ') . esc_html(implode(', ', $n_people)); }
-                if ($piece !== '') { $nominee_lines[] = $piece; }
+                $text = '';
+                if ($n_title !== '') { $text .= esc_html($n_title); }
+                if ($n_company !== '') { $text .= ($text !== '' ? ' ' : '') . 'by ' . esc_html($n_company); }
+                if (!empty($n_people)) { $text .= (!empty($n_company) ? ': ' : ' ') . esc_html(implode(', ', $n_people)); }
+                if ($text === '') { continue; }
+                $thumb_html = '';
+                // Prefer precomputed thumbnail URL from the assembled awards array
+                if (!empty($nom['thumb_url'])) {
+                    $thumb_html = '<img class="ex-nominee-thumb" src="' . esc_url((string)$nom['thumb_url']) . '" alt="" />';
+                } elseif ($n_id) {
+                    $thumb_url = get_the_post_thumbnail_url($n_id, 'thumbnail');
+                    if ($thumb_url) { $thumb_html = '<img class="ex-nominee-thumb" src="' . esc_url($thumb_url) . '" alt="" />'; }
+                }
+                $nominee_items[] = '<div class="ex-nominee-item">' . $thumb_html . '<span class="ex-nominee-text">' . $text . '</span></div>';
             }
         }
-        if (!empty($nominee_lines)) { $nominees_html = implode('<br>', $nominee_lines); }
+        if (!empty($nominee_items)) { $nominees_html = implode('', $nominee_items); }
     }
 
     // Build tile HTML
@@ -411,7 +425,8 @@ function exhibits_render_award_tile(array $award, int $index) {
     if (!empty($presenter_items) || $presenter_label !== '') {
         $html .= '<div class="ex-presenter-block">';
         if (!empty($presenter_items)) {
-            $html .= '<div class="ex-presenter-list">';
+            $single_class = (count($presenter_items) === 1) ? ' single' : '';
+            $html .= '<div class="ex-presenter-list' . $single_class . '">';
             foreach ($presenter_items as $it) {
                 $img_html = $it['img'] ? '<img class="ex-presenter-img" src="' . esc_url($it['img']) . '" alt="" />' : '';
                 $html .= '<div class="ex-presenter-item">' . $img_html . '</div>';
@@ -456,6 +471,14 @@ function exhibits_render_award_tile(array $award, int $index) {
     if (!$is_honoree) {
         $html .= '<div class="ex-line ex-nominees"><h6>Nominees</h6></div>';
         if (!empty($nominees_html)) { $html .= '<div class="ex-line ex-nominees-list">' . $nominees_html . '</div>'; }
+    } else {
+        // Honorees: show Level 2 event post content where nominees would be
+        if (!empty($award['object_id'])) {
+            $lvl2_content = get_post_field('post_content', intval($award['object_id']));
+            if (!empty($lvl2_content)) {
+                $html .= '<div class="ex-honors-content">' . apply_filters('the_content', $lvl2_content) . '</div>';
+            }
+        }
     }
 
     $bg_style = '';

@@ -153,11 +153,9 @@ h4.ex-winner-base {
   font-size: 3rem; // requested size
   font-weight: 700;
   perspective: 800px;
-  color: #d4af37;
-  text-shadow:
-    2px 2px 0 #7a5f00,
-    3px 3px 3px rgba(0,0,0,0.18),
-    0 0 9px rgba(212, 175, 55, 0.25);
+  color: #fee813;
+  -webkit-text-stroke: 1px rgba(0,0,0,0.8);
+  text-shadow: none; // crisp like award name
 }
 
 h4.ex-winner-base span {
@@ -181,7 +179,7 @@ h5.ex-winner-company { width: 570px; margin: 0 auto; text-align: center; font-si
 }
 .ex-award-name {
   position: absolute;
-  top: 0px;
+  top: 10px;
   left: 0;
   width: 1024px; // tile width
   height: 64px;
@@ -194,14 +192,28 @@ h5.ex-winner-company { width: 570px; margin: 0 auto; text-align: center; font-si
   padding-left: 0; // remove left offset; number has explicit left:15px
   color: #ffffff;
   letter-spacing: 0.5px;
-  -webkit-text-stroke: 1px rgba(0,0,0,0.2);
+  -webkit-text-stroke: 1px rgba(0,0,0,0.8);
   text-shadow:
-    1px 1px 0 #cfd8ff,
-    2px 2px 0 #b3c1ff,
-    3px 3px 0 #97abff,
-    4px 4px 0 #7a94ff,
-    5px 5px 0 #5e7dff,
-    3px 3px 6px rgba(0,0,0,0.22);
+    0.5px 0.5px 0 #cfd8ff,
+    1px 1px 0 #b3c1ff,
+    1.5px 1.5px 0 #97abff,
+    2px 2px 0 #7a94ff,
+    2.5px 2.5px 0 #5e7dff,
+    0 0px 6px rgba(0,0,0,0.85),
+    0 4px 18px rgba(0,0,0,0.95);
+}
+
+// Award number styling to match title shadow
+.ex-award-number {
+  font-size: 5rem;
+  text-shadow:
+    0.5px 0.5px 0 #cfd8ff,
+    1px 1px 0 #b3c1ff,
+    1.5px 1.5px 0 #97abff,
+    2px 2px 0 #7a94ff,
+    2.5px 2.5px 0 #5e7dff,
+    0 0px 6px rgba(0,0,0,0.85),
+    0 4px 18px rgba(0,0,0,0.95);
 }
 .ex-presenters { font-size: 28px; }
 .ex-winners, .ex-winners-list { font-size: 28px; }
@@ -219,12 +231,13 @@ h5.ex-winner-company { width: 570px; margin: 0 auto; text-align: center; font-si
 }
 
 .ex-presenter-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; }
+.ex-presenter-list.single .ex-presenter-item { width: 200px; }
 .ex-presenter-item { width: 150px; }
-.ex-presenter-img { display: block; width: 100%; height: auto; aspect-ratio: 1/1; border-radius: 50%; object-fit: cover; box-shadow: 0 6px 12px rgba(0,0,0,0.5); }
+.ex-presenter-img { display: block; width: 100%; height: auto; aspect-ratio: 1/1; border-radius: 50%; object-fit: cover; box-shadow: 0 12px 24px rgba(0,0,0,0.55), 0 0 24px rgba(56, 140, 255, 0.45); margin-bottom: 20px; }
 .ex-presenter-name { font-size: 20px; margin-top: 4px; }
 
 .ex-presenter-label {
-  font-size: 24px;
+  font-size: 1.2rem;
   line-height: 1.2;
 }
 
@@ -275,15 +288,22 @@ h5.ex-winner-company { width: 570px; margin: 0 auto; text-align: center; font-si
 }
 .ex-acceptance-caption { margin-top: 6px; font-size: 12px; line-height: 1.2; text-align: center; color: #e6f0ff; }
 
+// Nominee thumbnail (before list item)
+.ex-nominee-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.ex-nominee-thumb { width: 75px; height: 75px; object-fit: cover; border-radius: 8px; }
+
 // Nominees shift to the right by 250px
 .ex-nominees, .ex-nominees-list { margin-left: 250px; }
+
+// Honors content (for honorees) occupies same region as nominees with extra right padding
+.ex-honors-content { margin-left: 250px; padding-right: 50px; }
 
 // Trophy (Poly) image on the left
 .ex-trophy-left-wrap {
   position: absolute;
-  left: 20px;
-  top: 175px;
-  width: 150px;
+  left: -20px;
+  top: 180px;
+  width: 235px;
   z-index: 3;
 }
 .ex-trophy-left-img {
@@ -296,7 +316,7 @@ h5.ex-winner-company { width: 570px; margin: 0 auto; text-align: center; font-si
 .ex-event-logo {
   position: absolute;
   left: 15px;
-  top: 90px;
+  top: 70px;
   width: 225px;
 }
 .ex-event-logo img { width: 225px; height: auto; object-fit: contain; display: block; }
