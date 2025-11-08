@@ -152,7 +152,12 @@ function exhibits_render_award_tile(array $award, int $index) {
     }
 
     // Determine if this award is an Honoree BEFORE any use
-    $is_honoree = (isset($award['award_type']) && $award['award_type'] === 'HONOREE');
+    // Also treat 'XR Elevation' awards as honorees (no nominees, show event content)
+    $is_xr_elevation = (stripos($award_title, 'xr elevation') !== false);
+    $is_honoree = (isset($award['award_type']) && $award['award_type'] === 'HONOREE') || $is_xr_elevation;
+
+    $presenters_count = (!empty($award['presenters']) && is_array($award['presenters'])) ? count($award['presenters']) : 0;
+    $multi_presenters = ($presenters_count > 1);
 
     $presenter_pieces = array();
     if (!empty($award['presenters']) && is_array($award['presenters'])) {
@@ -167,10 +172,10 @@ function exhibits_render_award_tile(array $award, int $index) {
         if (count($presenter_pieces) === 1) {
             $presenters_line = $presenter_pieces[0];
         } else if (count($presenter_pieces) === 2) {
-            $presenters_line = $presenter_pieces[0] . ' and ' . $presenter_pieces[1];
+            $presenters_line = $presenter_pieces[0] . '<br>and ' . $presenter_pieces[1];
         } else {
             $last = array_pop($presenter_pieces);
-            $presenters_line = implode(', ', $presenter_pieces) . ' and ' . $last;
+            $presenters_line = implode(', ', $presenter_pieces) . '<br>and ' . $last;
         }
     }
 
@@ -222,9 +227,21 @@ function exhibits_render_award_tile(array $award, int $index) {
             }
         }
         // New conditions:
-        // - If HONOREE: use acceptance image logic (duo special cases)
+        // - If XR Elevation: FORCE single hero from featured image (no acceptance fallback, no duo)
+        // - Else if HONOREE: use acceptance image logic (duo special cases)
         // - Else WINNER: try featured image of primary winner object; if none and profiles, fallback to acceptance image
-        if ($is_honoree) {
+        if ($is_xr_elevation) {
+            // Force single hero from winner featured image (or event thumbnail) and disable duo
+            $duo_honoree = false;
+            if (!empty($award['winner_ids'][0])) {
+                $cand = get_the_post_thumbnail_url(intval($award['winner_ids'][0]), 'full');
+                if ($cand) { $hero_img_url = $cand; }
+            }
+            if (!$hero_img_url && !empty($award['object_id'])) {
+                $cand = get_the_post_thumbnail_url(intval($award['object_id']), 'full');
+                if ($cand) { $hero_img_url = $cand; }
+            }
+        } elseif ($is_honoree) {
             // Special two-honoree exception: if exactly one acceptance image and it matches an honoree name
             if ($duo_honoree && is_array($recipient_names) && count($recipient_names) >= 2 && is_array($acceptance_images) && count($acceptance_images) === 1) {
                 $ai0 = $acceptance_images[0];
@@ -320,17 +337,33 @@ function exhibits_render_award_tile(array $award, int $index) {
             $group = '';
             // Build a single h5 that nests level-5 people as inline spans to avoid extra rows
             $people_spans = array();
+            $people_names = array();
             if (!empty($people)) {
                 foreach ($people as $pn_raw) {
                     $pn = trim((string)$pn_raw);
                     if ($pn === '') { continue; }
                     $people_spans[] = '<span class="ex-winner-person">' . esc_html($pn) . '</span>';
+                    $people_names[] = $pn;
                 }
             }
             if ($company !== '' || !empty($people_spans)) {
+                // Winner h5 rules (single tag):
+                // - People separated by commas INSIDE each span, with trailing space
+                // - Last person has no trailing comma
+                $people_html = '';
+                if (!empty($people_names)) {
+                    $prefix = ($company !== '' ? ': ' : '');
+                    $buf = '';
+                    $last_i = count($people_names) - 1;
+                    foreach ($people_names as $i => $nm) {
+                        $label = esc_html($nm) . ($i !== $last_i ? ', ' : '');
+                        $buf .= '<span class="ex-winner-person">' . $label . '</span>';
+                    }
+                    $people_html = $prefix . $buf;
+                }
                 $group .= '<h5 class="ex-winner-company">'
                        . ($company !== '' ? 'by ' . esc_html($company) : '')
-                       . (!empty($people_spans) ? ($company !== '' ? ': ' : '') . implode(', ', $people_spans) : '')
+                       . $people_html
                        . '</h5>';
             }
             if ($group !== '') { $winner_lines[] = $group; }
@@ -341,11 +374,13 @@ function exhibits_render_award_tile(array $award, int $index) {
 
     // Nominees: prefer awards summary computed groups/text when available, fallback to local construction
     $nominees_html = '';
+    $nominees_count = 0;
     if (!empty($award['nominees_groups']) && is_array($award['nominees_groups'])) {
         $group_lines = array();
         foreach ($award['nominees_groups'] as $g) {
             $label = isset($g['label']) ? trim((string)$g['label']) : '';
             $items = isset($g['items']) && is_array($g['items']) ? $g['items'] : array();
+            if (!empty($items)) { $nominees_count += count($items); }
             $line = '';
             if ($label !== '') { $line .= esc_html($label); }
             if (!empty($items)) {
@@ -357,7 +392,7 @@ function exhibits_render_award_tile(array $award, int $index) {
     } elseif (!empty($award['nominees_text'])) {
         $nominees_html = esc_html((string)$award['nominees_text']);
     } else {
-        // Fallback: build from nominees structure if present
+        // Fallback: build from nominees structure if present (no thumbnails)
         $nominee_items = array();
         if (!empty($award['nominees']) && is_array($award['nominees'])) {
             $winner_id_set = array();
@@ -378,18 +413,10 @@ function exhibits_render_award_tile(array $award, int $index) {
                 if ($n_company !== '') { $text .= ($text !== '' ? ' ' : '') . 'by ' . esc_html($n_company); }
                 if (!empty($n_people)) { $text .= (!empty($n_company) ? ': ' : ' ') . esc_html(implode(', ', $n_people)); }
                 if ($text === '') { continue; }
-                $thumb_html = '';
-                // Prefer precomputed thumbnail URL from the assembled awards array
-                if (!empty($nom['thumb_url'])) {
-                    $thumb_html = '<img class="ex-nominee-thumb" src="' . esc_url((string)$nom['thumb_url']) . '" alt="" />';
-                } elseif ($n_id) {
-                    $thumb_url = get_the_post_thumbnail_url($n_id, 'thumbnail');
-                    if ($thumb_url) { $thumb_html = '<img class="ex-nominee-thumb" src="' . esc_url($thumb_url) . '" alt="" />'; }
-                }
-                $nominee_items[] = '<div class="ex-nominee-item">' . $thumb_html . '<span class="ex-nominee-text">' . $text . '</span></div>';
+                $nominee_items[] = '<div class="ex-nominee-item"><span class="ex-nominee-text">' . $text . '</span></div>';
             }
         }
-        if (!empty($nominee_items)) { $nominees_html = implode('', $nominee_items); }
+        if (!empty($nominee_items)) { $nominees_html = implode('', $nominee_items); $nominees_count = count($nominee_items); }
     }
 
     // Build tile HTML
@@ -399,7 +426,7 @@ function exhibits_render_award_tile(array $award, int $index) {
     if (!empty($award['event_logo_url'])) {
         $html .= '<div class="ex-event-logo"><img src="' . esc_url($award['event_logo_url']) . '" alt="Event Logo" /></div>';
     }
-    $html .= '<div class="ex-line ex-award-name">' . ($award_thumb ? $award_thumb : '') . esc_html($award_title) . '</div>';
+    $html .= '<div class="ex-line ex-award-name">' . esc_html($award_title) . '</div>';
     // Presenter block: pair images to presenter names with wrappers
     $presenter_items = array();
     if (!empty($award['presenters']) && !empty($presenter_images)) {
@@ -433,7 +460,10 @@ function exhibits_render_award_tile(array $award, int $index) {
             }
             $html .= '</div>';
         }
-        if ($presenter_label !== '') { $html .= '<div class="ex-presenter-label">' . esc_html($presenter_label) . '</div>'; }
+        if ($presenter_label !== '') {
+            // Allow only <br> tags in the presenter label
+            $html .= '<div class="ex-presenter-label">' . wp_kses($presenter_label, array('br' => array())) . '</div>';
+        }
         $html .= '</div>';
     }
     // Remove label line and render winners list directly
@@ -451,7 +481,8 @@ function exhibits_render_award_tile(array $award, int $index) {
 
     // Right-side acceptance wrapper with remaining images, vertical list with captions
     if (!empty($acceptance_remaining)) {
-        $html .= '<div class="ex-acceptance-right-wrap">';
+        $wrap_class = (is_array($acceptance_remaining) && count($acceptance_remaining) >= 4) ? ' compact' : '';
+        $html .= '<div class="ex-acceptance-right-wrap' . $wrap_class . '">';
         $html .= '<div class="ex-acceptance-header">Accepted by</div>';
         foreach ($acceptance_remaining as $ai) {
             if (empty($ai['url'])) { continue; }
@@ -486,7 +517,9 @@ function exhibits_render_award_tile(array $award, int $index) {
         $bg_style = ' style="background-image:url(' . esc_url($award['tile_bg_url']) . ');background-size:cover;background-position:center;background-repeat:no-repeat;"';
     }
     $type_class = $is_honoree ? ' ex-honoree' : ' ex-winner';
-    return '<div class="exhibit-tile"><div class="exhibit-content' . $type_class . '"' . $bg_style . '>' . $html . '</div></div>';
+    $presenter_class = $multi_presenters ? ' has-multiple-presenters' : '';
+    $many_nominees_class = ($nominees_count >= 5) ? ' many-nominees' : '';
+    return '<div class="exhibit-tile"><div class="exhibit-content' . $type_class . $presenter_class . $many_nominees_class . '"' . $bg_style . '>' . $html . '</div></div>';
 }
 
 /**

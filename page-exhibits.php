@@ -25,6 +25,16 @@ if (!current_user_can('manage_options')) {
 $_GET['view'] = 'summary';
 if (isset($_GET['debug'])) { unset($_GET['debug']); }
 
+// Optional filter: show only a specific section via ?only=summary|narrative|categories|awards
+$only = '';
+if (isset($_GET['only'])) {
+    $only = strtolower(sanitize_text_field((string)$_GET['only']));
+}
+$show_summaries = ($only === '' || $only === 'summary');
+$show_narrative = ($only === '' || $only === 'narrative');
+$show_categories = ($only === '' || $only === 'categories');
+$show_awards = ($only === '' || in_array($only, array('awards','awardcards','exhibits'), true));
+
 // Initialize Awards array
 $awards = array();
 
@@ -248,7 +258,7 @@ if (isset($_GET['event_menu'])) {
             
             // Get nesting level using the existing function
             $level = get_nesting_level($menu_items, $item->ID);
-
+            
             // If this is a winner/honoree at level 2, collect its level 3/4 descendants as winner details
             if ($level === 2 && ($is_winner || $is_honoree) && $current_award !== null) {
                 // Parse the level-2 title/company once
@@ -631,20 +641,30 @@ if (isset($_GET['event_menu'])) {
             echo '</tbody></table>';
             echo '</div>';
         }
+        }
     }
 
     // Add this before the awards summary section
     if (isset($_GET['debug']) && current_user_can('manage_options')) {
-        echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
-        echo '<h2>Debug Data Structure</h2>';
-        echo '<pre style="background: #f5f5f5; padding: 15px; overflow: auto; max-height: 500px;">';
-        echo htmlspecialchars(json_encode($awards, JSON_PRETTY_PRINT));
-        echo '</pre>';
+        // Removed debug data dump
+    }
+
+    // If only awards are requested, render Award Exhibits immediately and skip other sections
+    if (in_array($only, array('awards','awardcards','exhibits'), true)) {
+        if (current_user_can('manage_options') && empty($awards)) {
+            echo '<div class="notice notice-warning"><p>Only=awards active but no awards were assembled. Check event_menu filter.</p></div>';
+        }
+        echo '<div class="exhibits-wrapper">';
+        echo '<h2>Award Exhibits</h2>';
+        echo '<div class="exhibits-grid">';
+        foreach ($awards as $idx => $award) { echo exhibits_render_award_tile($award, $idx); }
+        echo '</div>';
         echo '</div>';
     }
 
     // Display awards summary
     if (!empty($awards)) {
+        if ($show_summaries) {
         echo '<style>
             .award-link {
                 color: var(--dark-blue, #183369);
@@ -730,7 +750,7 @@ if (isset($_GET['event_menu'])) {
 
                 $group_parts = array();
                 foreach ($award['winners'] as $idx => $winner) {
-                    $company = isset($winner['company']) ? trim($winner['company']) : '';
+                    $company = isset($winner['company']) ? trim((string)$winner['company']) : '';
                     $people = isset($winner['people']) && is_array($winner['people']) ? $winner['people'] : array();
 
                     $people_escaped = array();
@@ -855,9 +875,11 @@ if (isset($_GET['event_menu'])) {
         
         echo '</tbody></table>';
         echo '</div>';
+        }
 
 
         // Add narrative section
+        if ($show_narrative) {
         echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
         echo '<h2>Award Narratives</h2>';
         echo '<div class="award-narratives">';
@@ -900,122 +922,122 @@ if (isset($_GET['event_menu'])) {
         }
         echo '</div>';
         echo '</div>';
+        }
 
         // Grouped Award Categories AFTER initial award cards
-        // Build code mappings and group awards by code/year
-        $category_labels = array(
-            'XOTY' => 'Experience of the Year',
-            'EDOTY' => 'Education Experience of the Year',
-            'EEOTY' => 'Entertainment Experience of the Year',
-            'DOTY' => 'Developer of the Year',
-            'IOTY' => 'Innovator of the Year',
-            'GOTY' => 'Game of the Year',
-            'Lifetime' => 'Lifetime Achievement Award',
-            'Ombudsperson' => 'Ombudsperson of the Year',
-            'Community' => 'Community Honoree'
-        );
-        // Exclusive detector: EDOTY/EEOTY first; XOTY only when plain 'Experience of the Year' without 'Education' or 'Entertainment'
-        $norm_code2 = function($title) {
-            $t = (string)$title;
-            if (stripos($t, 'Education Experience of the Year') !== false) { return 'EDOTY'; }
-            if (stripos($t, 'Entertainment Experience of the Year') !== false) { return 'EEOTY'; }
-            if (stripos($t, 'Game of the Year') !== false) { return 'GOTY'; }
-            if (stripos($t, 'Developer of the Year') !== false) { return 'DOTY'; }
-            if (stripos($t, 'Innovator of the Year') !== false || stripos($t, 'Innovation of the Year') !== false) { return 'IOTY'; }
-            if (stripos($t, 'Lifetime Achievement Award') !== false) { return 'Lifetime'; }
-            if (stripos($t, 'Ombudsperson of the Year') !== false) { return 'Ombudsperson'; }
-            if (stripos($t, 'Community Honore') !== false || stripos($t, 'Community Honoree') !== false || stripos($t, 'Community Honorée') !== false) { return 'Community'; }
-            if (stripos($t, 'Experience of the Year') !== false && stripos($t, 'Education') === false && stripos($t, 'Entertainment') === false) { return 'XOTY'; }
-            return '';
-        };
-        $extract_year2 = function($title) { if (preg_match('/\\b(20[0-5][0-9])\\b/', (string)$title, $m)) { return $m[1]; } return ''; };
-        $strip_year2 = function($title) use ($extract_year2) { $y=$extract_year2($title); return $y!=='' ? trim(preg_replace('/\\b'.$y.'\\b/','',(string)$title)) : (string)$title; };
-        $cards2 = array();
-        foreach ($awards as $aw) {
-            if (!is_array($aw)) { continue; }
-            $code = $norm_code2(isset($aw['title']) ? $aw['title'] : ''); if ($code==='') { continue; }
-            $year = $extract_year2(isset($aw['title']) ? $aw['title'] : ''); if ($year==='') { continue; }
-            if (!isset($cards2[$code])) { $cards2[$code]=array(); }
-            if (!isset($cards2[$code][$year])) { $cards2[$code][$year]=array(); }
-            $hero=''; if (!empty($aw['acceptance_image_url'])) { $hero=$aw['acceptance_image_url']; }
-            if ($hero==='' && !empty($aw['winner_ids']) && is_array($aw['winner_ids'])) { $wid0=intval($aw['winner_ids'][0]); if ($wid0) { $fi=get_the_post_thumbnail_url($wid0,'full'); if ($fi) { $hero=$fi; } } }
-            $featured=''; if (!empty($aw['winner_ids']) && is_array($aw['winner_ids'])) { $wid0=intval($aw['winner_ids'][0]); if ($wid0) { $feat=get_the_post_thumbnail_url($wid0,'full'); if ($feat) { $featured=$feat; } } }
-            // Winner/Honoree base name
-            $winner_title = '';
-            if (!empty($aw['winners']) && is_array($aw['winners']) && !empty($aw['winners'][0]['title'])) { $winner_title = (string)$aw['winners'][0]['title']; }
-            $cards2[$code][$year][] = array(
-                'object_id' => isset($aw['object_id']) ? $aw['object_id'] : '',
-                'title' => $strip_year2(isset($aw['title']) ? $aw['title'] : ''),
-                'year' => $year,
-                'hero' => $hero,
-                'acceptance' => isset($aw['acceptance_image_url']) ? $aw['acceptance_image_url'] : '',
-                'featured' => $featured,
-                'winner_title' => $winner_title,
+        if ($show_categories) {
+        if (!empty($awards)) {
+            // Build code mappings and group awards by code/year
+            $category_labels = array(
+                'XOTY' => 'Experience of the Year',
+                'EDOTY' => 'Education Experience of the Year',
+                'EEOTY' => 'Entertainment Experience of the Year',
+                'DOTY' => 'Developer of the Year',
+                'IOTY' => 'Innovator of the Year',
+                'GOTY' => 'Game of the Year',
+                'Lifetime' => 'Lifetime Achievement Award',
+                'Ombudsperson' => 'Ombudsperson of the Year',
+                'Community' => 'Community Honoree'
             );
-        }
-        if (!empty($cards2)) {
-            // Dump the grouped array for inspection
-            echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
-            echo '<h2>Grouped Data (Debug)</h2>';
-            echo '<pre style="background:#f5f5f5;padding:12px;max-height:400px;overflow:auto;">' . esc_html(json_encode($cards2, JSON_PRETTY_PRINT)) . '</pre>';
-            echo '</div>';
-            echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
-            echo '<h2>Grouped Award Categories</h2>';
-            echo "<style>
-                .cat-tile{width:1024px;height:1024px;margin:16px 0;background:#0b1226;color:#e6f0ff;position:relative;border-radius:8px;overflow:hidden}
-                .cat-tile-head.ex-award-name{position:absolute;top:0;left:0;width:100%;height:72px;display:flex;align-items:center;justify-content:center;background:#121a35;font-weight:800;font-size:28px;letter-spacing:.5px}
-                .cat-tile-grid{position:absolute;inset:72px 0 0 0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:8px;padding:12px}
-                .cat-cell{display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
-                .cat-laurel{width:100%;height:80%;position:relative;background:url(images/bg/laurel-center-1024.webp) center/contain no-repeat;display:flex;align-items:center;justify-content:center}
-                .cat-hero{width:66%;aspect-ratio:1/1;border-radius:50%;object-fit:cover;box-shadow:0 6px 12px rgba(0,0,0,.45)}
-                .cat-cap{margin:6px 0 0;text-align:center}
-                .cat-cap h4{margin:4px 0 0;font-size:1rem;font-weight:700;line-height:1.2}
-                .cat-cap .year{font-size:.9rem;color:#c7d6ff;margin-bottom:4px}
-            </style>";
-            // Helper to sanitize title: remove dashes and extra spaces
-            $sanitize_title = function($t){
-                $t = preg_replace('/[\x{2013}\x{2014}\-]+/u',' ', (string)$t); // remove en/em dashes and hyphens
-                $t = preg_replace('/\s+/', ' ', $t);
-                return trim($t);
+            // Exclusive detector: EDOTY/EEOTY first; XOTY only when plain 'Experience of the Year' without 'Education' or 'Entertainment'
+            $norm_code2 = function($title) {
+                $t = (string)$title;
+                if (stripos($t, 'Education Experience of the Year') !== false) { return 'EDOTY'; }
+                if (stripos($t, 'Entertainment Experience of the Year') !== false) { return 'EEOTY'; }
+                if (stripos($t, 'Game of the Year') !== false) { return 'GOTY'; }
+                if (stripos($t, 'Developer of the Year') !== false) { return 'DOTY'; }
+                if (stripos($t, 'Innovator of the Year') !== false || stripos($t, 'Innovation of the Year') !== false) { return 'IOTY'; }
+                if (stripos($t, 'Lifetime Achievement Award') !== false) { return 'Lifetime'; }
+                if (stripos($t, 'Ombudsperson of the Year') !== false) { return 'Ombudsperson'; }
+                if (stripos($t, 'Community Honore') !== false || stripos($t, 'Community Honoree') !== false || stripos($t, 'Community Honorée') !== false) { return 'Community'; }
+                if (stripos($t, 'Experience of the Year') !== false && stripos($t, 'Education') === false && stripos($t, 'Entertainment') === false) { return 'XOTY'; }
+                return '';
             };
-            foreach ($cards2 as $code => $years) {
-                // Flatten latest six entries by year desc
-                krsort($years);
-                $flat = array();
-                foreach ($years as $yr => $entries) {
-                    foreach ($entries as $entry) { $flat[] = $entry; if (count($flat) >= 6) break; }
-                    if (count($flat) >= 6) break;
+            $extract_year2 = function($title) { if (preg_match('/\\b(20[0-5][0-9])\\b/', (string)$title, $m)) { return $m[1]; } return ''; };
+            $strip_year2 = function($title) use ($extract_year2) { $y=$extract_year2($title); return $y!=='' ? trim(preg_replace('/\\b'.$y.'\\b/','',(string)$title)) : (string)$title; };
+            $cards2 = array();
+            foreach ($awards as $aw) {
+                if (!is_array($aw)) { continue; }
+                $code = $norm_code2(isset($aw['title']) ? $aw['title'] : ''); if ($code==='') { continue; }
+                $year = $extract_year2(isset($aw['title']) ? $aw['title'] : ''); if ($year==='') { continue; }
+                if (!isset($cards2[$code])) { $cards2[$code]=array(); }
+                if (!isset($cards2[$code][$year])) { $cards2[$code][$year]=array(); }
+                $hero=''; if (!empty($aw['acceptance_image_url'])) { $hero=$aw['acceptance_image_url']; }
+                if ($hero==='' && !empty($aw['winner_ids']) && is_array($aw['winner_ids'])) { $wid0=intval($aw['winner_ids'][0]); if ($wid0) { $fi=get_the_post_thumbnail_url($wid0,'full'); if ($fi) { $hero=$fi; } } }
+                $featured=''; if (!empty($aw['winner_ids']) && is_array($aw['winner_ids'])) { $wid0=intval($aw['winner_ids'][0]); if ($wid0) { $feat=get_the_post_thumbnail_url($wid0,'full'); if ($feat) { $featured=$feat; } } }
+                // Winner/Honoree base name
+                $winner_title = '';
+                if (!empty($aw['winners']) && is_array($aw['winners']) && !empty($aw['winners'][0]['title'])) { $winner_title = (string)$aw['winners'][0]['title']; }
+                $cards2[$code][$year][] = array(
+                    'object_id' => isset($aw['object_id']) ? $aw['object_id'] : '',
+                    'title' => $strip_year2(isset($aw['title']) ? $aw['title'] : ''),
+                    'year' => $year,
+                    'hero' => $hero,
+                    'acceptance' => isset($aw['acceptance_image_url']) ? $aw['acceptance_image_url'] : '',
+                    'featured' => $featured,
+                    'winner_title' => $winner_title,
+                );
+            }
+            if (!empty($cards2)) {
+                echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
+                echo '<h2>Grouped Award Categories</h2>';
+                echo "<style>
+                    .cat-tile{width:1024px;height:1024px;margin:16px 0;background:#0b1226;color:#e6f0ff;position:relative;border-radius:8px;overflow:hidden}
+                    .cat-tile-head.ex-award-name{position:absolute;top:0;left:0;width:100%;height:72px;display:flex;align-items:center;justify-content:center;background:#121a35;font-weight:800;font-size:28px;letter-spacing:.5px}
+                    .cat-tile-grid{position:absolute;inset:72px 0 0 0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:8px;padding:12px}
+                    .cat-cell{display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+                    .cat-laurel{width:100%;height:80%;position:relative;background:url(images/bg/laurel-center-1024.webp) center/contain no-repeat;display:flex;align-items:center;justify-content:center}
+                    .cat-hero{width:66%;aspect-ratio:1/1;border-radius:50%;object-fit:cover;box-shadow:0 6px 12px rgba(0,0,0,.45)}
+                    .cat-cap{margin:6px 0 0;text-align:center}
+                    .cat-cap h4{margin:4px 0 0;font-size:1rem;font-weight:700;line-height:1.2}
+                    .cat-cap .year{font-size:.9rem;color:#c7d6ff;margin-bottom:4px}
+                </style>";
+                // Helper to sanitize title: remove dashes and extra spaces
+                $sanitize_title = function($t){
+                    $t = preg_replace('/[\x{2013}\x{2014}\-]+/u',' ', (string)$t); // remove en/em dashes and hyphens
+                    $t = preg_replace('/\s+/', ' ', $t);
+                    return trim($t);
+                };
+                foreach ($cards2 as $code => $years) {
+                    // Flatten latest six entries by year desc
+                    krsort($years);
+                    $flat = array();
+                    foreach ($years as $yr => $entries) {
+                        foreach ($entries as $entry) { $flat[] = $entry; if (count($flat) >= 6) break; }
+                        if (count($flat) >= 6) break;
+                    }
+                    if (empty($flat)) { continue; }
+                    echo '<div class="cat-tile">';
+                    // Header should render once on top with the award name (not code)
+                    $label = isset($category_labels[$code]) ? $category_labels[$code] : $code;
+                    $label = $sanitize_title($label);
+                    echo '<div class="cat-tile-head ex-award-name">' . esc_html($label) . '</div>';
+                    echo '<div class="cat-tile-grid">';
+                    foreach ($flat as $entry) {
+                        $hero = $entry['hero'] ?: $entry['featured'] ?: $entry['acceptance'];
+                        $title_clean = $sanitize_title($entry['title']);
+                        echo '<div class="cat-cell">';
+                        // Year above the image
+                        echo '<div class="cat-cap"><div class="year">' . esc_html($entry['year']) . '</div></div>';
+                        echo '<div class="cat-laurel">';
+                        if (!empty($hero)) { echo '<img class="cat-hero" src="' . esc_url($hero) . '" alt="" />'; }
+                        echo '</div>';
+                        echo '<div class="cat-cap">';
+                        // Winner/Honoree name under the image
+                        $wn = isset($entry['winner_title']) ? $entry['winner_title'] : $title_clean;
+                        echo '<h4>' . esc_html($sanitize_title($wn)) . '</h4>';
+                        echo '</div>';
+                        echo '</div>';
+                    }
+                    echo '</div>';
+                    echo '</div>';
                 }
-                if (empty($flat)) { continue; }
-                echo '<div class="cat-tile">';
-                // Header should render once on top with the award name (not code)
-                $label = isset($category_labels[$code]) ? $category_labels[$code] : $code;
-                $label = $sanitize_title($label);
-                echo '<div class="cat-tile-head ex-award-name">' . esc_html($label) . '</div>';
-                echo '<div class="cat-tile-grid">';
-                foreach ($flat as $entry) {
-                    $hero = $entry['hero'] ?: $entry['featured'] ?: $entry['acceptance'];
-                    $title_clean = $sanitize_title($entry['title']);
-                    echo '<div class="cat-cell">';
-                    // Year above the image
-                    echo '<div class="cat-cap"><div class="year">' . esc_html($entry['year']) . '</div></div>';
-                    echo '<div class="cat-laurel">';
-                    if (!empty($hero)) { echo '<img class="cat-hero" src="' . esc_url($hero) . '" alt="" />'; }
-                    echo '</div>';
-                    echo '<div class="cat-cap">';
-                    // Winner/Honoree name under the image
-                    $wn = isset($entry['winner_title']) ? $entry['winner_title'] : $title_clean;
-                    echo '<h4>' . esc_html($sanitize_title($wn)) . '</h4>';
-                    echo '</div>';
-                    echo '</div>';
-                }
-                echo '</div>';
                 echo '</div>';
             }
-            echo '</div>';
         }
 
-        // Award Exhibits grid (1024x1024 tiles with small text)
+        // Award Exhibits grid (1024x1024 tiles with small text) - default view only
+        if ($only === '') {
         echo '<div class="exhibits-wrapper">';
         echo '<h2>Award Exhibits</h2>';
         echo '<div class="exhibits-grid">';
@@ -1024,6 +1046,7 @@ if (isset($_GET['event_menu'])) {
         }
         echo '</div>';
         echo '</div>';
+        }
 
         // -----------------------------
         // Host and Ambassador Cards
