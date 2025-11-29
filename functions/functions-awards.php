@@ -1054,21 +1054,6 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
           if(@$meta['resource_url'][0] != ''){
 
             print "</a>";
-          
-           } else {
-            print "</span>";
-          
-           }
-           if($classes[0] == 'winner' || $classes[0] == 'honoree'){
-            print "<span class='winner'></span>";
-          }  
-        }
-        print get_nominee_info($child,$counter);
-       
-       // print "|".@$child['meta']['github']."|";
-      if(is_array(@$children)){
-        $counter++;
-        if($counter == 2 && count($children)){
           print ",";
         }
         get_nominees_and_winners($children,$counter);

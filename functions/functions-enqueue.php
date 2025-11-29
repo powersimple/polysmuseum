@@ -151,5 +151,7 @@ function style_loader_src_make_relative ( $src, $handle ) {
   add_filter('style_loader_src', 'style_loader_src_make_relative', 10, 2 );
 //phpinfo(); die();
 
+// (Removed global corner brand injection; now scoped to group exhibits only)
+
 
 ?>

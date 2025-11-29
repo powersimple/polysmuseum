@@ -138,12 +138,24 @@ function exhibits_render_award_tile(array $award, int $index) {
     if (empty($acceptance_images) && !empty($award['acceptance_image_url'])) {
         $acceptance_images = array(array('id'=>0,'url'=>$award['acceptance_image_url'],'title'=>'','filename'=>''));
     }
-    // Collect recipient names from winners people (level 5)
+    // Collect recipient names from winners (prefer people; fallback to company, then title)
     $recipient_names = array();
     if (!empty($award['winners']) && is_array($award['winners'])) {
         foreach ($award['winners'] as $w) {
+            $added = false;
             if (!empty($w['people']) && is_array($w['people'])) {
-                foreach ($w['people'] as $pn) { $pn = trim((string)$pn); if ($pn !== '') { $recipient_names[] = $pn; } }
+                foreach ($w['people'] as $pn) {
+                    $pn = trim((string)$pn);
+                    if ($pn !== '') { $recipient_names[] = $pn; $added = true; }
+                }
+            }
+            if (!$added) {
+                $comp = isset($w['company']) ? trim((string)$w['company']) : '';
+                if ($comp !== '') { $recipient_names[] = $comp; $added = true; }
+            }
+            if (!$added) {
+                $ttl = isset($w['title']) ? trim((string)$w['title']) : '';
+                if ($ttl !== '') { $recipient_names[] = $ttl; }
             }
         }
     }

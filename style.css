@@ -5472,6 +5472,21 @@ h5.ex-winner-company {
   object-fit: contain;
 }
 
+.ex-corner-brand {
+  position: absolute;
+  left: 15px;
+  top: 10px;
+  width: 200px;
+  z-index: 4;
+}
+
+.ex-corner-brand img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 .ex-event-logo {
   position: absolute;
   left: 15px;
@@ -5484,6 +5499,18 @@ h5.ex-winner-company {
   height: auto;
   object-fit: contain;
   display: block;
+}
+
+.cat-tile {
+  background: #000 url("images/bg/red-milkyway-bg.jpg") center/cover no-repeat;
+}
+
+.cat-tile .ex-winner-hero-wrap {
+  background-image: url("images/bg/laurel-center-1024.webp");
+}
+
+.cat-tile h5.ex-winner-company {
+  width: 100%;
 }
 
 /*--------------------------------------------------------------
