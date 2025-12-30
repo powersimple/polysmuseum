@@ -186,19 +186,12 @@ if($section_class==get_post_meta($post->ID,'section',true)){
     <header id="header" class="navbar navbar-custom navbar-fixed-top navbar-transparent" role="navigation">
         <div class="container">
          
-          <div class="navbar-header">
-         
-           <div id="logo" class="onpage-navigation"><a  href="/"></a></div>
-            
-          </div>
-          <div class="collapse navbar-collapse" id="custom-collapse"></div>
-    
-            <div id="countdown">
-              <div id="polyscountdown" class="countdown"></div>
-              
-            </div>
-            <div id="main-menu"></div>
-            <div id="megamenu-linear-nav"></div>
+          <!-- ============================================================
+                 NEW MEGAMENU SYSTEM
+                 Responsive, accessible navigation with L1-L4 support
+                 Menu slug: 'megamenu' (set in WordPress Admin > Menus)
+            ============================================================ -->
+            <?php echo render_megamenu_with_logo('megamenu'); ?>
           
           
       </div>  

@@ -26,6 +26,7 @@ function load_theme_functions() {
     require_once("functions/functions-print.php");
     require_once("functions/functions-post-access.php");
     require_once("functions/functions-cesium.php");  // Add Cesium functions
+    require_once("functions/functions-megamenu.php"); // Megamenu functions
     
     // Include audit functions
     require_once get_template_directory() . '/functions/functions-audit.php';
