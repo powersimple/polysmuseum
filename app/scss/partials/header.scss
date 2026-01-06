@@ -1,16 +1,38 @@
-
 @use "globals" as *;
 
     #header {
         //  background-color: $darkest_gray;
         height: 50px;
         z-index: 100;
-        position: relative;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
         width: 100%;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        
+        // Reset Bootstrap navbar padding
+        &.navbar,
+        &.navbar-custom,
+        &.navbar-fixed-top {
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: 50px !important;
+            height: 50px !important;
+        }
+        
+        // Reset container inside header
+        > .container {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+        
         @media(max-width: 767px){
-            margin-bottom:20px;
-            position: fixed;
- 
+            margin-bottom: 0 !important;
         }
     }
     #logo {
@@ -43,8 +65,13 @@
         background-color: rgba(10, 10, 10, 0.9);
     }
     .navbar-custom {
-        padding-top: 15px;
-        padding-bottom: 15px;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        padding: 0 !important;
+    }
+    #header .megamenu {
+        position: fixed !important;
+        top: 0 !important;
     }
     .navbar-custom .dropdown-menu {
         position: absolute;

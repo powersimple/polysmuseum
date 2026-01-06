@@ -16,25 +16,6 @@
  * - No dependency on content.json
  */
 
-/**
- * Format video URL with autoplay parameters
- */
-if (!function_exists('event_format_video_url')) {
-    function event_format_video_url($url) {
-        if (empty($url)) return '';
-        
-        // Add autoplay and rel params if not present
-        if (strpos($url, '?') !== false) {
-            if (strpos($url, 'autoplay') === false) {
-                $url .= '&autoplay=1&rel=0';
-            }
-        } else {
-            $url .= '?autoplay=1&rel=0';
-        }
-        return $url;
-    }
-}
-
 get_header(); 
 
 // Get event metadata
@@ -68,6 +49,25 @@ if (!empty($section_menu)) {
 // Ensure video URL has autoplay params
 if (!empty($first_video_url)) {
     $first_video_url = event_format_video_url($first_video_url);
+}
+
+/**
+ * Format video URL with autoplay parameters
+ */
+if (!function_exists('event_format_video_url')) {
+    function event_format_video_url($url) {
+        if (empty($url)) return '';
+        
+        // Add autoplay and rel params if not present
+        if (strpos($url, '?') !== false) {
+            if (strpos($url, 'autoplay') === false) {
+                $url .= '&autoplay=1&rel=0';
+            }
+        } else {
+            $url .= '?autoplay=1&rel=0';
+        }
+        return $url;
+    }
 }
 
 /**
@@ -149,7 +149,7 @@ if (!function_exists('render_event_session_row')) {
                 <?php if ($is_past_event && !empty($session_video)): ?>
                 <a href="#<?php echo esc_attr($session_slug); ?>" 
                    class="watch video-button" 
-                   onclick="playSessionVideo('<?php echo esc_js(event_format_video_url($session_video)); ?>','<?php echo esc_js($session_title); ?>','')">
+                   onclick="playSessionVideo('<?php echo esc_js(event_format_video_url($session_video)); ?>', '<?php echo esc_js($session_title); ?>')">
                     <i title="WATCH" class="fa fa-youtube"></i><br> Watch
                 </a>
                 <?php endif; ?>
@@ -259,15 +259,16 @@ if (!function_exists('display_LookingGlass')) {
             <div class="sticky">
                 <?php if (!empty($first_video_url)): ?>
                 <div class="video-position">
-                    <div id="video-wrap-header"></div>
                     <div class="video-wrap">
-                        <iframe id="video-player" 
-                                src="<?php echo esc_url($first_video_url); ?>" 
-                                frameborder="0" 
-                                allow="autoplay; encrypted-media"
-                                allowfullscreen></iframe>
+                        <div id="video-wrap-header"></div>
+                        <div class="video-wrap">
+                            <iframe id="video-player" 
+                                    src="<?php echo esc_url($first_video_url); ?>" 
+                                    frameborder="0" 
+                                    allowfullscreen></iframe>
+                        </div>
+                        <div id="video-wrap-footer"></div>
                     </div>
-                    <div id="video-wrap-footer"></div>
                 </div>
                 <?php endif; ?>
                 
@@ -281,30 +282,26 @@ if (!function_exists('display_LookingGlass')) {
     </div>
 </main>
 
+<script>
+/**
+ * Play a session video - updates the video player iframe
+ * @param {string} src - Video embed URL
+ * @param {string} title - Session title for header
+ */
+function playSessionVideo(src, title) {
+    var player = document.getElementById('video-player');
+    var header = document.getElementById('video-wrap-header');
+    
+    if (player && src) {
+        player.src = src;
+    }
+    
+    if (header && title) {
+        header.innerHTML = '<h4>' + title + '</h4>';
+    }
+}
+</script>
+
 <?php
 get_footer();
 ?>
-
-<script>
-// Override playSessionVideo for PHP-rendered events (must be after footer scripts)
-window.playSessionVideo = function(src, title, attrs) {
-    var player = document.getElementById('video-player');
-    if (player && src) {
-        // Ensure autoplay params
-        if (src.indexOf('?') === -1) {
-            src += '?autoplay=1&rel=0';
-        } else if (src.indexOf('autoplay') === -1) {
-            src += '&autoplay=1&rel=0';
-        }
-        player.src = src;
-    }
-    var header = document.getElementById('video-wrap-header');
-    if (header && title) {
-        header.innerHTML = '';
-        var h4 = document.createElement('h4');
-        h4.className = 'video-title';
-        h4.textContent = title;
-        header.appendChild(h4);
-    }
-};
-</script>

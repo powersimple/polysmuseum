@@ -185,10 +185,34 @@
     }
   }
   
-  .video-title{
-    font-size:1.5rem;
-    text-align: center;
-    padding-top: 10px;
+  #video-wrap-header {
+    width: 100%;
+    display: inherit;
+    padding: 10px 5px;
+    
+    h4, .video-title {
+        font-size: 2rem;
+        font-weight: 600;
+        text-align: center;
+        margin: 0 0 10px 0;
+        padding: 5px;
+        color: #fff;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        width: 100%;
+    }
+    .video-title{
+        font-size: 2rem;
+        font-weight: 600;
+        text-align: center;
+        margin: 0 0 10px 0;
+        padding: 5px;
+        color: #fff;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        width: 100%;
+        display: inherit;
+    }
 }
 .video-listing{
     font-size:1rem;
@@ -220,3 +244,4 @@
     display: table;
     clear: both;
 }
+

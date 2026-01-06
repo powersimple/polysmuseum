@@ -328,7 +328,7 @@ if(@$_GET['list']){
     if($session['post']->post_title == 'Break'){
       //  continue;
     }
-    ros_items($session);
+    ros_items($session, $event_title);
     print"<hr>";
 }
  

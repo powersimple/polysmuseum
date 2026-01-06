@@ -11,6 +11,32 @@ if (!defined('ABSPATH')) {
 }
 
 /**
+ * Convert absolute image URL to relative path from site root
+ * This ensures images work across different hostnames (IP, DNS name, etc.)
+ * 
+ * @param string $url The absolute URL
+ * @return string Relative path starting with /wp-content/
+ */
+function megamenu_get_relative_image_url($url) {
+    if (empty($url)) {
+        return '';
+    }
+    
+    // If already relative, return as-is
+    if (strpos($url, '/wp-content/') === 0) {
+        return $url;
+    }
+    
+    // Extract path from /wp-content/ onwards
+    if (preg_match('#(/wp-content/.+)$#', $url, $matches)) {
+        return $matches[1];
+    }
+    
+    // Fallback: return original URL
+    return $url;
+}
+
+/**
  * Get megamenu data with optimized single query
  * 
  * @param string $menu_slug The menu slug to fetch (default: 'megamenu')
@@ -88,10 +114,39 @@ function get_megamenu_data($menu_slug = 'megamenu') {
         // Use linked post title if menu item title is empty
         $title = !empty($item->post_title) ? $item->post_title : $item->linked_title;
         
+        // Get menu background image for logo display
+        // Priority: 1) _menu_bg_image (theme field), 2) rt-wp-menu-custom-fields (plugin)
+        $media_link = '';
+        
+        // First check our theme's _menu_bg_image field
+        $menu_bg_image = get_post_meta($item->ID, '_menu_bg_image', true);
+        if (!empty($menu_bg_image)) {
+            $media_link = $menu_bg_image;
+        }
+        
+        // Fallback to rt-wp-menu-custom-fields plugin data
+        if (empty($media_link)) {
+            $custom_fields = get_post_meta($item->ID, 'rt-wp-menu-custom-fields', true);
+            if (!empty($custom_fields)) {
+                if (is_string($custom_fields)) {
+                    $custom_fields = json_decode($custom_fields, true);
+                }
+                
+                if (is_array($custom_fields)) {
+                    $feature = isset($custom_fields['selected-feature']) ? $custom_fields['selected-feature'] : '';
+                    
+                    if ($feature === 'image' && isset($custom_fields['image']['media-link'])) {
+                        $media_link = $custom_fields['image']['media-link'];
+                    }
+                }
+            }
+        }
+        
         $processed_item = [
             'id' => $item->ID,
             'title' => $title,
             'url' => $url ?: '#',
+            'slug' => $item->linked_slug ?: '',
             'target' => $item->target ?: '',
             'classes' => $classes_str,
             'classes_array' => is_array($classes) ? array_filter($classes) : [],
@@ -102,7 +157,8 @@ function get_megamenu_data($menu_slug = 'megamenu') {
             'parent_id' => (int)$item->menu_item_parent,
             'menu_order' => $item->menu_order,
             'children' => [],
-            'level' => 0
+            'level' => 0,
+            'media_link' => $media_link
         ];
         
         $items_by_id[$item->ID] = $processed_item;
@@ -193,6 +249,7 @@ function render_megamenu($menu_slug = 'megamenu') {
 
 /**
  * Render the megamenu with logo included
+ * Logo now comes from menu items with media-link metadata
  * 
  * @param string $menu_slug The menu slug to render
  * @return string HTML output
@@ -204,13 +261,29 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
         return '<!-- Megamenu: Menu not found -->';
     }
     
+    // Get first menu item's logo for persistent mobile header
+    // Logo always links to home (front page), not the menu item's URL
+    $first_item_logo = '';
+    $first_item_url = home_url('/');
+    $first_item_title = 'Home';
+    if (!empty($menu_data['items'][0])) {
+        $first_item = $menu_data['items'][0];
+        if (!empty($first_item['media_link'])) {
+            $first_item_logo = megamenu_get_relative_image_url($first_item['media_link']);
+        }
+        $first_item_title = $first_item['title'];
+    }
+    
     ob_start();
     ?>
+    <!-- Fixed Header Bar -->
     <nav class="megamenu" role="navigation" aria-label="<?php echo esc_attr($menu_data['menu']['name']); ?>">
-        <!-- Logo -->
-        <div id="logo" class="megamenu__logo">
-            <a href="/" aria-label="Home"></a>
-        </div>
+        <?php if ($first_item_logo): ?>
+        <!-- Mobile Logo (persistent, left of hamburger) -->
+        <a href="<?php echo esc_url($first_item_url); ?>" class="megamenu__mobile-logo-link" aria-label="<?php echo esc_attr($first_item_title); ?>">
+            <img src="<?php echo esc_attr($first_item_logo); ?>" alt="<?php echo esc_attr($first_item_title); ?>" class="megamenu__mobile-header-logo" />
+        </a>
+        <?php endif; ?>
         
         <!-- Mobile Toggle -->
         <button class="megamenu__toggle" aria-expanded="false" aria-controls="megamenu-mobile" aria-label="Open menu">
@@ -218,31 +291,28 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
             <span class="megamenu__sr-only">Menu</span>
         </button>
         
-        <!-- Desktop Navigation Bar -->
+        <!-- Desktop Navigation Bar - Logo comes from menu items with media-link -->
         <div class="megamenu__bar">
             <ul class="megamenu__list" role="menubar">
                 <?php echo render_megamenu_items($menu_data['items'], 'desktop'); ?>
             </ul>
         </div>
-        
-        <!-- Mobile Overlay -->
-        <div class="megamenu__overlay" aria-hidden="true"></div>
-        
-        <!-- Mobile Navigation Drawer -->
-        <div class="megamenu__mobile" id="megamenu-mobile" aria-hidden="true">
-            <div class="megamenu__mobile-header">
-                <div id="logo-mobile" class="megamenu__logo">
-                    <a href="/" aria-label="Home"></a>
-                </div>
-                <button class="megamenu__mobile-close" aria-label="Close menu">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <nav class="megamenu__mobile-nav">
-                <?php echo render_megamenu_items($menu_data['items'], 'mobile'); ?>
-            </nav>
-        </div>
     </nav>
+    
+    <!-- Mobile Overlay (outside fixed nav) -->
+    <div class="megamenu__overlay" aria-hidden="true"></div>
+    
+    <!-- Mobile Navigation Drawer (outside fixed nav) -->
+    <div class="megamenu__mobile" id="megamenu-mobile" aria-hidden="true">
+        <div class="megamenu__mobile-header">
+            <button class="megamenu__mobile-close" aria-label="Close menu">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <nav class="megamenu__mobile-nav">
+            <?php echo render_megamenu_items($menu_data['items'], 'mobile'); ?>
+        </nav>
+    </div>
     <?php
     return ob_get_clean();
 }
@@ -285,16 +355,47 @@ function render_megamenu_desktop_item($item, $has_children, $is_current) {
         $classes[] = 'is-current';
     }
     
+    // Check for media-link (logo image)
+    $has_logo = !empty($item['media_link']);
+    if ($has_logo) {
+        $classes[] = 'has-logo';
+    }
+    
     $item_id = 'megamenu-item-' . $item['id'];
     $panel_id = 'megamenu-panel-' . $item['id'];
     
     $output = '<li class="' . esc_attr(implode(' ', $classes)) . '" id="' . esc_attr($item_id) . '" role="none">';
     
+    // Convert media_link to relative URL for cross-device compatibility
+    $logo_url = $has_logo ? megamenu_get_relative_image_url($item['media_link']) : '';
+    
+    // First menu item (logo) links to home, others link to their page slug
+    $item_slug = $item['slug'] ?? '';
+    $item_level = $item['level'] ?? 1;
+    if ($item_level === 1 && $item['menu_order'] == 1) {
+        // First L1 item always links to home
+        $logo_link_url = home_url('/');
+    } else if (!empty($item_slug)) {
+        $logo_link_url = '/' . $item_slug . '/';
+    } else {
+        $logo_link_url = $item['url'] ?: home_url('/');
+    }
+    
     if ($has_children) {
-        // Button trigger for items with children
-        $output .= '<button type="button" aria-expanded="false" aria-controls="' . esc_attr($panel_id) . '" role="menuitem" aria-haspopup="true">';
-        $output .= esc_html($item['title']);
-        $output .= '</button>';
+        if ($has_logo) {
+            // Logo with children: wrap logo in link, then add button for dropdown
+            $output .= '<a href="' . esc_url($logo_link_url) . '" role="menuitem" class="megamenu__logo-link">';
+            $output .= '<img class="megamenu__logo-img" src="' . esc_attr($logo_url) . '" alt="' . esc_attr($item['title']) . '" />';
+            $output .= '</a>';
+            $output .= '<button type="button" aria-expanded="false" aria-controls="' . esc_attr($panel_id) . '" role="menuitem" aria-haspopup="true" class="megamenu__dropdown-trigger">';
+            $output .= '<span class="megamenu__sr-only">' . esc_html($item['title']) . ' submenu</span>';
+            $output .= '</button>';
+        } else {
+            // Text trigger for items with children
+            $output .= '<button type="button" aria-expanded="false" aria-controls="' . esc_attr($panel_id) . '" role="menuitem" aria-haspopup="true">';
+            $output .= esc_html($item['title']);
+            $output .= '</button>';
+        }
         
         // Panel with children
         $output .= '<div class="megamenu__panel" id="' . esc_attr($panel_id) . '" data-state="closed" role="menu">';
@@ -306,8 +407,13 @@ function render_megamenu_desktop_item($item, $has_children, $is_current) {
         // Simple link for items without children
         $target = $item['target'] ? ' target="' . esc_attr($item['target']) . '"' : '';
         $current = $is_current ? ' aria-current="page"' : '';
-        $output .= '<a href="' . esc_url($item['url']) . '"' . $target . $current . ' role="menuitem">';
-        $output .= esc_html($item['title']);
+        $link_url = $has_logo ? $logo_link_url : $item['url'];
+        $output .= '<a href="' . esc_url($link_url) . '"' . $target . $current . ' role="menuitem">';
+        if ($has_logo) {
+            $output .= '<img class="megamenu__logo-img" src="' . esc_attr($logo_url) . '" alt="' . esc_attr($item['title']) . '" />';
+        } else {
+            $output .= esc_html($item['title']);
+        }
         $output .= '</a>';
     }
     
@@ -377,33 +483,54 @@ function render_megamenu_panel_content($items) {
  * Render a mobile menu item
  */
 function render_megamenu_mobile_item($item, $has_children, $is_current) {
-    $output = '<div class="megamenu__mobile-item">';
+    // Check for logo image
+    $has_logo = !empty($item['media_link']);
+    $item_classes = 'megamenu__mobile-item';
+    if ($has_logo) {
+        $item_classes .= ' has-logo';
+    }
+    
+    // Convert to relative URL for cross-device compatibility
+    $logo_url = $has_logo ? megamenu_get_relative_image_url($item['media_link']) : '';
+    
+    $output = '<div class="' . esc_attr($item_classes) . '">';
     
     if ($has_children) {
         $submenu_id = 'megamenu-mobile-submenu-' . $item['id'];
         
-        // Accordion trigger
-        $output .= '<button class="megamenu__mobile-trigger" aria-expanded="false" aria-controls="' . esc_attr($submenu_id) . '">';
-        $output .= '<span>' . esc_html($item['title']) . '</span>';
+        // Container for link + accordion trigger
+        $output .= '<div class="megamenu__mobile-item-header">';
+        
+        // Link area (most of the width) - navigates to the page
+        $link_url = !empty($item['url']) && $item['url'] !== '#' ? $item['url'] : '#';
+        $output .= '<a href="' . esc_url($link_url) . '" class="megamenu__mobile-link">';
+        if ($has_logo) {
+            $output .= '<img class="megamenu__mobile-logo" src="' . esc_attr($logo_url) . '" alt="' . esc_attr($item['title']) . '" />';
+        } else {
+            $output .= '<span>' . esc_html($item['title']) . '</span>';
+        }
+        $output .= '</a>';
+        
+        // Accordion trigger button (+/- button on right)
+        $output .= '<button class="megamenu__mobile-trigger" aria-expanded="false" aria-controls="' . esc_attr($submenu_id) . '" aria-label="Toggle submenu for ' . esc_attr($item['title']) . '">';
+        $output .= '<span class="megamenu__mobile-trigger-icon"></span>';
         $output .= '</button>';
         
-        // Submenu
+        $output .= '</div>';
+        
+        // Submenu - no "View" links
         $output .= '<div class="megamenu__mobile-submenu" id="' . esc_attr($submenu_id) . '">';
-        
-        // If the parent item itself has a URL, include it
-        if ($item['url'] && $item['url'] !== '#') {
-            $output .= '<a href="' . esc_url($item['url']) . '" class="megamenu__mobile-sublink">';
-            $output .= 'View ' . esc_html($item['title']);
-            $output .= '</a>';
-        }
-        
         $output .= render_megamenu_mobile_children($item['children']);
         $output .= '</div>';
     } else {
-        // Simple link
+        // Simple link - with logo if available
         $current = $is_current ? ' aria-current="page"' : '';
         $output .= '<a href="' . esc_url($item['url']) . '" class="megamenu__mobile-link"' . $current . '>';
-        $output .= esc_html($item['title']);
+        if ($has_logo) {
+            $output .= '<img class="megamenu__mobile-logo" src="' . esc_attr($logo_url) . '" alt="' . esc_attr($item['title']) . '" />';
+        } else {
+            $output .= esc_html($item['title']);
+        }
         $output .= '</a>';
     }
     
@@ -423,14 +550,11 @@ function render_megamenu_mobile_children($items, $level = 2) {
         $level_class = 'level-' . $level;
         
         if ($has_children && $level < 4) {
-            // Group title for items with children
-            $output .= '<div class="megamenu__mobile-group-title">' . esc_html($item['title']) . '</div>';
-            
-            // If the item has a URL, show it
+            // Group title for items with children - make it a link if URL exists
             if ($item['url'] && $item['url'] !== '#') {
-                $output .= '<a href="' . esc_url($item['url']) . '" class="megamenu__mobile-sublink ' . $level_class . '">';
-                $output .= 'View All';
-                $output .= '</a>';
+                $output .= '<a href="' . esc_url($item['url']) . '" class="megamenu__mobile-group-title">' . esc_html($item['title']) . '</a>';
+            } else {
+                $output .= '<div class="megamenu__mobile-group-title">' . esc_html($item['title']) . '</div>';
             }
             
             $output .= render_megamenu_mobile_children($item['children'], $level + 1);

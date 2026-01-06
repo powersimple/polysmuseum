@@ -975,10 +975,114 @@ add_filter( 'nav_menu_item_title', 'kia_custom_menu_title_notes', 10, 2 );
 
 
 
+/* MENU BACKGROUND IMAGE - for logo display in megamenu */
 
+function kia_custom_fields_menu_bg_image( $item_id, $item ) {
+    wp_nonce_field( '_menu_bg_image_nonce', '_menu_bg_image_nonce_name' );
+    $_menu_bg_image = get_post_meta( $item_id, '_menu_bg_image', true );
+    ?>
+    <div class="field-_menu_bg_image description-wide" style="margin: 5px 0;">
+        <span class="description"><?php _e( "Menu Background Image (Logo)", 'menu_bg_image' ); ?></span>
+        <br />
+        <input type="hidden" class="nav-menu-id" value="<?php echo $item_id; ?>" />
+        <div class="menu-bg-image-holder" style="margin-top: 5px;">
+            <input type="text" 
+                   name="_menu_bg_image[<?php echo $item_id; ?>]" 
+                   id="menu-bg-image-<?php echo $item_id; ?>" 
+                   class="menu-bg-image-input"
+                   size="60" 
+                   value="<?php echo esc_attr( $_menu_bg_image ); ?>" 
+                   placeholder="Enter image URL or use media button" />
+            <button type="button" 
+                    class="button menu-bg-image-upload" 
+                    data-target="menu-bg-image-<?php echo $item_id; ?>"
+                    style="margin-left: 5px;">
+                <?php _e( 'Select Image', 'menu_bg_image' ); ?>
+            </button>
+            <button type="button" 
+                    class="button menu-bg-image-clear" 
+                    data-target="menu-bg-image-<?php echo $item_id; ?>"
+                    style="margin-left: 5px;">
+                <?php _e( 'Clear', 'menu_bg_image' ); ?>
+            </button>
+            <?php if ( ! empty( $_menu_bg_image ) ) : ?>
+            <div class="menu-bg-image-preview" style="margin-top: 10px;">
+                <img src="<?php echo esc_url( $_menu_bg_image ); ?>" style="max-height: 50px; width: auto;" />
+            </div>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php
+}
 
+function kia_nav_update_menu_bg_image( $menu_id, $menu_item_db_id ) {
+    if ( ! isset( $_POST['_menu_bg_image_nonce_name'] ) || ! wp_verify_nonce( $_POST['_menu_bg_image_nonce_name'], '_menu_bg_image_nonce' ) ) {
+        return $menu_id;
+    }
 
+    if ( isset( $_POST['_menu_bg_image'][$menu_item_db_id] ) ) {
+        $sanitized_data = esc_url_raw( $_POST['_menu_bg_image'][$menu_item_db_id] );
+        if ( ! empty( $sanitized_data ) ) {
+            update_post_meta( $menu_item_db_id, '_menu_bg_image', $sanitized_data );
+        } else {
+            delete_post_meta( $menu_item_db_id, '_menu_bg_image' );
+        }
+    }
+}
 
+add_action( 'wp_nav_menu_item_custom_fields', 'kia_custom_fields_menu_bg_image', 10, 2 );
+add_action( 'wp_update_nav_menu_item', 'kia_nav_update_menu_bg_image', 10, 2 );
 
+// Enqueue media uploader script for menu admin
+function kia_enqueue_menu_bg_image_script() {
+$screen = get_current_screen();
+if ( $screen && $screen->base === 'nav-menus' ) {
+wp_enqueue_media();
+?>
+<script type="text/javascript">
+jQuery(document).ready(function($) {
+$(document).on('click', '.menu-bg-image-upload', function(e) {
+e.preventDefault();
+var button = $(this);
+var targetId = button.data('target');
+var targetInput = $('#' + targetId);
+                
+var frame = wp.media({
+title: 'Select Menu Logo Image',
+button: { text: 'Use this image' },
+multiple: false,
+library: { type: 'image' }
+});
+                
+frame.on('select', function() {
+var attachment = frame.state().get('selection').first().toJSON();
+targetInput.val(attachment.url);
+                    
+var holder = targetInput.closest('.menu-bg-image-holder');
+var preview = holder.find('.menu-bg-image-preview');
+if (preview.length === 0) {
+holder.append('<div class="menu-bg-image-preview" style="margin-top: 10px;"><img src="' + attachment.url + '" style="max-height: 50px; width: auto;" /></div>');
+} else {
+preview.find('img').attr('src', attachment.url);
+}
+});
+                
+frame.open();
+});
+            
+$(document).on('click', '.menu-bg-image-clear', function(e) {
+e.preventDefault();
+var button = $(this);
+var targetId = button.data('target');
+var targetInput = $('#' + targetId);
+targetInput.val('');
+targetInput.closest('.menu-bg-image-holder').find('.menu-bg-image-preview').remove();
+});
+});
+</script>
+<?php
+}
+}
+add_action( 'admin_footer', 'kia_enqueue_menu_bg_image_script' );
 
 ?>

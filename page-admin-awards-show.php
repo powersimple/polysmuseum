@@ -98,8 +98,8 @@ $counter=0;
  
 </div>
 <?php
-  $vrc = 'virtual-red-carpet-5';
-  $ceremony = 'polys5';
+  $vrc = 'virtual-red-carpet-6';
+  $ceremony = 'polys6';
 
     if(@$_GET['vrc']){
       $vrc = $_GET['vrc'];

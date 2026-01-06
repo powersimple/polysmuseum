@@ -166,9 +166,11 @@ $path= parse_url(get_stylesheet_directory_uri())['path'];
                         if (!this.container) return;
 
                         this.desktopNav = this.container.querySelector('.megamenu__bar');
-                        this.mobileNav = this.container.querySelector('.megamenu__mobile');
                         this.mobileToggle = this.container.querySelector('.megamenu__toggle');
-                        this.overlay = this.container.querySelector('.megamenu__overlay');
+                        
+                        // Mobile elements are now outside the nav container
+                        this.mobileNav = document.querySelector('.megamenu__mobile');
+                        this.overlay = document.querySelector('.megamenu__overlay');
 
                         this._bindDesktopEvents();
                         this._bindMobileEvents();

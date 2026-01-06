@@ -1575,7 +1575,7 @@ function getSessionDetail($child,$counter){
 }
 
 
-function ros_items($session){
+function ros_items($session, $event_title = ''){
     if(array_key_exists("children",$session)){
         
    

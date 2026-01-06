@@ -54,9 +54,11 @@ class MegaMenu {
 
         // Cache DOM references
         this.desktopNav = this.container.querySelector('.megamenu__bar');
-        this.mobileNav = this.container.querySelector('.megamenu__mobile');
         this.mobileToggle = this.container.querySelector('.megamenu__toggle');
-        this.overlay = this.container.querySelector('.megamenu__overlay');
+        
+        // Mobile nav and overlay are siblings of .megamenu, not children
+        this.mobileNav = document.querySelector('.megamenu__mobile');
+        this.overlay = document.querySelector('.megamenu__overlay');
 
         // Bind events
         this._bindDesktopEvents();
@@ -282,16 +284,14 @@ class MegaMenu {
             });
         }
 
-        // Accordion triggers
-        if (this.mobileNav) {
-            this.mobileNav.addEventListener('click', (e) => {
-                const trigger = e.target.closest('.megamenu__mobile-trigger');
-                if (trigger) {
-                    e.preventDefault();
-                    this._toggleMobileAccordion(trigger);
-                }
-            });
-        }
+        // Accordion triggers - use document delegation for reliability
+        document.addEventListener('click', (e) => {
+            const trigger = e.target.closest('.megamenu__mobile-trigger');
+            if (trigger) {
+                e.preventDefault();
+                this._toggleMobileAccordion(trigger);
+            }
+        });
     }
 
     _toggleMobileNav() {
@@ -332,18 +332,92 @@ class MegaMenu {
     }
 
     _toggleMobileAccordion(trigger) {
-        const submenu = trigger.nextElementSibling;
+        // Find submenu - try aria-controls first, then nextElementSibling
+        let submenu = null;
+        const controlsId = trigger.getAttribute('aria-controls');
+        if (controlsId) {
+            submenu = document.getElementById(controlsId);
+        }
+        if (!submenu) {
+            submenu = trigger.nextElementSibling;
+        }
         if (!submenu || !submenu.classList.contains('megamenu__mobile-submenu')) return;
 
         const isOpen = trigger.getAttribute('aria-expanded') === 'true';
 
         if (isOpen) {
-            trigger.setAttribute('aria-expanded', 'false');
-            submenu.classList.remove('is-open');
+            this._closeAccordionAnimated(trigger, submenu);
         } else {
-            trigger.setAttribute('aria-expanded', 'true');
-            submenu.classList.add('is-open');
+            // Close all other accordions first (mutually exclusive)
+            this._closeAllOtherAccordions(trigger);
+            this._openAccordionAnimated(trigger, submenu);
         }
+    }
+
+    _openAccordionAnimated(trigger, submenu) {
+        // Mark as open immediately for ARIA
+        trigger.setAttribute('aria-expanded', 'true');
+        submenu.classList.add('is-open');
+        
+        // Set up for animation
+        submenu.style.height = '0';
+        submenu.style.overflow = 'hidden';
+        submenu.style.transition = 'height 0.3s ease-out';
+        
+        // Force reflow then animate
+        submenu.offsetHeight;
+        submenu.style.height = submenu.scrollHeight + 'px';
+        
+        // Clean up after animation
+        setTimeout(() => {
+            submenu.style.height = '';
+            submenu.style.overflow = '';
+            submenu.style.transition = '';
+        }, 300);
+    }
+
+    _closeAccordionAnimated(trigger, submenu) {
+        // Set current height explicitly for animation
+        submenu.style.height = submenu.scrollHeight + 'px';
+        submenu.style.overflow = 'hidden';
+        submenu.style.transition = 'height 0.3s ease-out';
+        
+        // Force reflow then animate to 0
+        submenu.offsetHeight;
+        submenu.style.height = '0';
+        
+        trigger.setAttribute('aria-expanded', 'false');
+        
+        // Clean up after animation
+        setTimeout(() => {
+            submenu.classList.remove('is-open');
+            submenu.style.height = '';
+            submenu.style.overflow = '';
+            submenu.style.transition = '';
+        }, 300);
+    }
+
+    _closeAllOtherAccordions(exceptTrigger) {
+        // Find all open triggers in the mobile nav
+        const allTriggers = document.querySelectorAll('.megamenu__mobile-trigger[aria-expanded="true"]');
+        
+        allTriggers.forEach(trigger => {
+            if (trigger === exceptTrigger) return;
+            
+            // Find submenu - try aria-controls first, then nextElementSibling
+            let submenu = null;
+            const controlsId = trigger.getAttribute('aria-controls');
+            if (controlsId) {
+                submenu = document.getElementById(controlsId);
+            }
+            if (!submenu) {
+                submenu = trigger.nextElementSibling;
+            }
+            
+            if (submenu && submenu.classList.contains('megamenu__mobile-submenu')) {
+                this._closeAccordionAnimated(trigger, submenu);
+            }
+        });
     }
 
     // =========================================================================
