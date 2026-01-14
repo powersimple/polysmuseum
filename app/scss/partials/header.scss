@@ -1,63 +1,75 @@
 @use "globals" as *;
 
-    #header {
-        //  background-color: $darkest_gray;
-        height: 50px;
-        z-index: 100;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
+// =============================================================================
+// Header - Fixed navigation container
+// =============================================================================
+#header {
+    // Height is now dynamic (megamenu 50px + optional sectionbar)
+    // The header-offset.js utility measures actual height
+    min-height: 50px;
+    z-index: 100;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%; // Use 100% not 100vw to avoid scrollbar width issues
+    max-width: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-sizing: border-box;
+    overflow-x: clip;
+    
+    // Reset Bootstrap navbar padding
+    &.navbar,
+    &.navbar-custom,
+    &.navbar-fixed-top {
         padding: 0 !important;
         margin: 0 !important;
-        border: none !important;
-        
-        // Reset Bootstrap navbar padding
-        &.navbar,
-        &.navbar-custom,
-        &.navbar-fixed-top {
-            padding: 0 !important;
-            margin: 0 !important;
-            min-height: 50px !important;
-            height: 50px !important;
-        }
-        
-        // Reset container inside header
-        > .container {
-            padding: 0 !important;
-            margin: 0 !important;
-            max-width: 100% !important;
-            width: 100% !important;
-        }
-        
-        @media(max-width: 767px){
-            margin-bottom: 0 !important;
-        }
+        min-height: 50px !important;
+        height: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
     }
-    #logo {
-        position: relative;
-     
-        width:260px;
-        background: url(images/logo/PolysLogo.png) no-repeat;
-        @media(min-width:768px) {
-            top: -15px;
-        }
-        a{
-            width:100%;
-            height: 50px;
-                display: block;
-            
-        }
+    
+    // Reset container inside header
+    > .container {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        height: 50px;
+        box-sizing: border-box;
+        min-width: 0; // Allow shrinking
     }
+    
+    @media(max-width: 767px){
+        margin-bottom: 0 !important;
+    }
+}
 
+#logo {
+    position: relative;
+    width: 260px;
+    background: url(images/logo/PolysLogo.png) no-repeat;
+    
+    @media(min-width: 768px) {
+        top: -15px;
+    }
+    
+    a {
+        width: 100%;
+        height: 50px;
+        display: block;
+    }
+}
 
 #site-title {
-
     color: $light_blue;
     font-weight: 600;
     padding-top: 3px;
-    display:none;
+    display: none;
 }
 
 @media (min-width: 768px) {
@@ -114,35 +126,51 @@
     margin-bottom:-5px !important;
     opacity:.8;
 }
-//*Heros*//
 
-.home-section {
+.home-section,
+#dynamic-hero,
+.hero-content {
     position: relative;
-    background-position: top center;
- //   padding-bottom:20%;//default
+    top: auto;
+    margin-top: var(--total-header-offset, 50px);
+    width: 100%;
+    max-width: none;
+    background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
-    top:100px;
+    background-attachment: scroll;
+    transform: none;
 }
+
+.hero-cover-10 {
+    min-height: 10vh;
+}
+
 .hero-cover-20 {
-    background-size: cover !important;
-    padding-bottom:20%;
+    min-height: 20vh;
 }
+
 .hero-cover-25 {
-    background-size: cover !important;
-  //  padding-bottom:25%;
-    
+    min-height: 25vh;
 }
 
 .hero-cover-50 {
-    background-size: cover !important;
-    padding-bottom:50%;
+    min-height: calc(100vh - var(--total-header-offset, 50px));
 }
-.parallax{
+
+.parallax {
     background-attachment: fixed;
-      opacity: 1;
-  transform: scale(1);
-  transition: opacity 0.3s, transform 0.3s;
+    
+    &#dynamic-hero,
+    &.hero-content,
+    &.home-section,
+    &.hero-cover-10,
+    &.hero-cover-20,
+    &.hero-cover-25,
+    &.hero-cover-50 {
+        background-attachment: scroll;
+        transform: none;
+    }
 }
 .alert-banner{
     font-size:2rem;

@@ -1,0 +1,225 @@
+/**
+ * =============================================================================
+ * Section Bar - L2 Navigation from Megamenu
+ * =============================================================================
+ * Displays Level 2 items from the megamenu (children of active L1 item).
+ * Brand styling determined by data-brand attribute on .sectionbar element.
+ * 
+ * Structure:
+ *   .sectionbar[data-brand]
+ *     .sectionbar__inner
+ *       .sectionbar__list > .sectionbar__item > .sectionbar__link
+ * 
+ * Brand fonts (applied only to section bar links):
+ *   - Academy: Raleway 600
+ *   - The Polys: AgencyFB Bold
+ *   - MetaTr@versal: Goldman Regular
+ *   - RPG: Exodar Outline Light
+ * =============================================================================
+ */
+
+@use "globals" as *;
+
+// =============================================================================
+// Font Face - Exodar (RPG brand font, scoped to section bar only)
+// =============================================================================
+@font-face {
+    font-family: 'Exodar';
+    src: url('fonts/ExodarOutline-Light.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+// =============================================================================
+// Brand Color Anchors (harmonized with Polys gold #E79633)
+// =============================================================================
+$brand-academy: #275689;      // Metallic blue
+$brand-polys: #E79633;        // Gold anchor
+$brand-metatraversal: #9934a6; // Violet
+$brand-rpg: #135607;          // Green
+
+// Gradient definitions - metallic style with dark overlay for AA contrast
+// Each gradient goes from lighter highlight to darker base
+$gradient-academy: linear-gradient(
+    135deg,
+    rgba(#4a8fd9, 0.9) 0%,
+    rgba($brand-academy, 0.95) 40%,
+    rgba(darken($brand-academy, 15%), 1) 100%
+);
+
+$gradient-polys: linear-gradient(
+    135deg,
+    rgba(lighten($brand-polys, 15%), 0.9) 0%,
+    rgba($brand-polys, 0.95) 40%,
+    rgba(darken($brand-polys, 20%), 1) 100%
+);
+
+$gradient-metatraversal: linear-gradient(
+    135deg,
+    rgba(lighten($brand-metatraversal, 15%), 0.9) 0%,
+    rgba($brand-metatraversal, 0.95) 40%,
+    rgba(darken($brand-metatraversal, 20%), 1) 100%
+);
+
+$gradient-rpg: linear-gradient(
+    135deg,
+    rgba(lighten($brand-rpg, 20%), 0.9) 0%,
+    rgba($brand-rpg, 0.95) 40%,
+    rgba(darken($brand-rpg, 10%), 1) 100%
+);
+
+// =============================================================================
+// Section Bar Variables
+// =============================================================================
+$sectionbar-height: 36px;
+$sectionbar-text-color: #ffffff;
+$sectionbar-text-hover: #ffffff;
+
+// =============================================================================
+// Main Container
+// =============================================================================
+.sectionbar {
+    width: 100%; // Use 100% not 100vw to avoid scrollbar width issues
+    max-width: 100%;
+    position: relative;
+    box-sizing: border-box;
+    overflow-x: clip;
+    
+    // Dark overlay for AA contrast guarantee
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+        z-index: 1;
+    }
+}
+
+// =============================================================================
+// Brand-specific backgrounds
+// =============================================================================
+.sectionbar[data-brand="academy"] {
+    background: $gradient-academy;
+}
+
+.sectionbar[data-brand="polys"] {
+    background: $gradient-polys;
+}
+
+.sectionbar[data-brand="metatraversal"] {
+    background: $gradient-metatraversal;
+}
+
+.sectionbar[data-brand="rpg"] {
+    background: $gradient-rpg;
+}
+
+// =============================================================================
+// Inner Container
+// =============================================================================
+.sectionbar__inner {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+// =============================================================================
+// List
+// =============================================================================
+.sectionbar__list {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    
+    @media (max-width: 767px) {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        &::-webkit-scrollbar { display: none; }
+    }
+}
+
+.sectionbar__item {
+    flex: 0 0 auto;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+// =============================================================================
+// Links - Base styles
+// =============================================================================
+.sectionbar__link {
+    display: flex;
+    align-items: center;
+    height: $sectionbar-height;
+    padding: 0 1rem;
+    color: $sectionbar-text-color;
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    position: relative;
+    transition: text-shadow 0.2s ease;
+    
+    // Ensure AA contrast - white on dark gradient overlay
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    
+    &:hover,
+    &:focus {
+        color: $sectionbar-text-hover;
+        text-decoration: none;
+        text-shadow: 0 0 8px rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    
+    &:focus {
+        outline: 2px solid rgba(255, 255, 255, 0.8);
+        outline-offset: -2px;
+    }
+    
+    // Current page indicator - subtle underline
+    &.is-current,
+    &[aria-current="page"] {
+        text-decoration: underline;
+        text-underline-offset: 4px;
+        text-decoration-thickness: 2px;
+    }
+}
+
+// =============================================================================
+// Section bar links - unified Raleway 600 for all brands
+// =============================================================================
+.sectionbar__link {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 600;
+}
+
+// =============================================================================
+// Mobile Adjustments
+// =============================================================================
+@media (max-width: 767px) {
+    .sectionbar__inner {
+        padding: 0 0.5rem;
+    }
+    
+    .sectionbar__link {
+        padding: 0 0.75rem;
+        font-size: 0.8rem;
+    }
+}
+
+// =============================================================================
+// Reduced Motion
+// =============================================================================
+@media (prefers-reduced-motion: reduce) {
+    .sectionbar__link {
+        transition: none;
+    }
+}

@@ -4,7 +4,7 @@
 
     function admin_q() {
 		wp_enqueue_style('admin-styles', get_template_directory_uri().'/profiler/admin.css');
-		wp_enqueue_style( 'font-awesome','https://use.fontawesome.com/releases/v5.6.3/css/all.css');
+		wp_enqueue_style( 'font-awesome','https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');
 
 		wp_register_script('admin_js', get_template_directory_uri() . '/profiler/admin.js'); 
         wp_enqueue_script('admin_js');

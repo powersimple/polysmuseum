@@ -1,0 +1,410 @@
+/**
+ * =============================================================================
+ * Footer Brand Panels - Matching Section Bar Aesthetics
+ * =============================================================================
+ * Brand-specific footer panel + persistent Academy footer
+ * Uses metallic gradients matching the header section bar
+ * 
+ * Structure:
+ *   .footer
+ *     .footer-brand[data-brand] (optional, brand-specific panel)
+ *     .footer-academy (always visible, persistent)
+ * =============================================================================
+ */
+
+@use "globals" as *;
+
+// =============================================================================
+// Brand Color Anchors (same as section bar)
+// =============================================================================
+$brand-academy: #275689;
+$brand-polys: #E79633;
+$brand-metatraversal: #9934a6;
+$brand-rpg: #135607;
+
+// Gradient definitions - metallic style
+$gradient-academy: linear-gradient(
+    135deg,
+    rgba(#4a8fd9, 0.9) 0%,
+    rgba($brand-academy, 0.95) 40%,
+    rgba(darken($brand-academy, 15%), 1) 100%
+);
+
+$gradient-polys: linear-gradient(
+    135deg,
+    rgba(lighten($brand-polys, 15%), 0.9) 0%,
+    rgba($brand-polys, 0.95) 40%,
+    rgba(darken($brand-polys, 20%), 1) 100%
+);
+
+$gradient-metatraversal: linear-gradient(
+    135deg,
+    rgba(lighten($brand-metatraversal, 15%), 0.9) 0%,
+    rgba($brand-metatraversal, 0.95) 40%,
+    rgba(darken($brand-metatraversal, 20%), 1) 100%
+);
+
+$gradient-rpg: linear-gradient(
+    135deg,
+    rgba(lighten($brand-rpg, 20%), 0.9) 0%,
+    rgba($brand-rpg, 0.95) 40%,
+    rgba(darken($brand-rpg, 10%), 1) 100%
+);
+
+// =============================================================================
+// Footer Container - Sticky footer support
+// =============================================================================
+.footer {
+    margin-top: auto; // Push to bottom in flex container
+    width: 100%;
+    flex-shrink: 0; // Sticky footer: don't shrink
+}
+
+// =============================================================================
+// Brand-specific Footer Panel
+// =============================================================================
+.footer-brand {
+    position: relative;
+    padding: 0.5rem 0;
+    
+    // Dark overlay for AA contrast
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+        z-index: 1;
+    }
+}
+
+// Brand-specific backgrounds
+.footer-brand[data-brand="academy"] {
+    background: $gradient-academy;
+}
+
+.footer-brand[data-brand="polys"] {
+    background: $gradient-polys;
+}
+
+.footer-brand[data-brand="metatraversal"] {
+    background: $gradient-metatraversal;
+}
+
+.footer-brand[data-brand="rpg"] {
+    background: $gradient-rpg;
+}
+
+.footer-brand__inner {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    min-height: 28px;
+    
+    @media (max-width: 767px) {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.375rem 0.75rem;
+        
+        > * {
+            flex: 0 0 auto;
+        }
+    }
+}
+
+.footer-brand__relationship {
+    color: #fff;
+    font-size: 0.8125rem;
+    margin: 0;
+    padding: 0;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
+    white-space: normal;
+}
+
+.footer-brand__nav {
+    flex: 0 0 auto;
+    
+    ul {
+        display: flex;
+        flex-wrap: wrap;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 0 0.75rem;
+        align-items: center;
+    }
+    
+    li {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    a {
+        display: block;
+        color: #fff;
+        text-decoration: none;
+        font-family: 'Raleway', sans-serif;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        line-height: 1.2;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        transition: text-shadow 0.2s ease;
+        
+        &:hover,
+        &:focus {
+            color: #fff;
+            text-decoration: underline;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+        
+        &:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.8);
+            outline-offset: 2px;
+        }
+    }
+}
+
+.footer-brand__social {
+    flex: 0 0 auto;
+    margin-left: auto;
+    
+    ul {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 0.375rem;
+        align-items: center;
+    }
+    
+    li {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        color: #fff;
+        font-size: 0.875rem;
+        text-decoration: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        transition: background 0.2s ease, transform 0.2s ease;
+        
+        &:hover,
+        &:focus {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.1);
+        }
+        
+        &:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.8);
+            outline-offset: 2px;
+        }
+    }
+}
+
+// =============================================================================
+// All footer links use AgencyR font (no brand-specific overrides)
+// =============================================================================
+
+// =============================================================================
+// Persistent Academy Footer
+// =============================================================================
+.footer-academy {
+    background: linear-gradient(
+        180deg,
+        rgba(darken($brand-academy, 25%), 1) 0%,
+        rgba(#0a0a0a, 1) 100%
+    );
+    padding: 0.5rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-academy__inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    min-height: 28px;
+    
+    @media (max-width: 767px) {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.375rem 0.75rem;
+        
+        > * {
+            flex: 0 0 auto;
+        }
+    }
+}
+
+.footer-academy__brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
+    align-items: center;
+}
+
+.footer-academy__name {
+    color: #fff;
+    font-family: 'Raleway', sans-serif;
+    font-weight: 700;
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    text-decoration: none;
+    transition: color 0.2s ease;
+    
+    &:hover,
+    &:focus {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: underline;
+    }
+    
+    &:focus {
+        outline: 2px solid rgba(255, 255, 255, 0.6);
+        outline-offset: 2px;
+    }
+}
+
+.footer-academy__tagline {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.625rem;
+    line-height: 1.2;
+    margin: 0;
+    padding: 0;
+}
+
+.footer-academy__nav {
+    flex: 0 0 auto;
+    
+    ul {
+        display: flex;
+        flex-wrap: wrap;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 0 0.75rem;
+        align-items: center;
+    }
+    
+    li {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    a {
+        display: block;
+        color: rgba(255, 255, 255, 0.7);
+        text-decoration: none;
+        font-family: 'Raleway', sans-serif;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        line-height: 1.2;
+        transition: color 0.2s ease;
+        
+        &:hover,
+        &:focus {
+            color: #fff;
+            text-decoration: underline;
+        }
+        
+        &:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.6);
+            outline-offset: 2px;
+        }
+    }
+}
+
+.footer-academy__social {
+    flex: 0 0 auto;
+    margin-left: auto;
+    
+    ul {
+        display: flex;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        gap: 0.375rem;
+        align-items: center;
+    }
+    
+    li {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    
+    a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.875rem;
+        text-decoration: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        transition: color 0.2s ease, background 0.2s ease;
+        
+        &:hover,
+        &:focus {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        &:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.6);
+            outline-offset: 2px;
+        }
+    }
+}
+
+
+.footer-academy__copyright {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.625rem;
+    line-height: 1.2;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0;
+}
+
+// =============================================================================
+// Reduced Motion
+// =============================================================================
+@media (prefers-reduced-motion: reduce) {
+    .footer-brand__nav a,
+    .footer-brand__social a,
+    .footer-academy__nav a,
+    .footer-academy__social a {
+        transition: none;
+    }
+}

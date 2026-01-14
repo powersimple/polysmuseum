@@ -36,7 +36,7 @@
      if(@$embed_video_url != ''){
        $embed_video_url;
    ?>
-  <a href="#<?=$child['slug']?>" onclick="playSessionVideo('<?=$embed_video_url?>');" class='watch video-button' title="WATCH"><i  class="fa fa-youtube"></i></a>
+  <a href="#<?=$child['slug']?>" onclick="playSessionVideo('<?=$embed_video_url?>');" class='watch video-button' title="WATCH"><i class="fa-brands fa-youtube"></i></a>
    
    <?php
       }

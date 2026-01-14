@@ -184,7 +184,9 @@ function getProfileContact(info) {
                 contact[f] = ''
             }
         } else {
-            contact[f] = '<a class="contact fa fa-' + f + '" href="' + info[f] + '" target=_new" title="' + info[f] + '"></a><br>'
+            // FA6 brands icons require fa-brands prefix; twitter renamed to x-twitter
+            var iconName = (f === 'twitter') ? 'x-twitter' : f;
+            contact[f] = '<a class="contact fa-brands fa-' + iconName + '" href="' + info[f] + '" target=_new" title="' + info[f] + '"></a><br>'
         }
 
     }
@@ -200,7 +202,9 @@ function getProfileContact(info) {
 
 function showSocial(info, f) {
     if (info[f] != undefined) {
-        return info[f] = '<a class="contact social-icon fa fa-' + f + '" href="' + info[f] + '" target=_new" title="' + info[f] + '"></a>'
+        // FA6 brands icons require fa-brands prefix; twitter renamed to x-twitter
+        var iconName = (f === 'twitter') ? 'x-twitter' : f;
+        return info[f] = '<a class="contact social-icon fa-brands fa-' + iconName + '" href="' + info[f] + '" target=_new" title="' + info[f] + '"></a>'
     } else {
         return ''
     }

@@ -14,6 +14,31 @@
 require_once get_template_directory() . '/functions/functions-audit.php';
 require_once get_template_directory() . '/functions/functions-exhibits.php';
 
+// Prevent caching so menu changes are reflected immediately
+if (!headers_sent()) {
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
+// Also tell WordPress caching plugins to skip this page
+if (!defined('DONOTCACHEPAGE')) {
+    define('DONOTCACHEPAGE', true);
+}
+
+// Clear WordPress nav menu cache to ensure fresh data
+wp_cache_delete('nav_menu_items', 'nav_menu_items');
+if (function_exists('wp_cache_flush_group')) {
+    wp_cache_flush_group('nav_menu_items');
+}
+// Clear all nav menu related caches
+$all_menus = wp_get_nav_menus();
+foreach ($all_menus as $menu) {
+    wp_cache_delete($menu->term_id, 'nav_menu_items');
+    wp_cache_delete('nav_menu_items-' . $menu->term_id, 'nav_menu_items');
+}
+// Force WordPress to refresh post meta cache
+wp_cache_flush();
+
 get_header();
 
 // Security check

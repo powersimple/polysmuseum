@@ -18,17 +18,20 @@ DO NOT EDIT IN STYLE.CSS
 @use "partials/admin";
 //@use "partials/guide";
 @use "partials/megamenu";
+@use "partials/brandbar" as sectionbar;  // Section bar - L2 nav from megamenu
 @use "partials/drawer";
 @use "partials/jqueryui";
 @use "partials/loader";
 @use "partials/header";
 @use "partials/nav";
 @use "partials/footer";
+@use "partials/footer-brand";  // Footer brand panels with metallic gradients
 @use "partials/filters";
 @use "partials/main";
 @use "partials/sections";
 @use "partials/video";
 @use "partials/hero";
+@use "partials/page-frame";  // Canonical page layout system
 @use "partials/sponsors";
 @use "partials/slick";
 @use "partials/profile";

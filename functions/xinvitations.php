@@ -633,10 +633,10 @@ foreach($invitation_statuses as $is => $invitation_status){
                     print "NO EMAIL";
                 }
                 if($linkedin !=""){
-                    print " | <a href='$linkedin' target='_blank'><i class='fa fa-linkedin'></i></a>";
+                    print " | <a href='$linkedin' target='_blank'><i class='fa-brands fa-linkedin'></i></a>";
                 }
                 if($email !=""){
-                    print " | <a href='$twitter' target='_blank'><i class='fa fa-twitter'></i></a>";
+                    print " | <a href='$twitter' target='_blank'><i class='fa-brands fa-x-twitter'></i></a>";
                 }
                 print "<span class='status-notes'>";
                 if($point_of_contact !=""){

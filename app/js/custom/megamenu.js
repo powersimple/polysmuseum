@@ -1,3 +1,23 @@
+/**
+ * =============================================================================
+ * LEGACY CODE - jQuery Dependent
+ * =============================================================================
+ * This file contains the OLD jQuery-based megamenu builder.
+ * It renders menu HTML to #main-menu element.
+ * 
+ * MIGRATION STATUS: Replaced by megamenu-controller.js + PHP renderer
+ * DEPENDENCIES: jQuery, menus global object from REST API
+ * USED BY: Pages that still use #main-menu instead of .megamenu
+ * 
+ * NEW SYSTEM: 
+ *   - PHP: functions-megamenu.php renders .megamenu markup server-side
+ *   - JS:  megamenu-controller.js handles interactions (no jQuery)
+ * 
+ * TO REMOVE: When all pages use the new PHP-rendered .megamenu,
+ * this file can be removed from the Vite bundle entry points.
+ * =============================================================================
+ */
+
 function megaMenu() {
     // Check if menus data is available
     if (!menus || !menus.megamenu || !menus.megamenu.menu_levels) {

@@ -168,7 +168,9 @@ return ob_get_clean();
             
         }
         if($use_font_awesome == true){
-            $label = "<i class='fa fa-$var social-icon'></i>";
+            // fa-link is a solid icon, all others are brands
+            $icon_prefix = ($var == 'link') ? 'fa-solid' : 'fa-brands';
+            $label = "<i class='$icon_prefix fa-$var social-icon'></i>";
         } else {
             
             $label = $link;

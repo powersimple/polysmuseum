@@ -123,13 +123,13 @@ function getProfileCard(this_profile){
         
         if(!hide_social_icons){
             if(info.twitter != undefined){
-                social +='<a target="_new" class="twitter" href="'+info.twitter+'"><i class="fa fa-x-twitter social-icon" title="'+this_profile.title+' on Twitter"></i></a>'
+                social +='<a target="_new" class="twitter" href="'+info.twitter+'"><i class="fa-brands fa-x-twitter social-icon" title="'+this_profile.title+' on Twitter"></i></a>'
             }
             if(info.linkedin != undefined){
-                social +='<a target="_new" class="linkedin" href="'+info.linkedin+'"><i class="fa fa-linkedin social-icon" title="'+this_profile.title+' on LinkedIn"></i></a>'
+                social +='<a target="_new" class="linkedin" href="'+info.linkedin+'"><i class="fa-brands fa-linkedin social-icon" title="'+this_profile.title+' on LinkedIn"></i></a>'
             }
             if(info.github != undefined){
-                social +='<a target="_new" class="github" href="'+info.github+'"><i class="fa fa-github social-icon" title="'+this_profile.title+' on GitHub"></i></a>'
+                social +='<a target="_new" class="github" href="'+info.github+'"><i class="fa-brands fa-github social-icon" title="'+this_profile.title+' on GitHub"></i></a>'
             }
         }
         if(social != ''){
@@ -590,7 +590,7 @@ function displayRunOfShowTable(runOfShow){
                         return match ? match + '&autoplay=1&rel=0' : '?autoplay=1&rel=0';
                     });
          //       console.log("event"+n,runOfShow.sessions[n].info.featured_media)
-                sessions += '<a href="#'+runOfShow.sessions[n].info.slug+'" class="watch video-button" onclick="playSessionVideo(\''+runOfShow.sessions[n].info.meta.embed_video_url+'\',\''+runOfShow.sessions[n].title+'\',\'\')" class="watch"><i title="WATCH" class="fa fa-youtube"></i><br> Watch</a>'
+                sessions += '<a href="#'+runOfShow.sessions[n].info.slug+'" class="watch video-button" onclick="playSessionVideo(\''+runOfShow.sessions[n].info.meta.embed_video_url+'\',\''+runOfShow.sessions[n].title+'\',\'\')" class="watch"><i title="WATCH" class="fa-brands fa-youtube"></i><br> Watch</a>'
                     }
                 }
             }

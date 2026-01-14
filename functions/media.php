@@ -1,11 +1,7 @@
 <?php
 add_theme_support( 'post-thumbnails' );
 
-// Load functions-enqueue.php at init action
-function load_enqueue_functions() {
-    require_once("functions/functions-enqueue.php");
-}
-add_action('init', 'load_enqueue_functions');
+// functions-enqueue.php is loaded via functions.php - do not duplicate here
 require_once("xr/xr.php"); // oh yes, webxr is here, boyeee
 //handles custom metaboxes for admin
 require_once("functions/functions-metabox.php");

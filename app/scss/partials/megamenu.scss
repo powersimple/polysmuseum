@@ -35,13 +35,63 @@ $mm-z-index-overlay: 999;
 $mm-z-index-mobile: 1100;
 
 // -----------------------------------------------------------------------------
-// Reduced Motion
+// Reduced Motion - WCAG 2.1 AA: Disable animations for users who prefer reduced motion
 // -----------------------------------------------------------------------------
 @media (prefers-reduced-motion: reduce) {
     .megamenu,
-    .megamenu * {
+    .megamenu *,
+    .megamenu__panel,
+    .megamenu__mobile,
+    .megamenu__mobile-submenu,
+    .megamenu__overlay,
+    .megamenu__mobile-trigger-icon,
+    .megamenu__mobile-trigger-icon::before,
+    .megamenu__mobile-trigger-icon::after {
         transition: none !important;
         animation: none !important;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Body Scroll Lock - CSS-based (no inline styles)
+// Applied via JS when mobile menu is open
+// -----------------------------------------------------------------------------
+body.megamenu-open {
+    overflow: hidden !important;
+    position: fixed;
+    width: 100%;
+    // iOS Safari: prevent background scroll and position jump
+    touch-action: none;
+    -webkit-overflow-scrolling: none;
+}
+
+// -----------------------------------------------------------------------------
+// Skip to Content Link - WCAG 2.1 AA: Visible on focus, bypasses navigation
+// -----------------------------------------------------------------------------
+.skip-to-content {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    padding: 0.75rem 1.5rem;
+    background: $mm-color-accent;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-decoration: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: top 0.2s ease;
+    
+    &:focus {
+        top: 0;
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
     }
 }
 
@@ -58,8 +108,8 @@ $mm-z-index-mobile: 1100;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: 100% !important;
+    max-width: 100% !important;
     height: $mm-header-height;
     padding: 0 1rem;
     margin: 0 !important;
@@ -69,6 +119,8 @@ $mm-z-index-mobile: 1100;
     border: none;
     font-family: $font-family-base;
     font-weight: $font-weight-base;
+    box-sizing: border-box;
+    overflow-x: clip;
     
     *,
     *::before,
@@ -89,12 +141,14 @@ $mm-z-index-mobile: 1100;
     a {
         color: $mm-color-text;
         text-decoration: none;
+        background: transparent !important;
         transition: color $mm-transition-speed ease, text-shadow $mm-transition-speed ease;
         
         &:hover,
         &:focus {
             color: $mm-color-text-hover;
             text-decoration: none;
+            background: transparent !important;
         }
     }
     
@@ -102,6 +156,12 @@ $mm-z-index-mobile: 1100;
     button:focus-visible {
         outline: 2px solid $mm-color-focus;
         outline-offset: 2px;
+    }
+    
+    .megamenu__item,
+    .megamenu__link,
+    .megamenu__group-title a {
+        background: transparent !important;
     }
 }
 
@@ -311,13 +371,16 @@ $mm-z-index-mobile: 1100;
     left: 0;
     right: 0;
     z-index: $mm-z-index-panel;
-    width: 100vw;
+    width: 100%;
+    max-width: 100%;
     max-height: $mm-panel-max-height;
     overflow-y: auto;
+    overflow-x: clip;
     background: linear-gradient(180deg, $mm-color-bg-panel 0%, rgba(10, 10, 15, 0.98) 100%);
     backdrop-filter: blur(16px);
     border: none;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    box-sizing: border-box;
     
     // Default hidden state with transitions for smooth animation
     opacity: 0;
@@ -383,7 +446,6 @@ $mm-z-index-mobile: 1100;
     font-size: 0.7rem;
     font-weight: 700;
     color: $mm-color-accent;
-    text-transform: uppercase;
     letter-spacing: 0.1em;
     border-bottom: 1px solid rgba($mm-color-accent, 0.3);
     
@@ -720,6 +782,7 @@ $mm-z-index-mobile: 1100;
 }
 
 // Accordion trigger button (+/- on right side)
+// Icon state driven entirely by [aria-expanded] in CSS - no JS icon toggling
 .megamenu__mobile-trigger {
     display: flex;
     align-items: center;
@@ -734,21 +797,37 @@ $mm-z-index-mobile: 1100;
     border: none;
     border-left: 1px solid $mm-color-border;
     cursor: pointer;
+    transition: color $mm-transition-fast ease, background $mm-transition-fast ease;
     
-    &:hover,
-    &:focus {
+    // Hover state
+    &:hover {
         color: $mm-color-text-hover;
         background: rgba(255, 255, 255, 0.08);
+    }
+    
+    // Focus-visible state (keyboard focus only)
+    &:focus-visible {
+        color: $mm-color-text-hover;
+        background: rgba(255, 255, 255, 0.08);
+        outline: 2px solid $mm-color-focus;
+        outline-offset: -2px;
+    }
+    
+    // Expanded state styling
+    &[aria-expanded="true"] {
+        color: $mm-color-accent;
+        background: rgba(255, 255, 255, 0.05);
     }
 }
 
 // +/- icon inside trigger button
+// State driven by parent [aria-expanded] attribute - CSS only, no JS
 .megamenu__mobile-trigger-icon {
     position: relative;
     width: 16px;
     height: 16px;
     
-    // Horizontal line (always visible)
+    // Horizontal line (always visible - the minus)
     &::before {
         content: '';
         position: absolute;
@@ -760,7 +839,7 @@ $mm-z-index-mobile: 1100;
         transform: translateY(-50%);
     }
     
-    // Vertical line (hidden when expanded)
+    // Vertical line (visible when collapsed, hidden when expanded - makes the plus)
     &::after {
         content: '';
         position: absolute;
@@ -769,30 +848,49 @@ $mm-z-index-mobile: 1100;
         width: 2px;
         height: 100%;
         background: currentColor;
-        transform: translateX(-50%);
-        transition: transform $mm-transition-speed ease, opacity $mm-transition-speed ease;
+        // Use opacity + transform for performance (no layout thrash)
+        transform: translateX(-50%) scaleY(1);
+        opacity: 1;
+        transition: transform $mm-transition-fast ease, opacity $mm-transition-fast ease;
     }
 }
 
-// When expanded, hide vertical line (+ becomes -)
+// When expanded: hide vertical line (+ becomes -)
+// Driven by [aria-expanded="true"] - CSS only
 .megamenu__mobile-trigger[aria-expanded="true"] {
     .megamenu__mobile-trigger-icon::after {
-        transform: translateX(-50%) rotate(90deg);
+        transform: translateX(-50%) scaleY(0);
         opacity: 0;
     }
 }
 
-// Mobile submenu (L2) - animated accordion
+// When collapsed: show vertical line (default state)
+.megamenu__mobile-trigger[aria-expanded="false"] {
+    .megamenu__mobile-trigger-icon::after {
+        transform: translateX(-50%) scaleY(1);
+        opacity: 1;
+    }
+}
+
+// Mobile submenu (L2) - performance-optimized accordion
+// Uses max-height + opacity instead of height animation to avoid layout thrash
 .megamenu__mobile-submenu {
     display: block;
-    height: 0;
+    max-height: 0;
     overflow: hidden;
     padding: 0;
     background: rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    // Use transform + opacity for GPU-accelerated animation
+    transition: max-height $mm-transition-speed ease-out, 
+                opacity $mm-transition-fast ease-out,
+                padding $mm-transition-fast ease-out;
     
+    // Open state - use large max-height cap (no JS measurement needed)
     &.is-open {
-        height: auto;
+        max-height: 80vh; // Cap prevents infinite expansion, large enough for any menu
         padding: 0.5rem 0;
+        opacity: 1;
     }
 }
 
@@ -830,7 +928,6 @@ $mm-z-index-mobile: 1100;
     font-size: 0.75rem;
     font-weight: 600;
     color: $mm-color-accent;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 

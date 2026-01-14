@@ -1,0 +1,315 @@
+/**
+ * =============================================================================
+ * PAGE FRAME - Canonical Layout System
+ * =============================================================================
+ * 
+ * ARCHITECTURE:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │ .flex-wrapper                                                           │
+ * │ ┌─────────────────────────────────────────────────────────────────────┐ │
+ * │ │ header (global - megamenu)                                          │ │
+ * │ └─────────────────────────────────────────────────────────────────────┘ │
+ * │ ┌─────────────────────────────────────────────────────────────────────┐ │
+ * │ │ .pf-hero (optional)                                                 │ │
+ * │ │   --parallax | --static | --slideshow | --video                     │ │
+ * │ └─────────────────────────────────────────────────────────────────────┘ │
+ * │ ┌─────────────────────────────────────────────────────────────────────┐ │
+ * │ │ main#main-content.pf-main                                           │ │
+ * │ │ ┌─────────────────────────────────────────────────────────────────┐ │ │
+ * │ │ │ .pf-media (optional - video/slideshow/iframe)                   │ │ │
+ * │ │ └─────────────────────────────────────────────────────────────────┘ │ │
+ * │ │ ┌───────────────────────────┬─────────────────────────────────────┐ │ │
+ * │ │ │ .pf-content               │ .pf-sidebar (optional)              │ │ │
+ * │ │ │   .pf-content__inner      │   .pf-sidebar__inner                │ │ │
+ * │ │ └───────────────────────────┴─────────────────────────────────────┘ │ │
+ * │ └─────────────────────────────────────────────────────────────────────┘ │
+ * │ ┌─────────────────────────────────────────────────────────────────────┐ │
+ * │ │ footer (global)                                                     │ │
+ * │ └─────────────────────────────────────────────────────────────────────┘ │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * CLASS NAMING:
+ * - pf-* = Page Frame system classes
+ * - Modifiers use BEM: pf-hero--parallax, pf-main--full-width
+ * 
+ * LEGACY COMPATIBILITY:
+ * - .main, .container-flex, .col-md-7.left, .col-md-5.right still work
+ * - New classes can be added alongside old ones during migration
+ * =============================================================================
+ */
+
+@use "globals" as *;
+
+// =============================================================================
+// Variables
+// =============================================================================
+$pf-breakpoint-md: 768px;
+$pf-breakpoint-lg: 1024px;
+$pf-content-max-width: 1400px;
+$pf-sidebar-width: 40%;
+$pf-gutter: 1.5rem;
+
+// =============================================================================
+// Page Frame Main Container
+// =============================================================================
+.pf-main {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 50px); // Account for fixed header
+    width: 100%;
+}
+
+// =============================================================================
+// Hero Section - Unified Variants
+// =============================================================================
+.pf-hero {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    
+    // Default height - can be overridden by modifiers
+    min-height: 25vh;
+    
+    // Mobile: ensure focal point is visible
+    @media (max-width: $pf-breakpoint-md) {
+        background-position: center center;
+        min-height: 30vh;
+    }
+}
+
+// Hero Modifiers
+.pf-hero--parallax {
+    // Parallax effect handled by JS
+    will-change: transform, opacity;
+}
+
+.pf-hero--static {
+    // Static hero - no parallax effect
+    transform: none;
+}
+
+.pf-hero--slideshow {
+    // Container for slideshow
+    .pf-hero__slides {
+        position: absolute;
+        inset: 0;
+    }
+}
+
+.pf-hero--video {
+    .pf-hero__video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+}
+
+// Hero Height Modifiers (matching legacy hero-cover-* classes)
+.pf-hero--25 { padding-bottom: 25%; min-height: 0; }
+.pf-hero--30 { padding-bottom: 30%; min-height: 0; }
+.pf-hero--40 { padding-bottom: 40%; min-height: 0; }
+.pf-hero--50 { padding-bottom: 50%; min-height: 0; }
+.pf-hero--full { min-height: 100vh; padding-bottom: 0; }
+
+// Hero Mobile Focal Point
+.pf-hero--focal-left {
+    @media (max-width: $pf-breakpoint-md) {
+        background-position: left center;
+    }
+}
+
+.pf-hero--focal-right {
+    @media (max-width: $pf-breakpoint-md) {
+        background-position: right center;
+    }
+}
+
+// =============================================================================
+// Media Block (Video / Slideshow / Iframe)
+// =============================================================================
+.pf-media {
+    position: relative;
+    width: 100%;
+    background: #000;
+    
+    // 16:9 aspect ratio by default
+    &::before {
+        content: '';
+        display: block;
+        padding-bottom: 56.25%;
+    }
+}
+
+.pf-media__inner {
+    position: absolute;
+    inset: 0;
+    
+    iframe,
+    video {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+}
+
+// =============================================================================
+// Video Player (unified)
+// =============================================================================
+.pf-video {
+    position: relative;
+    width: 100%;
+    background: #000;
+    
+    &::before {
+        content: '';
+        display: block;
+        padding-bottom: 56.25%; // 16:9
+    }
+}
+
+.pf-video__player {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.pf-video__poster {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+}
+
+.pf-video__play-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    
+    &::after {
+        content: '';
+        display: block;
+        width: 0;
+        height: 0;
+        margin-left: 8px;
+        border-top: 15px solid transparent;
+        border-bottom: 15px solid transparent;
+        border-left: 25px solid #fff;
+    }
+}
+
+// =============================================================================
+// Content Area
+// =============================================================================
+.pf-content-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: $pf-content-max-width;
+    margin: 0 auto;
+    padding: $pf-gutter;
+    
+    @media (min-width: $pf-breakpoint-md) {
+        flex-wrap: nowrap;
+        gap: $pf-gutter * 2;
+    }
+}
+
+.pf-content {
+    flex: 1 1 100%;
+    min-width: 0;
+    
+    @media (min-width: $pf-breakpoint-md) {
+        flex: 1 1 60%;
+    }
+}
+
+.pf-content__inner {
+    // Inner wrapper for content styling
+    width: 100%;
+}
+
+// =============================================================================
+// Sidebar
+// =============================================================================
+.pf-sidebar {
+    flex: 1 1 100%;
+    min-width: 0;
+    
+    @media (min-width: $pf-breakpoint-md) {
+        flex: 0 0 $pf-sidebar-width;
+        max-width: $pf-sidebar-width;
+    }
+}
+
+.pf-sidebar__inner {
+    position: sticky;
+    top: calc(var(--total-header-offset, 50px) + 20px); // Below fixed header with padding
+}
+
+// =============================================================================
+// Layout Modifiers
+// =============================================================================
+.pf-main--full-width {
+    .pf-content-wrap {
+        max-width: none;
+    }
+    
+    .pf-content {
+        flex: 1 1 100%;
+    }
+    
+    .pf-sidebar {
+        display: none;
+    }
+}
+
+.pf-main--sidebar-left {
+    .pf-content-wrap {
+        flex-direction: row-reverse;
+    }
+}
+
+// =============================================================================
+// Legacy Class Compatibility
+// Maps old classes to new system for gradual migration
+// =============================================================================
+
+// Legacy hero classes - compatibility layer
+// New pages should use .pf-hero--* classes instead
+
+// Legacy content structure - already styled in main.scss
+// .container-flex maps to .pf-content-wrap
+// .col-md-7.left maps to .pf-content
+// .col-md-5.right maps to .pf-sidebar
+
+// =============================================================================
+// Reduced Motion
+// =============================================================================
+@media (prefers-reduced-motion: reduce) {
+    .pf-hero--parallax {
+        transform: none !important;
+        opacity: 1 !important;
+    }
+    
+    .pf-video,
+    .pf-video__player {
+        // Ensure no motion for reduced-motion users
+        animation: none;
+    }
+}

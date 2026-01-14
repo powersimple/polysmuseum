@@ -593,4 +593,558 @@ function is_megamenu_current_item($item) {
     return false;
 }
 
+/**
+ * =============================================================================
+ * Section Bar - Get active L1 item and its L2 children from megamenu
+ * =============================================================================
+ * Used by the Section bar to display L2 navigation items from the megamenu.
+ * Determines active L1 based on current URL matching.
+ */
+
+/**
+ * Get the active L1 menu item and its L2 children based on current URL
+ * 
+ * @param string $menu_slug The menu slug (default: 'megamenu')
+ * @return array|null Array with 'parent' (L1 item) and 'children' (L2 items), or null if no match
+ */
+function get_sectionbar_data($menu_slug = 'megamenu') {
+    $menu_data = get_megamenu_data($menu_slug);
+    
+    if (!$menu_data || empty($menu_data['items'])) {
+        return null;
+    }
+    
+    // Get current URL path for matching
+    $current_url = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+    $current_path = rtrim(parse_url($current_url, PHP_URL_PATH), '/');
+    
+    // Also get current post permalink for exact matching
+    global $post;
+    $current_permalink = '';
+    if ($post) {
+        $current_permalink = rtrim(parse_url(get_permalink($post->ID), PHP_URL_PATH), '/');
+    }
+    
+    // Get current brand from body attribute (set by polys_get_current_brand())
+    $current_brand = polys_get_current_brand();
+    
+    $best_match = null;
+    $best_match_length = 0;
+    $academy_fallback = null; // Store Academy L1 for fallback
+    
+    // Iterate through L1 items to find the best match
+    foreach ($menu_data['items'] as $l1_item) {
+        // Skip items without children (no L2 to show)
+        if (empty($l1_item['children'])) {
+            continue;
+        }
+        
+        // Skip the first item (usually logo/home)
+        if ($l1_item['menu_order'] == 1 && !empty($l1_item['media_link'])) {
+            continue;
+        }
+        
+        // Get L1 item's URL path
+        $l1_path = rtrim(parse_url($l1_item['url'], PHP_URL_PATH), '/');
+        
+        // Check for brand-academy class to identify Academy L1 item
+        $l1_classes = isset($l1_item['classes_array']) ? $l1_item['classes_array'] : [];
+        if (in_array('brand-academy', $l1_classes)) {
+            $academy_fallback = [
+                'parent' => $l1_item,
+                'children' => $l1_item['children'],
+                'brand' => 'academy'
+            ];
+        }
+        
+        // Check if current URL starts with this L1's path (section match)
+        if (!empty($l1_path) && $l1_path !== '/' && $l1_path !== '#') {
+            // Exact match on L1
+            if ($current_path === $l1_path || $current_permalink === $l1_path) {
+                return [
+                    'parent' => $l1_item,
+                    'children' => $l1_item['children'],
+                    'brand' => _sectionbar_detect_brand($l1_path)
+                ];
+            }
+            
+            // Current URL is under this L1's path (best prefix match wins)
+            if (strpos($current_path, $l1_path . '/') === 0) {
+                $match_length = strlen($l1_path);
+                if ($match_length > $best_match_length) {
+                    $best_match = [
+                        'parent' => $l1_item,
+                        'children' => $l1_item['children'],
+                        'brand' => _sectionbar_detect_brand($l1_path)
+                    ];
+                    $best_match_length = $match_length;
+                }
+            }
+        }
+        
+        // Also check L2 items for exact match
+        foreach ($l1_item['children'] as $l2_item) {
+            $l2_path = rtrim(parse_url($l2_item['url'], PHP_URL_PATH), '/');
+            
+            if ($current_path === $l2_path || $current_permalink === $l2_path) {
+                return [
+                    'parent' => $l1_item,
+                    'children' => $l1_item['children'],
+                    'brand' => _sectionbar_detect_brand($l1_path)
+                ];
+            }
+            
+            // Check if current URL is under this L2's path
+            if (!empty($l2_path) && $l2_path !== '/' && $l2_path !== '#') {
+                if (strpos($current_path, $l2_path . '/') === 0) {
+                    $match_length = strlen($l1_path); // Use L1 path length for priority
+                    if ($match_length > $best_match_length) {
+                        $best_match = [
+                            'parent' => $l1_item,
+                            'children' => $l1_item['children'],
+                            'brand' => _sectionbar_detect_brand($l1_path)
+                        ];
+                        $best_match_length = $match_length;
+                    }
+                }
+            }
+        }
+    }
+    
+    // If no URL match found but we're in Academy context, use Academy L1 as fallback
+    if (!$best_match && $current_brand === 'academy' && $academy_fallback) {
+        return $academy_fallback;
+    }
+    
+    return $best_match;
+}
+
+/**
+ * Detect brand from URL path for styling purposes
+ * 
+ * @param string $path URL path
+ * @return string Brand identifier: academy|polys|metatraversal|rpg
+ */
+function _sectionbar_detect_brand($path) {
+    $path = rtrim($path, '/');
+    
+    if (strpos($path, '/the-polys') === 0) {
+        return 'polys';
+    }
+    if (strpos($path, '/metatraversal') === 0) {
+        return 'metatraversal';
+    }
+    if (strpos($path, '/ready-player-golf') === 0) {
+        return 'rpg';
+    }
+    
+    // Default to academy
+    return 'academy';
+}
+
+/**
+ * Check if a URL matches the current page
+ * 
+ * @param string $url URL to check
+ * @return bool True if current page
+ */
+function is_sectionbar_current($url) {
+    global $post;
+    
+    $url_path = rtrim(parse_url($url, PHP_URL_PATH), '/');
+    $current_path = isset($_SERVER['REQUEST_URI']) ? rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/') : '';
+    
+    if ($url_path === $current_path) {
+        return true;
+    }
+    
+    if ($post) {
+        $permalink_path = rtrim(parse_url(get_permalink($post->ID), PHP_URL_PATH), '/');
+        if ($url_path === $permalink_path) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Render the Section bar HTML
+ * 
+ * @param string $menu_slug The menu slug (default: 'megamenu')
+ * @return string HTML output
+ */
+function render_sectionbar($menu_slug = 'megamenu') {
+    $data = get_sectionbar_data($menu_slug);
+    
+    // No active L1 with children - don't render
+    if (!$data) {
+        return '';
+    }
+    
+    $brand = $data['brand'];
+    $parent = $data['parent'];
+    $children = $data['children'];
+    
+    ob_start();
+    ?>
+    <nav class="sectionbar" data-brand="<?php echo esc_attr($brand); ?>" aria-label="<?php echo esc_attr($parent['title']); ?> section navigation">
+        <div class="sectionbar__inner">
+            <ul class="sectionbar__list">
+                <?php foreach ($children as $item): 
+                    $is_current = is_sectionbar_current($item['url']);
+                ?>
+                <li class="sectionbar__item">
+                    <a href="<?php echo esc_url($item['url']); ?>" 
+                       class="sectionbar__link<?php echo $is_current ? ' is-current' : ''; ?>"
+                       <?php echo $is_current ? 'aria-current="page"' : ''; ?>>
+                        <?php echo esc_html($item['title']); ?>
+                    </a>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </nav>
+    <?php
+    return ob_get_clean();
+}
+
 // Megamenu scripts are enqueued in functions-enqueue.php
+
+/**
+ * =============================================================================
+ * Footer Menu - Parse "footermenu" menu into brand roots and children
+ * =============================================================================
+ * Uses WordPress native wp_get_nav_menu_items() for proper data retrieval.
+ * L1 items with class "brand-*" are brand roots.
+ * L2 children are categorized by class:
+ *   - "is-social" → social links (icon + tooltip from Title Attribute)
+ *   - "is-legal" → legal links (privacy, terms, etc.)
+ *   - others → regular links
+ */
+
+/**
+ * Get footer menu data parsed by brand
+ * Uses wp_get_nav_menu_items() for proper WP menu item attributes
+ * 
+ * @param string $menu_slug The menu slug (default: 'footermenu')
+ * @return array Associative array of brand data, plus '_debug' key for diagnostics
+ */
+function get_footer_menu_data($menu_slug = 'footermenu') {
+    $debug = [];
+    $debug['slug_requested'] = $menu_slug;
+    
+    // Get menu items using WordPress native function
+    $menu_items = wp_get_nav_menu_items($menu_slug);
+    
+    if (!$menu_items || !is_array($menu_items)) {
+        $debug['error'] = 'menu not found or empty';
+        return ['_debug' => $debug];
+    }
+    
+    $debug['total_items'] = count($menu_items);
+    $debug['l1_items'] = [];
+    
+    // Build children index by parent ID
+    $children_by_parent = [];
+    $items_by_id = [];
+    
+    foreach ($menu_items as $item) {
+        $items_by_id[$item->ID] = $item;
+        $parent_id = (int) $item->menu_item_parent;
+        
+        if (!isset($children_by_parent[$parent_id])) {
+            $children_by_parent[$parent_id] = [];
+        }
+        $children_by_parent[$parent_id][] = $item;
+    }
+    
+    $brands = [];
+    
+    // Process L1 items (parent_id = 0)
+    $l1_items = $children_by_parent[0] ?? [];
+    
+    foreach ($l1_items as $l1_item) {
+        // Get classes array from WP menu item
+        $classes_array = is_array($l1_item->classes) ? array_filter($l1_item->classes) : [];
+        $classes_str = implode(' ', $classes_array);
+        
+        // Debug: log L1 item info
+        $debug['l1_items'][] = [
+            'id' => $l1_item->ID,
+            'title' => $l1_item->title,
+            'classes' => $classes_str,
+        ];
+        
+        // Extract brand from classes (look for brand-*)
+        $brand_key = null;
+        foreach ($classes_array as $class) {
+            if (strpos($class, 'brand-') === 0) {
+                $brand_key = str_replace('brand-', '', $class);
+                break;
+            }
+        }
+        
+        if (!$brand_key) {
+            continue;
+        }
+        
+        // Get L2 children for this brand
+        $l2_items = $children_by_parent[$l1_item->ID] ?? [];
+        
+        // Parse L2 children into two categories only:
+        // - social_links: items with 'is-social' class (icon links)
+        // - nav_links: everything else (all non-social links in menu order)
+        $social_links = [];
+        $nav_links = [];
+        
+        foreach ($l2_items as $l2_item) {
+            $l2_classes = is_array($l2_item->classes) ? array_filter($l2_item->classes) : [];
+            $is_social = in_array('is-social', $l2_classes);
+            
+            // Title Attribute is $item->attr_title in WP menu items
+            $title_attr = $l2_item->attr_title ?: '';
+            
+            // Extract FA icon classes for social links
+            $fa_classes = [];
+            foreach ($l2_classes as $class) {
+                if (strpos($class, 'fa-') === 0 || $class === 'fa-brands' || $class === 'fa-solid') {
+                    $fa_classes[] = $class;
+                }
+            }
+            
+            $link_data = [
+                'id' => $l2_item->ID,
+                'title' => $l2_item->title,
+                'url' => $l2_item->url,
+                'target' => $l2_item->target ?: '',
+                'title_attr' => $title_attr,
+                'fa_classes' => $fa_classes,
+                'classes' => implode(' ', $l2_classes),
+            ];
+            
+            if ($is_social) {
+                $social_links[] = $link_data;
+            } else {
+                $nav_links[] = $link_data;
+            }
+        }
+        
+        $brands[$brand_key] = [
+            'id' => $l1_item->ID,
+            'title' => $l1_item->title,
+            'url' => $l1_item->url,
+            'description' => $l1_item->description ?: '',
+            'has_children' => !empty($l2_items),
+            'children_count' => count($l2_items),
+            'social_links' => $social_links,
+            'nav_links' => $nav_links,
+        ];
+    }
+    
+    // Add debug info
+    $brands['_debug'] = $debug;
+    
+    return $brands;
+}
+
+/**
+ * Check if URL is a legal page (privacy, terms, etc.)
+ */
+function _is_legal_url($url) {
+    $legal_patterns = [
+        '/privacy',
+        '/terms',
+        '/gdpr',
+        '/cookie',
+        '/legal',
+        '/disclaimer',
+    ];
+    
+    $path = parse_url($url, PHP_URL_PATH);
+    if (!$path) return false;
+    
+    foreach ($legal_patterns as $pattern) {
+        if (strpos($path, $pattern) !== false) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Get menu item's Title Attribute field
+ * WordPress stores this in post meta as _menu_item_attr_title
+ */
+function _get_menu_item_title_attr($item_id) {
+    return get_post_meta($item_id, '_menu_item_attr_title', true) ?: '';
+}
+
+/**
+ * Get brand logo URL mapping
+ */
+function get_footer_brand_logo($brand) {
+    $logos = [
+        'academy' => '/wp-content/themes/polysmuseum/app/scss/partials/images/logo/academy-logo.svg',
+        'polys' => '/wp-content/themes/polysmuseum/app/scss/partials/images/logo/polys-logo.svg',
+        'metatraversal' => '/wp-content/themes/polysmuseum/app/scss/partials/images/logo/metatraversal-logo.svg',
+        'rpg' => '/wp-content/themes/polysmuseum/app/scss/partials/images/logo/rpg-logo.svg',
+    ];
+    
+    return $logos[$brand] ?? '';
+}
+
+/**
+ * Render the footer HTML
+ * 
+ * @return string HTML output
+ */
+function render_footer_navigation() {
+    // Use 'footermenu' slug - the actual menu name in WordPress
+    $footer_data = get_footer_menu_data('footermenu');
+    $current_brand = polys_get_current_brand();
+    
+    // Debug output (admin only or WP_DEBUG)
+    $show_debug = (defined('WP_DEBUG') && WP_DEBUG) || current_user_can('administrator');
+    $debug_info = $footer_data['_debug'] ?? [];
+    
+    ob_start();
+    
+    // Debug comments for diagnostics
+    if ($show_debug): ?>
+<!-- FOOTER DEBUG START -->
+<!-- slug: <?php echo esc_html($debug_info['slug_requested'] ?? 'unknown'); ?> -->
+<!-- total_items: <?php echo esc_html($debug_info['total_items'] ?? 0); ?> -->
+<?php if (!empty($debug_info['error'])): ?>
+<!-- ERROR: <?php echo esc_html($debug_info['error']); ?> -->
+<?php endif; ?>
+<?php if (!empty($debug_info['l1_items'])): ?>
+<?php foreach ($debug_info['l1_items'] as $l1_debug): ?>
+<!-- L1: <?php echo esc_html($l1_debug['title']); ?> | classes: <?php echo esc_html($l1_debug['classes']); ?> | id: <?php echo esc_html($l1_debug['id']); ?> -->
+<?php endforeach; ?>
+<?php endif; ?>
+<?php 
+    // Academy-specific debug
+    $academy_data = $footer_data['academy'] ?? null;
+    if ($academy_data): ?>
+<!-- academy found: yes | children_count: <?php echo esc_html($academy_data['children_count'] ?? 0); ?> | social: <?php echo count($academy_data['social_links'] ?? []); ?> | nav: <?php echo count($academy_data['nav_links'] ?? []); ?> -->
+<?php else: ?>
+<!-- academy found: NO - check that L1 item has class "brand-academy" -->
+<?php endif; ?>
+<!-- FOOTER DEBUG END -->
+    <?php endif; ?>
+    
+    <?php
+    // Get academy data (always rendered)
+    $academy_data = $footer_data['academy'] ?? null;
+    
+    // Get current brand data (if not academy and has children)
+    $brand_panel_data = null;
+    if ($current_brand !== 'academy' && isset($footer_data[$current_brand])) {
+        $brand_data = $footer_data[$current_brand];
+        // Only render brand panel if it has L2 children
+        if (($brand_data['has_children'] ?? false) && 
+            (!empty($brand_data['social_links']) || !empty($brand_data['nav_links']))) {
+            $brand_panel_data = $brand_data;
+        }
+    }
+    
+    // Brand-specific footer panel (above Academy footer)
+    if ($brand_panel_data): ?>
+    <div class="footer-brand" data-brand="<?php echo esc_attr($current_brand); ?>">
+        <div class="footer-brand__inner">
+            <?php if (!empty($brand_panel_data['nav_links'])): ?>
+            <nav class="footer-brand__nav" aria-label="<?php echo esc_attr($brand_panel_data['title']); ?> links">
+                <ul>
+                    <?php foreach ($brand_panel_data['nav_links'] as $link): ?>
+                    <li>
+                        <a href="<?php echo esc_url($link['url']); ?>"
+                           <?php echo $link['target'] ? 'target="' . esc_attr($link['target']) . '"' : ''; ?>
+                           <?php echo $link['title_attr'] ? 'title="' . esc_attr($link['title_attr']) . '"' : ''; ?>>
+                            <?php echo esc_html($link['title']); ?>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </nav>
+            <?php endif; ?>
+            
+            <?php if (!empty($brand_panel_data['description'])): ?>
+            <p class="footer-brand__relationship"><?php echo esc_html($brand_panel_data['description']); ?></p>
+            <?php endif; ?>
+            
+            <?php if (!empty($brand_panel_data['social_links'])): ?>
+            <nav class="footer-brand__social" aria-label="<?php echo esc_attr($brand_panel_data['title']); ?> social links">
+                <ul>
+                    <?php foreach ($brand_panel_data['social_links'] as $link): 
+                        $fa_class = implode(' ', $link['fa_classes']);
+                    ?>
+                    <li>
+                        <a href="<?php echo esc_url($link['url']); ?>"
+                           target="<?php echo esc_attr($link['target'] ?: '_blank'); ?>"
+                           title="<?php echo esc_attr($link['title_attr'] ?: $link['title']); ?>"
+                           aria-label="<?php echo esc_attr($link['title_attr'] ?: $link['title']); ?>">
+                            <i class="<?php echo esc_attr($fa_class); ?>" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </nav>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+    
+    <!-- Persistent Academy Footer (always visible) -->
+    <div class="footer-academy" data-brand="academy">
+        <div class="footer-academy__inner">
+            <?php if ($academy_data && !empty($academy_data['nav_links'])): ?>
+            <nav class="footer-academy__nav" aria-label="Academy links">
+                <ul>
+                    <?php foreach ($academy_data['nav_links'] as $link): ?>
+                    <li>
+                        <a href="<?php echo esc_url($link['url']); ?>"
+                           <?php echo $link['target'] ? 'target="' . esc_attr($link['target']) . '"' : ''; ?>
+                           <?php echo $link['title_attr'] ? 'title="' . esc_attr($link['title_attr']) . '"' : ''; ?>>
+                            <?php echo esc_html($link['title']); ?>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </nav>
+            <?php endif; ?>
+            
+            <div class="footer-academy__brand">
+                <a href="<?php echo esc_url(home_url('/')); ?>" class="footer-academy__name">Academy of Immersive Arts &amp; Sciences</a>
+                <span class="footer-academy__tagline">Tax-exempt 501(c)(3) nonprofit organization • EIN 99-3401892</span>
+            </div>
+            
+            <?php if ($academy_data && !empty($academy_data['social_links'])): ?>
+            <nav class="footer-academy__social" aria-label="Academy social links">
+                <ul>
+                    <?php foreach ($academy_data['social_links'] as $link): 
+                        $fa_class = implode(' ', $link['fa_classes']);
+                    ?>
+                    <li>
+                        <a href="<?php echo esc_url($link['url']); ?>"
+                           target="<?php echo esc_attr($link['target'] ?: '_blank'); ?>"
+                           title="<?php echo esc_attr($link['title_attr'] ?: $link['title']); ?>"
+                           aria-label="<?php echo esc_attr($link['title_attr'] ?: $link['title']); ?>">
+                            <i class="<?php echo esc_attr($fa_class); ?>" aria-hidden="true"></i>
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+            </nav>
+            <?php endif; ?>
+            
+            <div class="footer-academy__copyright">
+                &copy; <?php echo date('Y'); ?> All Rights Reserved
+            </div>
+        </div>
+    </div>
+    
+    <?php
+    return ob_get_clean();
+}

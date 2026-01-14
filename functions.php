@@ -1,4 +1,16 @@
 <?php
+/**
+ * Polys Museum Theme - Functions
+ * 
+ * Debug constants (set in wp-config.php to enable):
+ * - POLYSMUSEUM_SHOW_TEMPLATE_DEBUG: Show template path overlay (default: false)
+ */
+
+// Define debug constant defaults (can be overridden in wp-config.php)
+if ( ! defined( 'POLYSMUSEUM_SHOW_TEMPLATE_DEBUG' ) ) {
+    define( 'POLYSMUSEUM_SHOW_TEMPLATE_DEBUG', false );
+}
+
 // Load all functions files at init action
 function load_theme_functions() {
     require_once "functions/functions-aframe.php";
@@ -53,6 +65,61 @@ function featured_image_support(){
     ));
 }
 add_action('after_setup_theme', 'featured_image_support');
+
+/**
+ * =============================================================================
+ * Brand Detection - Centralized URL-based brand resolution
+ * =============================================================================
+ * Determines the active brand based on the current page URL.
+ * Used by header.php to set body[data-body-brand] attribute.
+ * 
+ * Brand Resolution Rules (in order):
+ * 1. URL starts with /the-polys → "polys"
+ * 2. URL starts with /metatraversal → "metatraversal"  
+ * 3. URL starts with /ready-player-golf → "rpg"
+ * 4. Default → "academy"
+ * 
+ * @return string Brand identifier: academy|polys|metatraversal|rpg
+ */
+function polys_get_current_brand() {
+    // Get current request URI (path only, no query string)
+    $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+    $path = parse_url($request_uri, PHP_URL_PATH);
+    $path = rtrim($path, '/'); // Normalize trailing slash
+    
+    // URL-based brand detection (order matters - more specific first if needed)
+    $brand_patterns = array(
+        '/the-polys' => 'polys',
+        '/metatraversal' => 'metatraversal',
+        '/ready-player-golf' => 'rpg',
+    );
+    
+    foreach ($brand_patterns as $pattern => $brand) {
+        // Match exact path or path with trailing content
+        if ($path === $pattern || strpos($path, $pattern . '/') === 0) {
+            return $brand;
+        }
+    }
+    
+    // Default brand is Academy
+    return 'academy';
+}
+
+/**
+ * Get brand display name
+ * 
+ * @param string $brand Brand identifier
+ * @return string Human-readable brand name
+ */
+function polys_get_brand_name($brand) {
+    $names = array(
+        'academy' => 'Academy of Immersive Arts & Sciences',
+        'polys' => 'The Polys',
+        'metatraversal' => 'MetaTr@versal',
+        'rpg' => 'Ready Player Golf',
+    );
+    return isset($names[$brand]) ? $names[$brand] : $names['academy'];
+}
 
 
 

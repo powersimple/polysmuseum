@@ -1,62 +1,26 @@
-<footer class="footer">
-<div class="container">
-<div class="row">
-
-<div id="social-menu" class="col-md-3">
-        <ul>
-            
-
-        <li><a href="https://twitter.com/webxrawards" target="_blank"
-        class="fa fa-x-twitter" title="Follow us on the Social Network formerly known as Twitter"></a>
-        </li>
-        <li><a href="https://www.instagram.com/webxrawards/" target="_blank" class="fa fa-instagram"
-        title="Follow us on Instagram"></a>
-        </li>
-        <li><a href="https://www.facebook.com/groups/webxrawards" target="_blank" class="fa fa-facebook"
-        title="Join our Facebook Group"></a>
-        </li>
-        <li><a href="https://www.linkedin.com/company/the-polys/" target="_blank" class="fa fa-linkedin"
-        title="Connect with us on LinkedIn" target="_blank"></a>
-        </li>
-        <li><a href="https://discord.gg/T5vRuM5cDS" class="fa fa-discord" target="_blank"
-        title="Join our community Discord"></a>
-        </li><!--
-        <li><a href=" https://www.youtube.com/@ThePolysWebXRAwards" class="fa fa-youtube polys-channel" target="_blank"
-        title="The Polys YouTube Channel"></a>
-        </li>
-        <li><a href=" https://www.youtube.com/@ThePolysWebXRAwards" class="fa fa-youtube webxrsummits-channel" target="_blank"
-        title="WebXR SummitSeries YouTube Channel"></a>
-        </li>-->
-        </ul>
-</div>
-
-<div id="footer-menu" class="col-md-5"></div>
-
-                <div class="col-md-4" id="rights">
-
-                        <span class="copyright "><span class="polys">The Polys</span><br>
-                        <span>&copy; <?=  date("Y")?> Powersimple, LLC -  All Rights Reserved</span></span>
-                        </div> 
-                </div>
-        </div>
+<footer class="footer" role="contentinfo">
+    <?php echo render_footer_navigation(); ?>
 </footer>
 </div><!-- #flex-wrapper -->
 
+<?php
+/**
+ * Template Debug Overlay
+ * Only shown when:
+ * 1. POLYSMUSEUM_SHOW_TEMPLATE_DEBUG constant is true (default: false)
+ * 2. WP_DEBUG is enabled
+ * 3. Current user is admin (manage_options capability)
+ */
+if ( 
+    defined('POLYSMUSEUM_SHOW_TEMPLATE_DEBUG') && POLYSMUSEUM_SHOW_TEMPLATE_DEBUG 
+    && defined('WP_DEBUG') && WP_DEBUG 
+    && current_user_can('manage_options') 
+) : ?>
+<pre class="polys-template-debug" style="position:fixed;bottom:0;left:0;z-index:999999;background:#000;color:#0f0;padding:8px;font:12px/1.4 monospace;max-width:50vw;overflow:auto;" aria-hidden="true">
+TEMPLATE: <?php echo esc_html( basename( get_page_template() ) ); ?>
+</pre>
+<?php endif; ?>
 
-<?php 
-
-
-
-
-wp_footer(); 
-
-// Check if we're in development (port 3000) or production
-$is_dev = (strpos($_SERVER['HTTP_HOST'], ':3000') !== false);
-$main_script = $is_dev ? 'main.js' : 'main.min.js';
-?>
-
-<script type='text/javascript' src='<?php echo get_stylesheet_directory_uri();?>/<?php echo $main_script; ?>?ver=<?php echo rand(100000,999999); ?>' id='main-js'></script>
-
+<?php wp_footer(); ?>
 </body>
-
 </html>

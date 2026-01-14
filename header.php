@@ -6,38 +6,11 @@
 <link rel="profile" href="https://gmpg.org/xfn/11">
     <link rel="shortcut icon" href="<?php echo get_stylesheet_directory_uri();?>/images/icons/favicon.ico" />
 <?php 
-
-
-
-
 $post_title = modify_post_title();
 add_filter('wp_title', 'modify_post_title', 10, 2);
-wp_head(); 
-    $url = wp_upload_dir();
-?>
- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
-
-    
-   
-    <link href="<?php echo get_stylesheet_directory_uri();?>/assets/lib/animate.css/animate.css" rel="stylesheet">
-    <link rel='stylesheet' id='drawer-css'
-        href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css' type='text/css'
-        media='all' />
-        
-        <link rel='stylesheet' id='drawer-css'
-        href='https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css' type='text/css'
-        media='all' />
-        <link href="<?php echo get_stylesheet_directory_uri();?>/assets/lib/animate.css/animate.css" rel="stylesheet">
-
-
-        
-
-    <!-- Main stylesheet and color file-->
-    <link href="<?php echo get_stylesheet_directory_uri();?>/style.css" rel="stylesheet">
-<?php 
-
-
-
+$url = wp_upload_dir();
+// All CSS is enqueued via functions-enqueue.php - do not add hardcoded links here
+wp_head();
 
 
 if(is_front_page()){
@@ -51,11 +24,7 @@ if(is_front_page()){
   } else if (strpos($_SERVER['HTTP_HOST'],'staging')){
     $page_title = '🆂🆃🅰🅶🅸🅽🅶 '.$page_title;// doesn't work
   }
-  wp_head(); 
-
-
-  
-    // INCLUDES AFRAME JS TAGES ONLY IF IT IS ENABLED.
+  // INCLUDES AFRAME JS TAGES ONLY IF IT IS ENABLED.
 
   //
  $aframe =    get_post_meta($post->ID,"use_aframe",true);
@@ -86,22 +55,6 @@ $default_embed_video_url = "https://www.youtube.com/embed/AWFgm65j4n8?autoplay=1
 //phpinfo();
 
 ?>
-  
-    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script> <!--  -->
-    <!--
-<link rel='stylesheet' id='drawer-css' href='/assets/css/drawer.css' type='text/css' media='all' />
-<link rel='stylesheet' id='drawer-css' href='/assets/css/jquery-ui.css' type='text/css' media='all' />
-
-   
--->
-
-<style>
-  main{
-    top:150px;
-  }
-
-</style>
 
 
     <title><?=$page_title?><?=get_bloginfo('name')?> - <?=bloginfo("description");?></title>
@@ -151,11 +104,6 @@ if (location.protocol !== 'https:') {
 
          
       ?>
-      
-
-
-  </script>
-  <link rel="stylesheet" type="text/css" media="print" href="<?=get_stylesheet_directory_uri()?>/print.css">
 </head>
 
 <?php
@@ -167,15 +115,19 @@ if($bg=get_post_meta($post->ID,'page-background',true)){
   }
   $page_style = "style='$style_background'";
 }
-$section_class = '';
-if($section_class==get_post_meta($post->ID,'section',true)){
-  $class_bg = $section_class;
-}  
+$section_class = @get_post_meta($post->ID,'section_class',true);
+$class_bg = $section_class;
+
+// Centralized URL-based brand detection (defined in functions.php)
+// Default is "academy" if no URL pattern matches
+$body_brand = polys_get_current_brand();
 
 ?>
 
-<body data-spy="scroll" data-target=".onpage-navigation" data-offset="60" class="<?=@$class_bg?>" <?=@$page_style?>>
+<body data-spy="scroll" data-target=".onpage-navigation" data-offset="60" class="<?=@$class_bg?>" data-body-brand="<?=$body_brand?>" <?=@$page_style?>>
 
+<!-- Skip to Content Link - WCAG 2.1 AA: visible on focus, targets main content -->
+<a href="#main-content" class="skip-to-content">Skip to main content</a>
 
         <div class="page-loader">
         <div class="loader">Loading...</div>
@@ -196,22 +148,16 @@ if($section_class==get_post_meta($post->ID,'section',true)){
           
       </div>  
       
+      <!-- ============================================================
+           SECTION BAR
+           Shows L2 items from megamenu (children of active L1 item)
+           Brand styling determined by URL path
+           Renders only when an active L1 section with children is detected
+      ============================================================ -->
+      <?php echo render_sectionbar('megamenu'); ?>
+      
   </header>
-  <script>
-    window.addEventListener("scroll", function() {
-        let scroll = window.pageYOffset;
-        let scaleValue = 1 + scroll * 0.0005; // Slower zoom
-        let opacityValue = 1 - scroll * 0.0005; // Slower fade
-
-        let parallaxElement = document.querySelector(".parallax");
-
-        // Check if parallaxElement exists before applying transformations
-        if (parallaxElement) {
-            parallaxElement.style.transform = `scale(${scaleValue})`;
-            parallaxElement.style.opacity = opacityValue;
-        }
-    });
-</script>
+  <!-- Parallax effect now handled by hero-parallax.js module (bundled in main.js) -->
 
 <?php
   
@@ -337,8 +283,3 @@ function extract_number($class) {
       
       
       ?>
-
-      
-</body>
-</html>
-      

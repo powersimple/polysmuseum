@@ -1,3 +1,18 @@
+/**
+ * =============================================================================
+ * LEGACY CODE - jQuery Dependent
+ * =============================================================================
+ * This file contains legacy jQuery-based initialization code.
+ * 
+ * MIGRATION STATUS: Not yet migrated
+ * DEPENDENCIES: jQuery, vendor.js
+ * USED BY: Various page templates
+ * 
+ * TO REMOVE: When all pages using these functions are migrated to modern JS,
+ * this file can be removed from the Vite bundle entry points.
+ * =============================================================================
+ */
+
 var     last_orientation = '',
         o = getOrientation()
 

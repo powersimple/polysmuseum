@@ -1,4 +1,29 @@
+/**
+ * jQuery Compatibility Layer
+ * 
+ * WordPress runs jQuery in noConflict mode, so $ is not defined globally.
+ * This file must load FIRST (hence the 00- prefix for alphabetical sorting).
+ * It creates a global $ alias for jQuery so legacy code works.
+ */
+var $ = jQuery;
+
+
 //console.log("init.js imported");
+/**
+ * =============================================================================
+ * LEGACY CODE - jQuery Dependent
+ * =============================================================================
+ * This file contains legacy jQuery-based initialization code.
+ * 
+ * MIGRATION STATUS: Not yet migrated
+ * DEPENDENCIES: jQuery, vendor.js
+ * USED BY: Various page templates
+ * 
+ * TO REMOVE: When all pages using these functions are migrated to modern JS,
+ * this file can be removed from the Vite bundle entry points.
+ * =============================================================================
+ */
+
 var     last_orientation = '',
         o = getOrientation()
 
@@ -1117,6 +1142,287 @@ function openDrawer(){
     jQuery("#menuclose").show();
     jQuery(this).hide();
 }
+
+/**
+ * =============================================================================
+ * Header Offset Utility - Modern, No jQuery
+ * =============================================================================
+ * Dynamically measures the fixed header height (including sectionbar) and 
+ * updates CSS variables so content doesn't render underneath the header.
+ * 
+ * Also accounts for WP admin bar when logged in.
+ * 
+ * USAGE:
+ * Automatically initializes on DOMContentLoaded.
+ * Updates on: resize, orientationchange, menu open/close, ResizeObserver
+ * 
+ * CSS Variables Set:
+ *   --site-header-h: Header element height in px (megamenu only)
+ *   --sectionbar-h: Sectionbar height in px (0 if not present)
+ *   --admin-bar-h: WP admin bar height in px
+ *   --total-header-offset: Header + sectionbar + admin bar combined
+ * =============================================================================
+ */
+
+(function() {
+    'use strict';
+
+    // Prevent double initialization
+    if (window.HeaderOffsetInitialized) return;
+    window.HeaderOffsetInitialized = true;
+
+    class HeaderOffset {
+        constructor() {
+            this.header = null;
+            this.sectionbar = null;
+            this.adminBar = null;
+            this.resizeObserver = null;
+            this.debounceTimer = null;
+        }
+
+        init() {
+            // Find header element - try multiple selectors for robustness
+            this.header = document.getElementById('header') 
+                       || document.querySelector('.megamenu')
+                       || document.querySelector('header');
+            
+            // Find sectionbar (L2 menu bar) if present
+            this.sectionbar = document.querySelector('.sectionbar');
+            
+            // Find WP admin bar if present
+            this.adminBar = document.getElementById('wpadminbar');
+
+            if (!this.header) {
+                console.warn('HeaderOffset: No header element found');
+                return;
+            }
+
+            // Initial measurement
+            this._updateOffset();
+
+            // Setup observers and listeners
+            this._setupResizeObserver();
+            this._bindEvents();
+        }
+
+        _updateOffset() {
+            if (!this.header) return;
+
+            // Measure header height (includes sectionbar if it's inside #header)
+            const headerRect = this.header.getBoundingClientRect();
+            const headerHeight = Math.ceil(headerRect.height);
+
+            // Measure sectionbar separately for the CSS variable (informational only)
+            let sectionbarHeight = 0;
+            if (this.sectionbar) {
+                const sectionbarRect = this.sectionbar.getBoundingClientRect();
+                if (sectionbarRect.height > 0 && getComputedStyle(this.sectionbar).display !== 'none') {
+                    sectionbarHeight = Math.ceil(sectionbarRect.height);
+                }
+            }
+
+            // Measure admin bar if present
+            let adminBarHeight = 0;
+            if (this.adminBar && document.body.classList.contains('admin-bar')) {
+                const adminBarRect = this.adminBar.getBoundingClientRect();
+                adminBarHeight = Math.ceil(adminBarRect.height);
+            }
+
+            // Total offset: header already includes sectionbar (it's nested inside #header)
+            // Only add admin bar separately since it's outside #header
+            const totalOffset = headerHeight + adminBarHeight;
+
+            // Set CSS variables on document root
+            const root = document.documentElement;
+            root.style.setProperty('--site-header-h', headerHeight + 'px');
+            root.style.setProperty('--sectionbar-h', sectionbarHeight + 'px');
+            root.style.setProperty('--admin-bar-h', adminBarHeight + 'px');
+            root.style.setProperty('--total-header-offset', totalOffset + 'px');
+        }
+
+        _setupResizeObserver() {
+            // Use ResizeObserver if available (preferred - auto-updates on any size change)
+            if ('ResizeObserver' in window) {
+                this.resizeObserver = new ResizeObserver(() => {
+                    this._debouncedUpdate();
+                });
+
+                this.resizeObserver.observe(this.header);
+
+                // Also observe sectionbar if present
+                if (this.sectionbar) {
+                    this.resizeObserver.observe(this.sectionbar);
+                }
+
+                // Also observe admin bar if present
+                if (this.adminBar) {
+                    this.resizeObserver.observe(this.adminBar);
+                }
+            }
+        }
+
+        _bindEvents() {
+            // Fallback/additional listeners for resize and orientation change
+            window.addEventListener('resize', () => this._debouncedUpdate(), { passive: true });
+            window.addEventListener('orientationchange', () => this._debouncedUpdate(), { passive: true });
+
+            // Listen for megamenu state changes (custom event from megamenu-controller.js)
+            document.addEventListener('megamenu:opened', () => this._debouncedUpdate());
+            document.addEventListener('megamenu:closed', () => this._debouncedUpdate());
+
+            // Also listen for class changes on body that might indicate menu state
+            // This catches the .megamenu-open class toggle
+            if ('MutationObserver' in window) {
+                const bodyObserver = new MutationObserver((mutations) => {
+                    for (const mutation of mutations) {
+                        if (mutation.attributeName === 'class') {
+                            this._debouncedUpdate();
+                            break;
+                        }
+                    }
+                });
+
+                bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            }
+        }
+
+        _debouncedUpdate() {
+            // Debounce rapid updates
+            if (this.debounceTimer) {
+                clearTimeout(this.debounceTimer);
+            }
+            this.debounceTimer = setTimeout(() => {
+                this._updateOffset();
+            }, 50);
+        }
+
+        // Public method to force update (can be called externally if needed)
+        update() {
+            this._updateOffset();
+        }
+    }
+
+    // Create global instance for external access
+    const headerOffset = new HeaderOffset();
+
+    // Expose update method globally
+    window.updateHeaderOffset = () => headerOffset.update();
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => headerOffset.init());
+    } else {
+        headerOffset.init();
+    }
+})();
+
+/**
+ * =============================================================================
+ * Hero Parallax Module - Modern, No jQuery
+ * =============================================================================
+ * Handles parallax scroll effects for hero sections.
+ * 
+ * FEATURES:
+ * - Respects prefers-reduced-motion (WCAG 2.1 AA)
+ * - Uses requestAnimationFrame for performance
+ * - Supports multiple hero variants via data attributes
+ * - Mobile-safe with automatic disable on touch devices
+ * 
+ * USAGE:
+ * Add to any hero element:
+ *   <section class="pf-hero pf-hero--parallax" data-parallax-scale="0.0005" data-parallax-fade="0.0005">
+ * 
+ * CSS classes:
+ *   .pf-hero              - Base hero wrapper
+ *   .pf-hero--parallax    - Enables parallax effect
+ *   .pf-hero--static      - Static image (no effect)
+ *   .pf-hero--slideshow   - Slideshow hero
+ *   .pf-hero--video       - Video hero
+ * =============================================================================
+ */
+
+(function() {
+    'use strict';
+
+    // Prevent double initialization
+    if (window.HeroParallaxInitialized) return;
+    window.HeroParallaxInitialized = true;
+
+    class HeroParallax {
+        constructor() {
+            // Check for reduced motion preference - WCAG 2.1 AA
+            this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            
+            // Disable on touch devices for better mobile performance
+            this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            
+            this.heroes = [];
+            this.ticking = false;
+        }
+
+        init() {
+            // Skip if user prefers reduced motion
+            if (this.prefersReducedMotion) {
+                this._applyReducedMotionFallback();
+                return;
+            }
+
+            // Find all parallax heroes (support both old and new class names)
+            // Exclude #dynamic-hero and hero-cover-* elements - transform breaks background scaling
+            const parallaxElements = document.querySelectorAll('.pf-hero--parallax, .parallax:not(#dynamic-hero):not(.hero-cover-10):not(.hero-cover-20):not(.hero-cover-25):not(.hero-cover-50)');
+            
+            if (parallaxElements.length === 0) return;
+
+            parallaxElements.forEach(el => {
+                this.heroes.push({
+                    element: el,
+                    scaleRate: parseFloat(el.dataset.parallaxScale) || 0.0005,
+                    fadeRate: parseFloat(el.dataset.parallaxFade) || 0.0005
+                });
+            });
+
+            this._bindEvents();
+        }
+
+        _bindEvents() {
+            window.addEventListener('scroll', () => {
+                if (!this.ticking) {
+                    requestAnimationFrame(() => this._updateParallax());
+                    this.ticking = true;
+                }
+            }, { passive: true });
+        }
+
+        _updateParallax() {
+            const scroll = window.pageYOffset;
+
+            this.heroes.forEach(hero => {
+                const scaleValue = 1 + scroll * hero.scaleRate;
+                const opacityValue = Math.max(0, 1 - scroll * hero.fadeRate);
+
+                hero.element.style.transform = `scale(${scaleValue})`;
+                hero.element.style.opacity = opacityValue;
+            });
+
+            this.ticking = false;
+        }
+
+        _applyReducedMotionFallback() {
+            // For users who prefer reduced motion, ensure heroes are visible but static
+            document.querySelectorAll('.pf-hero--parallax, .parallax').forEach(el => {
+                el.style.transform = 'none';
+                el.style.opacity = '1';
+            });
+        }
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => new HeroParallax().init());
+    } else {
+        new HeroParallax().init();
+    }
+})();
 
 // AMD support (Thanks to @FagnerMartinsBrack)
 ;(function(factory) {
@@ -2913,6 +3219,466 @@ $(".close").click(function(event) {
 
 });
 
+/**
+ * MegaMenu Controller - WCAG 2.1 AA Accessible
+ * 
+ * Accessibility features:
+ * - Full keyboard navigation (Tab, Enter, Space, Escape, Arrow keys)
+ * - Proper aria-expanded and aria-controls attributes
+ * - Focus management: submenu open moves focus in, Escape returns focus
+ * - Mobile drawer: focus trap when open, Escape closes, overlay click closes
+ * - Respects prefers-reduced-motion for animations
+ * 
+ * State isolation:
+ * - Mobile and desktop states are fully independent
+ * - On resize from mobile→desktop: all mobile accordions reset, aria states cleared
+ * - Body scroll lock uses CSS class (.megamenu-open) not inline styles
+ * 
+ * No jQuery dependency - vanilla JS only
+ */
+(function() {
+    'use strict';
+    
+    // Prevent double initialization
+    if (window.MegaMenuInitialized) return;
+    window.MegaMenuInitialized = true;
+    
+    class MegaMenu {
+        constructor(options = {}) {
+            this.config = {
+                containerSelector: '.megamenu',
+                mobileBreakpoint: 768,
+                ...options
+            };
+            this.state = { 
+                openMenuId: null, 
+                mobileOpen: false,
+                lastFocusedElement: null // Track focus for restoration
+            };
+            this.container = null;
+            this.desktopNav = null;
+            this.mobileNav = null;
+            this.mobileToggle = null;
+            this.overlay = null;
+            this.focusableElements = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        }
+
+        init() {
+            this.container = document.querySelector(this.config.containerSelector);
+            if (!this.container) return;
+
+            this.desktopNav = this.container.querySelector('.megamenu__bar');
+            this.mobileToggle = this.container.querySelector('.megamenu__toggle');
+            
+            // Mobile elements are now outside the nav container
+            this.mobileNav = document.querySelector('.megamenu__mobile');
+            this.overlay = document.querySelector('.megamenu__overlay');
+
+            this._bindDesktopEvents();
+            this._bindMobileEvents();
+            this._bindGlobalEvents();
+            this._setupAriaAttributes();
+        }
+
+        /**
+         * Setup initial ARIA attributes for accessibility
+         */
+        _setupAriaAttributes() {
+            // Ensure mobile nav has proper aria-hidden when closed
+            if (this.mobileNav) {
+                this.mobileNav.setAttribute('aria-hidden', 'true');
+            }
+            
+            // Ensure panels have aria-hidden when closed
+            if (this.desktopNav) {
+                this.desktopNav.querySelectorAll('.megamenu__panel').forEach(panel => {
+                    if (panel.getAttribute('data-state') !== 'open') {
+                        panel.setAttribute('aria-hidden', 'true');
+                    }
+                });
+            }
+        }
+
+        _bindDesktopEvents() {
+            if (!this.desktopNav) return;
+
+            // Click to toggle
+            this.desktopNav.addEventListener('click', (e) => {
+                const trigger = e.target.closest('button[aria-expanded]');
+                if (trigger) {
+                    e.preventDefault();
+                    this._toggleDesktopMenu(trigger);
+                }
+            });
+
+            // Keyboard navigation for triggers (Enter/Space to toggle)
+            this.desktopNav.addEventListener('keydown', (e) => {
+                const trigger = e.target.closest('button[aria-expanded]');
+                if (!trigger) return;
+                
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this._toggleDesktopMenu(trigger);
+                }
+                
+                // Arrow key navigation between top-level items
+                if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    this._navigateTopLevel(trigger, e.key === 'ArrowRight' ? 1 : -1);
+                }
+                
+                // Arrow down opens submenu and moves focus into it
+                if (e.key === 'ArrowDown') {
+                    const menuItem = trigger.closest('.megamenu__item');
+                    const panel = menuItem?.querySelector('.megamenu__panel');
+                    if (panel) {
+                        e.preventDefault();
+                        this._closeAllDesktopMenus();
+                        this._openDesktopMenu(trigger, panel, menuItem);
+                        this._focusFirstInPanel(panel);
+                    }
+                }
+            });
+
+            // Hover to open (desktop only, respects reduced motion)
+            const menuItems = this.desktopNav.querySelectorAll('.megamenu__item');
+            menuItems.forEach(item => {
+                const trigger = item.querySelector('button[aria-expanded]');
+                const panel = item.querySelector('.megamenu__panel');
+                if (!trigger || !panel) return;
+
+                item.addEventListener('mouseenter', () => {
+                    if (window.innerWidth >= this.config.mobileBreakpoint) {
+                        this._closeAllDesktopMenus();
+                        this._openDesktopMenu(trigger, panel, item);
+                    }
+                });
+
+                item.addEventListener('mouseleave', () => {
+                    if (window.innerWidth >= this.config.mobileBreakpoint) {
+                        this._closeDesktopMenu(trigger, panel, item);
+                    }
+                });
+            });
+        }
+
+        /**
+         * Navigate between top-level menu items with arrow keys
+         */
+        _navigateTopLevel(currentTrigger, direction) {
+            const triggers = Array.from(this.desktopNav.querySelectorAll('.megamenu__item > button[aria-expanded], .megamenu__item > a'));
+            const currentIndex = triggers.indexOf(currentTrigger);
+            if (currentIndex === -1) return;
+            
+            let newIndex = currentIndex + direction;
+            if (newIndex < 0) newIndex = triggers.length - 1;
+            if (newIndex >= triggers.length) newIndex = 0;
+            
+            triggers[newIndex].focus();
+        }
+
+        /**
+         * Focus first focusable element in panel
+         */
+        _focusFirstInPanel(panel) {
+            const firstFocusable = panel.querySelector(this.focusableElements);
+            if (firstFocusable) {
+                // Small delay to ensure panel is visible
+                setTimeout(() => firstFocusable.focus(), 50);
+            }
+        }
+
+        _toggleDesktopMenu(trigger) {
+            const menuItem = trigger.closest('.megamenu__item');
+            const panel = menuItem?.querySelector('.megamenu__panel');
+            if (!panel) return;
+
+            const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+
+            if (isOpen) {
+                this._closeDesktopMenu(trigger, panel, menuItem);
+                trigger.focus(); // Return focus to trigger
+            } else {
+                this._closeAllDesktopMenus();
+                this._openDesktopMenu(trigger, panel, menuItem);
+            }
+        }
+
+        _openDesktopMenu(trigger, panel, menuItem) {
+            trigger.setAttribute('aria-expanded', 'true');
+            panel.setAttribute('data-state', 'open');
+            panel.setAttribute('aria-hidden', 'false');
+            menuItem.classList.add('is-open');
+            this.state.openMenuId = menuItem.id;
+        }
+
+        _closeDesktopMenu(trigger, panel, menuItem) {
+            trigger.setAttribute('aria-expanded', 'false');
+            panel.setAttribute('data-state', 'closed');
+            panel.setAttribute('aria-hidden', 'true');
+            menuItem.classList.remove('is-open');
+            this.state.openMenuId = null;
+        }
+
+        _closeAllDesktopMenus() {
+            if (!this.desktopNav) return;
+            this.desktopNav.querySelectorAll('.megamenu__item.is-open').forEach(item => {
+                const trigger = item.querySelector('button[aria-expanded]');
+                const panel = item.querySelector('.megamenu__panel');
+                if (trigger && panel) {
+                    this._closeDesktopMenu(trigger, panel, item);
+                }
+            });
+        }
+
+        _bindMobileEvents() {
+            if (this.mobileToggle) {
+                this.mobileToggle.addEventListener('click', () => this._toggleMobileNav());
+                
+                // Keyboard support for mobile toggle
+                this.mobileToggle.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this._toggleMobileNav();
+                    }
+                });
+            }
+
+            const closeBtn = this.mobileNav?.querySelector('.megamenu__mobile-close');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => this._closeMobileNav());
+                closeBtn.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        this._closeMobileNav();
+                    }
+                });
+            }
+
+            if (this.overlay) {
+                this.overlay.addEventListener('click', () => this._closeMobileNav());
+            }
+
+            if (this.mobileNav) {
+                this.mobileNav.addEventListener('click', (e) => {
+                    const trigger = e.target.closest('.megamenu__mobile-trigger');
+                    if (trigger) {
+                        e.preventDefault();
+                        this._toggleMobileAccordion(trigger);
+                    }
+                });
+                
+                // Focus trap for mobile nav
+                this.mobileNav.addEventListener('keydown', (e) => {
+                    if (e.key === 'Tab' && this.state.mobileOpen) {
+                        this._trapFocus(e);
+                    }
+                });
+            }
+        }
+
+        /**
+         * Trap focus within mobile drawer when open (WCAG requirement)
+         */
+        _trapFocus(e) {
+            const focusableInNav = this.mobileNav.querySelectorAll(this.focusableElements);
+            if (focusableInNav.length === 0) return;
+            
+            const firstFocusable = focusableInNav[0];
+            const lastFocusable = focusableInNav[focusableInNav.length - 1];
+            
+            if (e.shiftKey) {
+                // Shift+Tab: if on first element, go to last
+                if (document.activeElement === firstFocusable) {
+                    e.preventDefault();
+                    lastFocusable.focus();
+                }
+            } else {
+                // Tab: if on last element, go to first
+                if (document.activeElement === lastFocusable) {
+                    e.preventDefault();
+                    firstFocusable.focus();
+                }
+            }
+        }
+
+        _toggleMobileNav() {
+            this.state.mobileOpen ? this._closeMobileNav() : this._openMobileNav();
+        }
+
+        _openMobileNav() {
+            // Store current focus and scroll position for restoration (iOS Safari fix)
+            this.state.lastFocusedElement = document.activeElement;
+            this.state.scrollPosition = window.pageYOffset;
+            
+            this.state.mobileOpen = true;
+            this.mobileToggle?.setAttribute('aria-expanded', 'true');
+            this.mobileNav?.classList.add('is-open');
+            this.mobileNav?.setAttribute('aria-hidden', 'false');
+            this.overlay?.classList.add('is-visible');
+            
+            // Use CSS class for scroll lock (not inline style) - better iOS Safari support
+            document.body.classList.add('megamenu-open');
+            
+            // Move focus to close button or first focusable element
+            const closeBtn = this.mobileNav?.querySelector('.megamenu__mobile-close');
+            if (closeBtn) {
+                setTimeout(() => closeBtn.focus(), 100);
+            }
+        }
+
+        _closeMobileNav() {
+            this.state.mobileOpen = false;
+            this.mobileToggle?.setAttribute('aria-expanded', 'false');
+            this.mobileNav?.classList.remove('is-open');
+            this.mobileNav?.setAttribute('aria-hidden', 'true');
+            this.overlay?.classList.remove('is-visible');
+            
+            // Remove scroll lock class
+            document.body.classList.remove('megamenu-open');
+            
+            // Restore scroll position (iOS Safari fix)
+            if (typeof this.state.scrollPosition === 'number') {
+                window.scrollTo(0, this.state.scrollPosition);
+                this.state.scrollPosition = null;
+            }
+            
+            // Restore focus to the element that opened the drawer
+            if (this.state.lastFocusedElement) {
+                this.state.lastFocusedElement.focus();
+                this.state.lastFocusedElement = null;
+            }
+        }
+
+        _toggleMobileAccordion(trigger) {
+            // Find submenu via aria-controls (authoritative link)
+            const submenuId = trigger.getAttribute('aria-controls');
+            let submenu = submenuId ? document.getElementById(submenuId) : null;
+
+            // Fallback: submenu is inside the same mobile item
+            if (!submenu) {
+                const item = trigger.closest('.megamenu__mobile-item');
+                submenu = item?.querySelector('.megamenu__mobile-submenu') || null;
+            }
+
+            if (!submenu || !submenu.classList.contains('megamenu__mobile-submenu')) return;
+
+            const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+
+            // If opening: close ALL other open submenus in the entire mobile nav
+            // Do NOT rely on DOM sibling/parent relationships
+            if (!isOpen && this.mobileNav) {
+                this.mobileNav.querySelectorAll('.megamenu__mobile-submenu.is-open').forEach((openSubmenu) => {
+                    if (openSubmenu === submenu) return;
+
+                    // Close this submenu
+                    openSubmenu.classList.remove('is-open');
+                    openSubmenu.setAttribute('aria-hidden', 'true');
+
+                    // Find its controlling trigger via aria-controls and collapse it
+                    const openSubmenuId = openSubmenu.id;
+                    if (openSubmenuId) {
+                        const openTrigger = this.mobileNav.querySelector(`.megamenu__mobile-trigger[aria-controls="${openSubmenuId}"]`);
+                        if (openTrigger) {
+                            openTrigger.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+            }
+
+            // Toggle clicked submenu
+            trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            submenu.classList.toggle('is-open', !isOpen);
+            submenu.setAttribute('aria-hidden', isOpen ? 'true' : 'false');
+        }
+
+
+
+        /**
+         * Reset all mobile accordion states
+         * Called on breakpoint change to ensure clean desktop state
+         */
+        _resetMobileAccordions() {
+            if (!this.mobileNav) return;
+            
+            // Close all open submenus
+            this.mobileNav.querySelectorAll('.megamenu__mobile-submenu.is-open').forEach((submenu) => {
+                submenu.classList.remove('is-open');
+                submenu.setAttribute('aria-hidden', 'true');
+            });
+            
+            // Reset all triggers to collapsed
+            this.mobileNav.querySelectorAll('.megamenu__mobile-trigger[aria-expanded="true"]').forEach((trigger) => {
+                trigger.setAttribute('aria-expanded', 'false');
+            });
+        }
+
+        _bindGlobalEvents() {
+            document.addEventListener('click', (e) => {
+                if (this.state.openMenuId && !e.target.closest('.megamenu__item')) {
+                    this._closeAllDesktopMenus();
+                }
+            });
+
+            // Escape key handling with focus restoration
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (this.state.mobileOpen) {
+                        this._closeMobileNav();
+                    } else if (this.state.openMenuId) {
+                        // Find the open menu and return focus to its trigger
+                        const openItem = this.desktopNav?.querySelector('.megamenu__item.is-open');
+                        const trigger = openItem?.querySelector('button[aria-expanded]');
+                        this._closeAllDesktopMenus();
+                        if (trigger) trigger.focus();
+                    }
+                }
+            });
+
+            // Breakpoint change: reset mobile state when switching to desktop
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= this.config.mobileBreakpoint) {
+                    // Switching to desktop: close mobile nav and reset all accordions
+                    if (this.state.mobileOpen) {
+                        this._closeMobileNav();
+                    }
+                    // Always reset mobile accordions to ensure clean desktop state
+                    this._resetMobileAccordions();
+                    // Ensure mobile nav is hidden
+                    this.mobileNav?.setAttribute('aria-hidden', 'true');
+                }
+            });
+        }
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => new MegaMenu().init());
+    } else {
+        new MegaMenu().init();
+    }
+})();
+
+/**
+ * =============================================================================
+ * LEGACY CODE - jQuery Dependent
+ * =============================================================================
+ * This file contains the OLD jQuery-based megamenu builder.
+ * It renders menu HTML to #main-menu element.
+ * 
+ * MIGRATION STATUS: Replaced by megamenu-controller.js + PHP renderer
+ * DEPENDENCIES: jQuery, menus global object from REST API
+ * USED BY: Pages that still use #main-menu instead of .megamenu
+ * 
+ * NEW SYSTEM: 
+ *   - PHP: functions-megamenu.php renders .megamenu markup server-side
+ *   - JS:  megamenu-controller.js handles interactions (no jQuery)
+ * 
+ * TO REMOVE: When all pages use the new PHP-rendered .megamenu,
+ * this file can be removed from the Vite bundle entry points.
+ * =============================================================================
+ */
+
 function megaMenu() {
     // Check if menus data is available
     if (!menus || !menus.megamenu || !menus.megamenu.menu_levels) {
@@ -3832,7 +4598,9 @@ function getProfileContact(info) {
                 contact[f] = ''
             }
         } else {
-            contact[f] = '<a class="contact fa fa-' + f + '" href="' + info[f] + '" target=_new" title="' + info[f] + '"></a><br>'
+            // FA6 brands icons require fa-brands prefix; twitter renamed to x-twitter
+            var iconName = (f === 'twitter') ? 'x-twitter' : f;
+            contact[f] = '<a class="contact fa-brands fa-' + iconName + '" href="' + info[f] + '" target=_new" title="' + info[f] + '"></a><br>'
         }
 
     }
@@ -3848,7 +4616,9 @@ function getProfileContact(info) {
 
 function showSocial(info, f) {
     if (info[f] != undefined) {
-        return info[f] = '<a class="contact social-icon fa fa-' + f + '" href="' + info[f] + '" target=_new" title="' + info[f] + '"></a>'
+        // FA6 brands icons require fa-brands prefix; twitter renamed to x-twitter
+        var iconName = (f === 'twitter') ? 'x-twitter' : f;
+        return info[f] = '<a class="contact social-icon fa-brands fa-' + iconName + '" href="' + info[f] + '" target=_new" title="' + info[f] + '"></a>'
     } else {
         return ''
     }
@@ -4249,13 +5019,13 @@ function getProfileCard(this_profile){
         
         if(!hide_social_icons){
             if(info.twitter != undefined){
-                social +='<a target="_new" class="twitter" href="'+info.twitter+'"><i class="fa fa-x-twitter social-icon" title="'+this_profile.title+' on Twitter"></i></a>'
+                social +='<a target="_new" class="twitter" href="'+info.twitter+'"><i class="fa-brands fa-x-twitter social-icon" title="'+this_profile.title+' on Twitter"></i></a>'
             }
             if(info.linkedin != undefined){
-                social +='<a target="_new" class="linkedin" href="'+info.linkedin+'"><i class="fa fa-linkedin social-icon" title="'+this_profile.title+' on LinkedIn"></i></a>'
+                social +='<a target="_new" class="linkedin" href="'+info.linkedin+'"><i class="fa-brands fa-linkedin social-icon" title="'+this_profile.title+' on LinkedIn"></i></a>'
             }
             if(info.github != undefined){
-                social +='<a target="_new" class="github" href="'+info.github+'"><i class="fa fa-github social-icon" title="'+this_profile.title+' on GitHub"></i></a>'
+                social +='<a target="_new" class="github" href="'+info.github+'"><i class="fa-brands fa-github social-icon" title="'+this_profile.title+' on GitHub"></i></a>'
             }
         }
         if(social != ''){
@@ -4716,7 +5486,7 @@ function displayRunOfShowTable(runOfShow){
                         return match ? match + '&autoplay=1&rel=0' : '?autoplay=1&rel=0';
                     });
          //       console.log("event"+n,runOfShow.sessions[n].info.featured_media)
-                sessions += '<a href="#'+runOfShow.sessions[n].info.slug+'" class="watch video-button" onclick="playSessionVideo(\''+runOfShow.sessions[n].info.meta.embed_video_url+'\',\''+runOfShow.sessions[n].title+'\',\'\')" class="watch"><i title="WATCH" class="fa fa-youtube"></i><br> Watch</a>'
+                sessions += '<a href="#'+runOfShow.sessions[n].info.slug+'" class="watch video-button" onclick="playSessionVideo(\''+runOfShow.sessions[n].info.meta.embed_video_url+'\',\''+runOfShow.sessions[n].title+'\',\'\')" class="watch"><i title="WATCH" class="fa-brands fa-youtube"></i><br> Watch</a>'
                     }
                 }
             }
@@ -5639,6 +6409,21 @@ $(".video-button").on('click', function(event){
    // console.log("THIS",$(this).data('url'))
 
 });
+/**
+ * =============================================================================
+ * LEGACY CODE - Global Variables
+ * =============================================================================
+ * This file manages taxonomy data (categories, tags) using global variables.
+ * 
+ * MIGRATION STATUS: Not yet migrated
+ * DEPENDENCIES: Global variables (categories, tags, taxonomies)
+ * USED BY: Pages that filter/display content by taxonomy
+ * 
+ * TO REMOVE: When taxonomy handling is refactored to use modern patterns
+ * (e.g., ES modules, state management), this file can be removed.
+ * =============================================================================
+ */
+
 function setChildCategories(data) {
     for (var i = 0; i < data.length; i++) {
         categories[data[i].id] = data[i]
@@ -5673,6 +6458,10 @@ function setTaxonomy(data, tax) {
 }
 
 function setTags(data) {
+    if (!data || !Array.isArray(data)) {
+        console.log('setTags: data is not an array or is undefined');
+        return data;
+    }
     for (var i = 0; i < data.length; i++) {
         tags[data[i].id] = data[i]
     }
@@ -5680,3 +6469,207 @@ function setTags(data) {
 
     return data
 }
+/**
+ * =============================================================================
+ * Video Player Module - Modern, No jQuery
+ * =============================================================================
+ * Unified video handling for embedded and self-hosted videos.
+ * 
+ * FEATURES:
+ * - YouTube/Vimeo embed support
+ * - Self-hosted MP4 support
+ * - Autoplay with accessibility safeguards
+ * - Respects prefers-reduced-motion (pauses autoplay)
+ * - Lazy loading for performance
+ * 
+ * USAGE:
+ * <div class="pf-video" data-video-src="https://youtube.com/embed/..." data-autoplay="true">
+ *   <div class="pf-video__player"></div>
+ * </div>
+ * 
+ * Or for self-hosted:
+ * <div class="pf-video pf-video--native" data-video-src="/path/to/video.mp4">
+ *   <video class="pf-video__player"></video>
+ * </div>
+ * 
+ * API:
+ *   window.VideoPlayer.play(containerId)
+ *   window.VideoPlayer.pause(containerId)
+ *   window.VideoPlayer.changeSource(containerId, newSrc)
+ * =============================================================================
+ */
+
+(function() {
+    'use strict';
+
+    // Prevent double initialization
+    if (window.VideoPlayerInitialized) return;
+    window.VideoPlayerInitialized = true;
+
+    class VideoPlayer {
+        constructor() {
+            this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            this.players = new Map();
+        }
+
+        init() {
+            // Find all video containers
+            const videoContainers = document.querySelectorAll('.pf-video, .video-wrap');
+            
+            videoContainers.forEach(container => {
+                this._initializePlayer(container);
+            });
+
+            // Expose API
+            window.VideoPlayer = {
+                play: (id) => this.play(id),
+                pause: (id) => this.pause(id),
+                changeSource: (id, src) => this.changeSource(id, src)
+            };
+        }
+
+        _initializePlayer(container) {
+            const id = container.id || `video-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            container.id = id;
+
+            const src = container.dataset.videoSrc;
+            const autoplay = container.dataset.autoplay === 'true';
+            const isNative = container.classList.contains('pf-video--native');
+
+            // Store player reference
+            this.players.set(id, {
+                container,
+                src,
+                autoplay,
+                isNative,
+                loaded: false
+            });
+
+            // If autoplay requested but user prefers reduced motion, don't autoplay
+            if (autoplay && !this.prefersReducedMotion) {
+                this._loadPlayer(id);
+            }
+
+            // Setup lazy loading via IntersectionObserver
+            if (!autoplay) {
+                this._setupLazyLoad(id);
+            }
+        }
+
+        _setupLazyLoad(id) {
+            const player = this.players.get(id);
+            if (!player) return;
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && !player.loaded) {
+                        this._loadPlayer(id);
+                        observer.disconnect();
+                    }
+                });
+            }, { rootMargin: '100px' });
+
+            observer.observe(player.container);
+        }
+
+        _loadPlayer(id) {
+            const player = this.players.get(id);
+            if (!player || player.loaded) return;
+
+            const playerEl = player.container.querySelector('.pf-video__player, iframe, video');
+            
+            if (player.isNative) {
+                this._loadNativeVideo(player, playerEl);
+            } else {
+                this._loadEmbedVideo(player, playerEl);
+            }
+
+            player.loaded = true;
+        }
+
+        _loadNativeVideo(player, videoEl) {
+            if (!videoEl) {
+                videoEl = document.createElement('video');
+                videoEl.className = 'pf-video__player';
+                player.container.appendChild(videoEl);
+            }
+
+            videoEl.src = player.src;
+            videoEl.controls = true;
+            videoEl.playsInline = true;
+            
+            if (player.autoplay && !this.prefersReducedMotion) {
+                videoEl.autoplay = true;
+                videoEl.muted = true; // Required for autoplay
+            }
+        }
+
+        _loadEmbedVideo(player, iframeEl) {
+            if (!iframeEl || iframeEl.tagName !== 'IFRAME') {
+                iframeEl = document.createElement('iframe');
+                iframeEl.className = 'pf-video__player';
+                iframeEl.setAttribute('allowfullscreen', '');
+                iframeEl.setAttribute('frameborder', '0');
+                player.container.appendChild(iframeEl);
+            }
+
+            let src = player.src;
+            
+            // Add autoplay parameter if needed
+            if (player.autoplay && !this.prefersReducedMotion) {
+                const separator = src.includes('?') ? '&' : '?';
+                if (src.includes('youtube') || src.includes('youtu.be')) {
+                    src += `${separator}autoplay=1&mute=1`;
+                } else if (src.includes('vimeo')) {
+                    src += `${separator}autoplay=1&muted=1`;
+                }
+            }
+
+            iframeEl.src = src;
+        }
+
+        play(id) {
+            const player = this.players.get(id);
+            if (!player) return;
+
+            const videoEl = player.container.querySelector('video');
+            if (videoEl) {
+                videoEl.play();
+            }
+        }
+
+        pause(id) {
+            const player = this.players.get(id);
+            if (!player) return;
+
+            const videoEl = player.container.querySelector('video');
+            if (videoEl) {
+                videoEl.pause();
+            }
+        }
+
+        changeSource(id, newSrc) {
+            const player = this.players.get(id);
+            if (!player) return;
+
+            player.src = newSrc;
+            player.loaded = false;
+            this._loadPlayer(id);
+        }
+    }
+
+    // Legacy compatibility: expose playSessionVideo for existing code
+    window.playSessionVideo = function(url, title) {
+        const iframe = document.getElementById('video-player');
+        if (iframe) {
+            iframe.src = url;
+        }
+    };
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => new VideoPlayer().init());
+    } else {
+        new VideoPlayer().init();
+    }
+})();

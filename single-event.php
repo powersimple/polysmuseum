@@ -109,17 +109,17 @@ if (!function_exists('render_event_profile_card')) {
                 <span class="social">
                     <?php if ($twitter): ?>
                     <a target="_blank" class="twitter" href="<?php echo esc_url($twitter); ?>">
-                        <i class="fa fa-x-twitter social-icon" title="<?php echo $title; ?> on Twitter"></i>
+                        <i class="fa-brands fa-x-twitter social-icon" title="<?php echo $title; ?> on Twitter"></i>
                     </a>
                     <?php endif; ?>
                     <?php if ($linkedin): ?>
                     <a target="_blank" class="linkedin" href="<?php echo esc_url($linkedin); ?>">
-                        <i class="fa fa-linkedin social-icon" title="<?php echo $title; ?> on LinkedIn"></i>
+                        <i class="fa-brands fa-linkedin social-icon" title="<?php echo $title; ?> on LinkedIn"></i>
                     </a>
                     <?php endif; ?>
                     <?php if ($github): ?>
                     <a target="_blank" class="github" href="<?php echo esc_url($github); ?>">
-                        <i class="fa fa-github social-icon" title="<?php echo $title; ?> on GitHub"></i>
+                        <i class="fa-brands fa-github social-icon" title="<?php echo $title; ?> on GitHub"></i>
                     </a>
                     <?php endif; ?>
                 </span>
@@ -150,7 +150,7 @@ if (!function_exists('render_event_session_row')) {
                 <a href="#<?php echo esc_attr($session_slug); ?>" 
                    class="watch video-button" 
                    onclick="playSessionVideo('<?php echo esc_js(event_format_video_url($session_video)); ?>','<?php echo esc_js($session_title); ?>','')">
-                    <i title="WATCH" class="fa fa-youtube"></i><br> Watch
+                    <i title="WATCH" class="fa-brands fa-youtube"></i><br> Watch
                 </a>
                 <?php endif; ?>
             </div>
