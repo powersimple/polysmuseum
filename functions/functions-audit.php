@@ -1738,3 +1738,1736 @@ function preview_award_narratives() {
     echo '</div>';
     echo '</div>';
 }
+
+// =============================================================================
+// MEGAMENU CONTENT AUDIT MODE
+// =============================================================================
+
+// =============================================================================
+// CACHING INFRASTRUCTURE
+// =============================================================================
+
+/**
+ * Build a consistent cache key for audit transients
+ *
+ * @param string $namespace Cache namespace (e.g., 'menu_tree', 'render')
+ * @param array $parts Key parts to include in the hash
+ * @return string Transient key (max 172 chars for WP transients)
+ */
+function audit_cache_key($namespace, $parts = []) {
+    $site_id = get_current_blog_id();
+    $parts_string = implode('_', array_map('sanitize_key', $parts));
+    $hash = substr(md5($parts_string), 0, 12);
+    return 'audit_' . $namespace . '_' . $site_id . '_' . $hash;
+}
+
+/**
+ * Get the lightweight megamenu subtree structure (cached)
+ * 
+ * This returns ONLY the menu structure without post_content to keep cache small.
+ * The structure includes: menu_item_id, object_id, object_type, url, title, 
+ * parent relationships, depth, and linked post metadata (excluding content).
+ *
+ * @param string $menu_slug The menu slug
+ * @param string $root_slug Optional root item slug to filter subtree
+ * @param bool $force_refresh Force cache refresh
+ * @return array ['data' => array|false, 'cache_hit' => bool, 'build_time' => float]
+ */
+function audit_get_megamenu_subtree_cached($menu_slug = 'megamenu', $root_slug = '', $force_refresh = false) {
+    $cache_key = audit_cache_key('menu_tree', [$menu_slug, $root_slug]);
+    $ttl = 12 * HOUR_IN_SECONDS; // 12 hours default
+    
+    // Check cache first (unless force refresh)
+    if (!$force_refresh) {
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return [
+                'data' => $cached,
+                'cache_hit' => true,
+                'build_time' => 0
+            ];
+        }
+    }
+    
+    // Cache miss - build the subtree
+    $start_time = microtime(true);
+    $subtree = audit_get_megamenu_subtree($menu_slug, $root_slug);
+    $build_time = microtime(true) - $start_time;
+    
+    // Store in cache (only if we got valid data)
+    if ($subtree !== false) {
+        set_transient($cache_key, $subtree, $ttl);
+    }
+    
+    return [
+        'data' => $subtree,
+        'cache_hit' => false,
+        'build_time' => $build_time
+    ];
+}
+
+/**
+ * Get lightweight megamenu subtree (no post_content, for caching)
+ *
+ * @param string $menu_slug The menu slug
+ * @param string $root_slug Optional root item slug
+ * @return array|false Subtree data or false if not found
+ */
+function audit_get_megamenu_subtree($menu_slug = 'megamenu', $root_slug = '') {
+    global $wpdb;
+    
+    // Get menu term
+    $menu_term = $wpdb->get_row($wpdb->prepare("
+        SELECT t.term_id, t.name, t.slug, tt.term_taxonomy_id
+        FROM {$wpdb->terms} t
+        JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+        WHERE tt.taxonomy = 'nav_menu'
+        AND t.slug = %s
+    ", $menu_slug));
+    
+    if (!$menu_term) {
+        return false;
+    }
+    
+    // Get menu items WITHOUT post_content (lightweight for caching)
+    $menu_items = $wpdb->get_results($wpdb->prepare("
+        SELECT 
+            p.ID,
+            p.post_title,
+            p.menu_order,
+            pm_object_id.meta_value AS object_id,
+            pm_object.meta_value AS object_type,
+            pm_parent.meta_value AS menu_item_parent,
+            linked_post.ID AS linked_id,
+            linked_post.post_title AS linked_title,
+            linked_post.post_name AS linked_slug,
+            linked_post.post_type AS linked_post_type
+        FROM {$wpdb->posts} p
+        JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+        LEFT JOIN {$wpdb->postmeta} pm_object_id ON p.ID = pm_object_id.post_id AND pm_object_id.meta_key = '_menu_item_object_id'
+        LEFT JOIN {$wpdb->postmeta} pm_object ON p.ID = pm_object.post_id AND pm_object.meta_key = '_menu_item_object'
+        LEFT JOIN {$wpdb->postmeta} pm_parent ON p.ID = pm_parent.post_id AND pm_parent.meta_key = '_menu_item_menu_item_parent'
+        LEFT JOIN {$wpdb->posts} linked_post ON pm_object_id.meta_value = linked_post.ID
+        WHERE tr.term_taxonomy_id = %d
+        AND p.post_type = 'nav_menu_item'
+        AND p.post_status = 'publish'
+        ORDER BY p.menu_order ASC
+    ", $menu_term->term_taxonomy_id));
+    
+    if (empty($menu_items)) {
+        return false;
+    }
+    
+    // Build hierarchical structure (lightweight - no content)
+    $items_by_id = [];
+    foreach ($menu_items as $item) {
+        $items_by_id[$item->ID] = [
+            'menu_item_id' => $item->ID,
+            'menu_title' => $item->post_title,
+            'menu_order' => $item->menu_order,
+            'object_id' => $item->object_id,
+            'object_type' => $item->object_type,
+            'parent_id' => (int)$item->menu_item_parent,
+            'linked_id' => $item->linked_id,
+            'linked_title' => $item->linked_title,
+            'linked_slug' => $item->linked_slug,
+            'linked_post_type' => $item->linked_post_type,
+            'children' => [],
+            'level' => 0
+        ];
+    }
+    
+    // Build tree
+    $root_items = [];
+    foreach ($items_by_id as $id => &$item) {
+        if ($item['parent_id'] && isset($items_by_id[$item['parent_id']])) {
+            $items_by_id[$item['parent_id']]['children'][] = &$item;
+        } else {
+            $root_items[] = &$item;
+        }
+    }
+    
+    // Set levels
+    _audit_set_levels($root_items, 0);
+    
+    // If root_slug specified, find that subtree
+    if (!empty($root_slug)) {
+        $root_item = audit_find_item_by_slug($root_items, $root_slug);
+        if ($root_item) {
+            $root_items = [$root_item];
+        }
+        // If not found, return all items (caller can show warning)
+    }
+    
+    return [
+        'menu' => [
+            'term_id' => $menu_term->term_id,
+            'name' => $menu_term->name,
+            'slug' => $menu_term->slug
+        ],
+        'items' => $root_items,
+        'item_count' => count($menu_items),
+        'root_slug' => $root_slug,
+        'generated_at' => time()
+    ];
+}
+
+/**
+ * Clear audit cache(s) for a specific menu/root combination
+ *
+ * @param string $menu_slug Menu slug (empty = clear all audit caches)
+ * @param string $root_slug Root slug
+ * @return int Number of transients deleted
+ */
+function audit_clear_cache($menu_slug = '', $root_slug = '') {
+    global $wpdb;
+    $deleted = 0;
+    
+    if (!empty($menu_slug)) {
+        // Clear specific cache
+        $cache_key = audit_cache_key('menu_tree', [$menu_slug, $root_slug]);
+        if (delete_transient($cache_key)) {
+            $deleted++;
+        }
+    } else {
+        // Clear all audit caches (pattern match)
+        $site_id = get_current_blog_id();
+        $pattern = '_transient_audit_%_' . $site_id . '_%';
+        
+        $transients = $wpdb->get_col($wpdb->prepare("
+            SELECT option_name FROM {$wpdb->options}
+            WHERE option_name LIKE %s
+        ", $pattern));
+        
+        foreach ($transients as $transient_name) {
+            // Extract transient key from option_name
+            $key = str_replace('_transient_', '', $transient_name);
+            if (delete_transient($key)) {
+                $deleted++;
+            }
+        }
+    }
+    
+    return $deleted;
+}
+
+/**
+ * Check if megamenu audit should be blocked (production guardrails)
+ *
+ * @param bool $force_requested Whether &force=1 was passed
+ * @return array ['blocked' => bool, 'reason' => string]
+ */
+function audit_check_production_guardrails($force_requested = false) {
+    // Capability gate: require at least edit_posts
+    if (!current_user_can('edit_posts')) {
+        return [
+            'blocked' => true,
+            'reason' => 'You do not have permission to run the megamenu audit. Required capability: edit_posts'
+        ];
+    }
+    
+    // Environment gate: block on production unless admin OR force=1 with manage_options
+    $env_type = function_exists('wp_get_environment_type') ? wp_get_environment_type() : 'production';
+    
+    if ($env_type === 'production') {
+        // Admins can always access (no force required)
+        if (current_user_can('manage_options')) {
+            return ['blocked' => false, 'reason' => ''];
+        }
+        
+        // Non-admins on production are blocked
+        return [
+            'blocked' => true,
+            'reason' => 'Megamenu audit is disabled on production to prevent heavy database operations. Administrator privileges required.'
+        ];
+    }
+    
+    return ['blocked' => false, 'reason' => ''];
+}
+
+/**
+ * Render cache/timing instrumentation header
+ *
+ * @param bool $cache_hit Whether cache was hit
+ * @param float $build_time Time spent building (seconds)
+ * @param float $render_time Time spent rendering (seconds)
+ */
+function audit_render_instrumentation($cache_hit, $build_time = 0, $render_time = 0) {
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    
+    $status = $cache_hit ? '<span style="color:green;font-weight:bold;">HIT</span>' : '<span style="color:orange;font-weight:bold;">MISS</span>';
+    
+    echo '<div style="background:#e7f3ff; border:1px solid #0073aa; padding:10px 15px; margin-bottom:15px; font-size:12px; color:#333;">';
+    echo '<strong>Cache Status:</strong> ' . $status;
+    if (!$cache_hit && $build_time > 0) {
+        echo ' | <strong>Build Time:</strong> ' . number_format($build_time * 1000, 2) . 'ms';
+    }
+    if ($render_time > 0) {
+        echo ' | <strong>Render Time:</strong> ' . number_format($render_time * 1000, 2) . 'ms';
+    }
+    echo ' | <a href="' . esc_url(add_query_arg('clear_cache', '1')) . '">Clear Cache</a>';
+    echo '</div>';
+}
+
+// =============================================================================
+// MEGAMENU DATA FUNCTIONS (with content - for rendering)
+// =============================================================================
+
+/**
+ * Get megamenu data for audit purposes.
+ * Reuses the megamenu data structure but returns flat items with hierarchy info.
+ *
+ * @param string $menu_slug The menu slug (default: 'megamenu')
+ * @return array|false Menu data or false if not found
+ */
+function audit_get_megamenu_data($menu_slug = 'megamenu') {
+    global $wpdb;
+    
+    // Get menu term
+    $menu_term = $wpdb->get_row($wpdb->prepare("
+        SELECT t.term_id, t.name, t.slug, tt.term_taxonomy_id
+        FROM {$wpdb->terms} t
+        JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+        WHERE tt.taxonomy = 'nav_menu'
+        AND t.slug = %s
+    ", $menu_slug));
+    
+    if (!$menu_term) {
+        return false;
+    }
+    
+    // Get all menu items with their metadata
+    $menu_items = $wpdb->get_results($wpdb->prepare("
+        SELECT 
+            p.ID,
+            p.post_title,
+            p.menu_order,
+            pm_object_id.meta_value AS object_id,
+            pm_object.meta_value AS object_type,
+            pm_parent.meta_value AS menu_item_parent,
+            linked_post.ID AS linked_id,
+            linked_post.post_title AS linked_title,
+            linked_post.post_name AS linked_slug,
+            linked_post.post_type AS linked_post_type,
+            linked_post.post_content AS linked_content
+        FROM {$wpdb->posts} p
+        JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
+        LEFT JOIN {$wpdb->postmeta} pm_object_id ON p.ID = pm_object_id.post_id AND pm_object_id.meta_key = '_menu_item_object_id'
+        LEFT JOIN {$wpdb->postmeta} pm_object ON p.ID = pm_object.post_id AND pm_object.meta_key = '_menu_item_object'
+        LEFT JOIN {$wpdb->postmeta} pm_parent ON p.ID = pm_parent.post_id AND pm_parent.meta_key = '_menu_item_menu_item_parent'
+        LEFT JOIN {$wpdb->posts} linked_post ON pm_object_id.meta_value = linked_post.ID
+        WHERE tr.term_taxonomy_id = %d
+        AND p.post_type = 'nav_menu_item'
+        AND p.post_status = 'publish'
+        ORDER BY p.menu_order ASC
+    ", $menu_term->term_taxonomy_id));
+    
+    if (empty($menu_items)) {
+        return false;
+    }
+    
+    // Build hierarchical structure
+    $items_by_id = [];
+    
+    foreach ($menu_items as $item) {
+        $items_by_id[$item->ID] = [
+            'menu_item_id' => $item->ID,
+            'menu_title' => $item->post_title,
+            'menu_order' => $item->menu_order,
+            'object_id' => $item->object_id,
+            'object_type' => $item->object_type,
+            'parent_id' => (int)$item->menu_item_parent,
+            'linked_id' => $item->linked_id,
+            'linked_title' => $item->linked_title,
+            'linked_slug' => $item->linked_slug,
+            'linked_post_type' => $item->linked_post_type,
+            'linked_content' => $item->linked_content,
+            'children' => [],
+            'level' => 0
+        ];
+    }
+    
+    // Build tree
+    $root_items = [];
+    foreach ($items_by_id as $id => &$item) {
+        if ($item['parent_id'] && isset($items_by_id[$item['parent_id']])) {
+            $items_by_id[$item['parent_id']]['children'][] = &$item;
+        } else {
+            $root_items[] = &$item;
+        }
+    }
+    
+    // Set levels
+    _audit_set_levels($root_items, 0);
+    
+    return [
+        'menu' => $menu_term,
+        'items' => $root_items,
+        'items_by_id' => $items_by_id
+    ];
+}
+
+/**
+ * Recursively set nesting levels for audit
+ */
+function _audit_set_levels(&$items, $level) {
+    foreach ($items as &$item) {
+        $item['level'] = $level;
+        if (!empty($item['children'])) {
+            _audit_set_levels($item['children'], $level + 1);
+        }
+    }
+}
+
+/**
+ * Find a menu item by its linked post slug within the menu tree
+ *
+ * @param array $items Menu items array
+ * @param string $slug The slug to find
+ * @return array|null The found item or null
+ */
+function audit_find_item_by_slug($items, $slug) {
+    foreach ($items as $item) {
+        if ($item['linked_slug'] === $slug) {
+            return $item;
+        }
+        if (!empty($item['children'])) {
+            $found = audit_find_item_by_slug($item['children'], $slug);
+            if ($found) {
+                return $found;
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * Flatten menu tree into ordered array for rendering
+ *
+ * @param array $items Menu items (hierarchical)
+ * @param array $breadcrumb Current breadcrumb path
+ * @return array Flat array of items with breadcrumb info
+ */
+function audit_flatten_menu_tree($items, $breadcrumb = []) {
+    $flat = [];
+    foreach ($items as $item) {
+        $current_breadcrumb = $breadcrumb;
+        $current_breadcrumb[] = $item['linked_title'] ?: $item['menu_title'];
+        
+        $item['breadcrumb'] = $current_breadcrumb;
+        $flat[] = $item;
+        
+        if (!empty($item['children'])) {
+            $flat = array_merge($flat, audit_flatten_menu_tree($item['children'], $current_breadcrumb));
+        }
+    }
+    return $flat;
+}
+
+// =============================================================================
+// MEGAMENU SORTING
+// =============================================================================
+
+/**
+ * Supported wp_posts fields for sorting
+ */
+function audit_get_sortable_post_fields() {
+    return ['ID', 'post_title', 'post_name', 'post_type', 'post_date', 'post_modified'];
+}
+
+/**
+ * Sort flattened megamenu items by a field
+ * 
+ * @param array $items Flattened menu items (each has linked_id, breadcrumb, level)
+ * @param string $sortby Field to sort by (wp_posts field or meta_key)
+ * @param string $order ASC or DESC
+ * @return array Sorted items
+ */
+function audit_sort_megamenu_items($items, $sortby, $order = 'ASC') {
+    if (empty($sortby) || empty($items)) {
+        return $items;
+    }
+    
+    $order = strtoupper($order) === 'DESC' ? 'DESC' : 'ASC';
+    $post_fields = audit_get_sortable_post_fields();
+    $is_post_field = in_array($sortby, $post_fields, true);
+    
+    // Collect all linked post IDs for bulk operations
+    $post_ids = array_filter(array_column($items, 'linked_id'));
+    
+    // Prime meta cache if sorting by meta key
+    if (!$is_post_field && !empty($post_ids)) {
+        update_meta_cache('post', $post_ids);
+    }
+    
+    // Enrich items with sort values
+    $enriched = [];
+    foreach ($items as $item) {
+        $post_id = $item['linked_id'];
+        $sort_value_raw = null;
+        
+        if ($post_id) {
+            if ($is_post_field) {
+                $post = get_post($post_id);
+                if ($post) {
+                    $sort_value_raw = $post->$sortby;
+                }
+            } else {
+                $meta_value = get_post_meta($post_id, $sortby, true);
+                if (is_array($meta_value)) {
+                    $meta_value = reset($meta_value);
+                }
+                $sort_value_raw = $meta_value;
+            }
+        }
+        
+        $item['_sort_raw'] = $sort_value_raw;
+        $item['_sort_normalized'] = audit_normalize_sort_value($sort_value_raw, $sortby);
+        $enriched[] = $item;
+    }
+    
+    // Detect if all non-null values are numeric
+    $all_numeric = true;
+    foreach ($enriched as $item) {
+        if ($item['_sort_normalized'] !== null && !is_numeric($item['_sort_normalized'])) {
+            $all_numeric = false;
+            break;
+        }
+    }
+    
+    // Sort
+    usort($enriched, function($a, $b) use ($order, $all_numeric) {
+        $val_a = $a['_sort_normalized'];
+        $val_b = $b['_sort_normalized'];
+        
+        // NULLs always last regardless of order
+        if ($val_a === null && $val_b === null) return 0;
+        if ($val_a === null) return 1;
+        if ($val_b === null) return -1;
+        
+        // Compare
+        if ($all_numeric) {
+            $cmp = (float)$val_a <=> (float)$val_b;
+        } else {
+            $cmp = strnatcasecmp((string)$val_a, (string)$val_b);
+        }
+        
+        return $order === 'DESC' ? -$cmp : $cmp;
+    });
+    
+    // Clean up internal keys
+    foreach ($enriched as &$item) {
+        unset($item['_sort_raw'], $item['_sort_normalized']);
+    }
+    
+    return $enriched;
+}
+
+/**
+ * Normalize a sort value for comparison
+ * 
+ * Handles date/time parsing for utc_start and similar fields.
+ * 
+ * @param mixed $value Raw value
+ * @param string $sortby Field name (used to detect date fields)
+ * @return mixed Normalized value (numeric for dates, original otherwise)
+ */
+function audit_normalize_sort_value($value, $sortby) {
+    if ($value === null || $value === '' || $value === false) {
+        return null;
+    }
+    
+    // Date/time fields - convert to epoch
+    $date_fields = ['utc_start', 'utc_end', 'event_date', 'start_date', 'end_date'];
+    if (in_array($sortby, $date_fields, true) || 
+        $sortby === 'post_date' || $sortby === 'post_modified') {
+        
+        // Already numeric timestamp
+        if (is_numeric($value)) {
+            return (int)$value;
+        }
+        
+        // Try to parse as date string
+        $parsed = strtotime($value);
+        if ($parsed !== false) {
+            return $parsed;
+        }
+        
+        return null;
+    }
+    
+    // Return as-is for other fields
+    return $value;
+}
+
+/**
+ * Render sort status line
+ * 
+ * @param string $sortby Sort field
+ * @param string $order Sort order
+ */
+function audit_render_sort_status($sortby, $order) {
+    if (empty($sortby)) {
+        return;
+    }
+    echo '<div class="audit-sort-status" style="background:#e7f3ff;border:1px solid #0073aa;padding:10px 15px;margin-bottom:15px;border-radius:3px;">';
+    echo '<strong>Sorted by:</strong> <code>' . esc_html($sortby) . '</code> ';
+    echo '<span style="color:#666;">(' . esc_html($order) . ')</span>';
+    echo '</div>';
+}
+
+/**
+ * Filter postmeta to exclude internal/plugin keys
+ *
+ * @param array $meta_rows Raw postmeta rows
+ * @return array Filtered meta key-value pairs
+ */
+function audit_filter_postmeta($meta_rows) {
+    $filtered = [];
+    
+    // Patterns to exclude
+    $exclude_prefixes = ['_', 'wp_', '_wp_', '_edit_', '_oembed_'];
+    $exclude_exact = [
+        'edit_lock', 'edit_last', 'enclosure', 'pingback', 
+        'post_views_count', '_pingme', '_encloseme'
+    ];
+    
+    foreach ($meta_rows as $row) {
+        $key = $row->meta_key;
+        
+        // Skip if starts with underscore (most internal keys)
+        if (strpos($key, '_') === 0) {
+            continue;
+        }
+        
+        // Skip exact matches
+        if (in_array($key, $exclude_exact, true)) {
+            continue;
+        }
+        
+        // Skip common plugin patterns
+        if (preg_match('/^(rank_math|yoast|aioseo|jetpack|_yoast|_aioseop)/i', $key)) {
+            continue;
+        }
+        
+        $filtered[$key] = $row->meta_value;
+    }
+    
+    return $filtered;
+}
+
+/**
+ * Extract image URLs from content and meta values
+ *
+ * @param string $content Post content
+ * @param array $meta_values Meta values array
+ * @return array Array of image URLs
+ */
+function audit_extract_image_urls($content, $meta_values) {
+    $images = [];
+    $image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+    
+    // Combine content and meta values for searching
+    $search_text = $content;
+    foreach ($meta_values as $value) {
+        if (is_string($value)) {
+            $search_text .= ' ' . $value;
+        }
+    }
+    
+    // Find URLs that look like images
+    // Match src="..." or href="..." or plain URLs
+    preg_match_all('/(?:src|href)=["\']([^"\']+)["\']|https?:\/\/[^\s<>"\']+/i', $search_text, $matches);
+    
+    $all_urls = array_merge(
+        isset($matches[1]) ? array_filter($matches[1]) : [],
+        isset($matches[0]) ? array_filter($matches[0], function($u) { return strpos($u, 'http') === 0; }) : []
+    );
+    
+    foreach ($all_urls as $url) {
+        // Clean URL
+        $url = trim($url);
+        if (empty($url)) continue;
+        
+        // Check if it's an image
+        $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+        if (in_array($ext, $image_extensions, true)) {
+            $images[] = $url;
+        }
+        // Also check for wp-content/uploads pattern
+        elseif (strpos($url, '/wp-content/uploads/') !== false) {
+            $images[] = $url;
+        }
+    }
+    
+    // Also check for attachment IDs in meta (common pattern)
+    foreach ($meta_values as $key => $value) {
+        if (is_numeric($value) && $value > 0) {
+            $attachment_url = wp_get_attachment_url((int)$value);
+            if ($attachment_url) {
+                $ext = strtolower(pathinfo($attachment_url, PATHINFO_EXTENSION));
+                if (in_array($ext, $image_extensions, true)) {
+                    $images[] = $attachment_url;
+                }
+            }
+        }
+    }
+    
+    return array_unique($images);
+}
+
+/**
+ * Extract video URLs from meta values where key contains 'video'
+ *
+ * @param array $meta_values Meta key-value pairs
+ * @return array Array of video URLs
+ */
+function audit_extract_video_urls($meta_values) {
+    $videos = [];
+    
+    foreach ($meta_values as $key => $value) {
+        // Check if key contains 'video' (case-insensitive)
+        if (stripos($key, 'video') !== false && !empty($value)) {
+            if (is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
+                $videos[] = [
+                    'key' => $key,
+                    'url' => $value
+                ];
+            }
+        }
+    }
+    
+    return $videos;
+}
+
+/**
+ * Render embedded video HTML
+ *
+ * @param string $url Video URL
+ * @return string HTML for embedded video
+ */
+function audit_render_video_embed($url) {
+    // Try WordPress oEmbed first
+    $embed = wp_oembed_get($url, ['width' => 400]);
+    if ($embed) {
+        return $embed;
+    }
+    
+    // YouTube patterns
+    if (preg_match('/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/', $url, $matches)) {
+        $video_id = $matches[1];
+        return '<iframe width="400" height="225" src="https://www.youtube.com/embed/' . esc_attr($video_id) . '" frameborder="0" allowfullscreen></iframe>';
+    }
+    
+    // Vimeo patterns
+    if (preg_match('/vimeo\.com\/(?:video\/)?(\d+)/', $url, $matches)) {
+        $video_id = $matches[1];
+        return '<iframe width="400" height="225" src="https://player.vimeo.com/video/' . esc_attr($video_id) . '" frameborder="0" allowfullscreen></iframe>';
+    }
+    
+    // Direct video file
+    $ext = strtolower(pathinfo(parse_url($url, PHP_URL_PATH), PATHINFO_EXTENSION));
+    if (in_array($ext, ['mp4', 'webm', 'ogg'], true)) {
+        return '<video width="400" controls><source src="' . esc_url($url) . '" type="video/' . esc_attr($ext) . '">Your browser does not support video.</video>';
+    }
+    
+    // Fallback: just show the link
+    return '<a href="' . esc_url($url) . '" target="_blank">' . esc_html($url) . '</a>';
+}
+
+/**
+ * Get post content for a specific post ID (lazy loading for cached subtree)
+ *
+ * @param int $post_id The post ID
+ * @return string Post content or empty string
+ */
+function audit_get_post_content($post_id) {
+    if (empty($post_id)) {
+        return '';
+    }
+    $post = get_post($post_id);
+    return $post ? $post->post_content : '';
+}
+
+/**
+ * Render the megamenu content audit page
+ *
+ * Uses cached subtree for menu structure, fetches content on-demand.
+ *
+ * @param string $menu_slug Menu slug to audit
+ * @param string $root_slug Optional root item slug to start from
+ * @param array $type_filter Optional post type filter
+ * @param string $sortby Optional field to sort by
+ * @param string $sort_order Optional sort order (ASC/DESC)
+ */
+function render_megamenu_content_audit($menu_slug = 'megamenu', $root_slug = '', $type_filter = [], $sortby = '', $sort_order = 'ASC') {
+    // Use cached subtree (already fetched in page-audit.php, but safe to call again - will be cache hit)
+    $subtree_result = audit_get_megamenu_subtree_cached($menu_slug, $root_slug);
+    $subtree = $subtree_result['data'];
+    
+    if (!$subtree) {
+        echo '<div class="notice notice-error"><p>Menu not found: ' . esc_html($menu_slug) . '</p></div>';
+        return;
+    }
+    
+    $items = $subtree['items'];
+    $menu_info = $subtree['menu'];
+    
+    // Flatten for rendering
+    $flat_items = audit_flatten_menu_tree($items);
+    
+    // Apply type filter
+    if (!empty($type_filter)) {
+        $flat_items = audit_filter_by_type($flat_items, $type_filter);
+    }
+    
+    // Apply sorting if requested
+    if (!empty($sortby)) {
+        $flat_items = audit_sort_megamenu_items($flat_items, $sortby, $sort_order);
+    }
+    
+    if (empty($flat_items)) {
+        echo '<div class="notice notice-warning"><p>No menu items found matching criteria.</p></div>';
+        return;
+    }
+    
+    // Output CSS
+    echo '<style>
+        .megamenu-audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .megamenu-audit-table th,
+        .megamenu-audit-table td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            vertical-align: top;
+            text-align: left;
+            color: #333;
+        }
+        .megamenu-audit-header {
+            background: #f5f5f5;
+            font-weight: bold;
+            color: #222;
+        }
+        .megamenu-audit-header a {
+            color: #0073aa;
+            text-decoration: none;
+        }
+        .megamenu-audit-header a:hover {
+            text-decoration: underline;
+        }
+        .megamenu-audit-meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .megamenu-audit-meta-table td {
+            border: 1px solid #eee;
+            padding: 5px 8px;
+            vertical-align: top;
+        }
+        .megamenu-audit-meta-table td:first-child {
+            width: 30%;
+            font-weight: 600;
+            background: #fafafa;
+            word-break: break-word;
+        }
+        .megamenu-audit-meta-table td:last-child {
+            word-break: break-word;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .megamenu-audit-content {
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .megamenu-audit-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .megamenu-audit-image-item {
+            text-align: center;
+        }
+        .megamenu-audit-image-item img {
+            max-width: 120px;
+            max-height: 120px;
+            border: 1px solid #ddd;
+            display: block;
+            margin-bottom: 5px;
+        }
+        .megamenu-audit-image-item a {
+            font-size: 11px;
+            word-break: break-all;
+            display: block;
+            max-width: 120px;
+        }
+        .megamenu-audit-videos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .megamenu-audit-video-item {
+            margin-bottom: 10px;
+        }
+        .megamenu-audit-video-item .video-key {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+        .megamenu-audit-breadcrumb {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+            padding: 5px 10px;
+            background: #f9f9f9;
+            border-left: 3px solid #0073aa;
+        }
+        .megamenu-audit-depth {
+            display: inline-block;
+            background: #0073aa;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-right: 10px;
+        }
+        .megamenu-audit-missing {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+        .megamenu-audit-missing td {
+            color: #856404;
+        }
+    </style>';
+    
+    echo '<div class="wrap megamenu-audit-wrap">';
+    echo '<h1>Megamenu Content Audit</h1>';
+    echo '<p>Menu: <strong>' . esc_html($menu_info['name']) . '</strong> (' . esc_html($menu_info['slug']) . ')</p>';
+    if (!empty($root_slug)) {
+        echo '<p>Root filter: <strong>' . esc_html($root_slug) . '</strong></p>';
+    }
+    echo '<p>Total items: <strong>' . count($flat_items) . '</strong></p>';
+    
+    // Show sort status if sorting is active
+    audit_render_sort_status($sortby, $sort_order);
+    
+    echo '<hr>';
+    
+    foreach ($flat_items as $item) {
+        $post_id = $item['linked_id'];
+        $has_post = !empty($post_id);
+        $can_edit = $has_post && current_user_can('edit_post', $post_id);
+        
+        // Breadcrumb
+        echo '<div class="megamenu-audit-breadcrumb">';
+        echo '<span class="megamenu-audit-depth">Depth: ' . esc_html($item['level']) . '</span>';
+        echo esc_html(implode(' → ', $item['breadcrumb']));
+        echo '</div>';
+        
+        // Start table
+        $table_class = 'megamenu-audit-table' . ($has_post ? '' : ' megamenu-audit-missing');
+        echo '<table class="' . esc_attr($table_class) . '">';
+        
+        // Row 1: Header
+        echo '<tr class="megamenu-audit-header">';
+        echo '<th style="width:80px;">ID</th>';
+        echo '<th style="width:100px;">Post Type</th>';
+        echo '<th style="width:150px;">Post Name</th>';
+        echo '<th>Title</th>';
+        echo '</tr>';
+        
+        echo '<tr class="megamenu-audit-header">';
+        if ($has_post) {
+            // ID column: link to admin edit if user can edit
+            echo '<td>';
+            if ($can_edit) {
+                $edit_url = admin_url('post.php?post=' . $post_id . '&action=edit');
+                echo '<a href="' . esc_url($edit_url) . '" target="_blank" rel="noopener">' . esc_html($post_id) . '</a>';
+            } else {
+                echo esc_html($post_id);
+            }
+            echo '</td>';
+            echo '<td>' . esc_html($item['linked_post_type']) . '</td>';
+            echo '<td>' . esc_html($item['linked_slug']) . '</td>';
+            // Title column: link to public permalink
+            echo '<td>';
+            $permalink = get_permalink($post_id);
+            if ($permalink) {
+                echo '<a href="' . esc_url($permalink) . '" target="_blank" rel="noopener">' . esc_html($item['linked_title']) . '</a>';
+            } else {
+                echo esc_html($item['linked_title']);
+            }
+            echo '</td>';
+        } else {
+            echo '<td colspan="3"><em>No linked post (menu item only)</em></td>';
+            echo '<td>' . esc_html($item['menu_title']) . '</td>';
+        }
+        echo '</tr>';
+        
+        if ($has_post) {
+            // Fetch content on-demand (not in cached subtree)
+            $post_content = audit_get_post_content($post_id);
+            
+            // Get post meta
+            global $wpdb;
+            $meta_rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT meta_key, meta_value FROM {$wpdb->postmeta} WHERE post_id = %d",
+                $post_id
+            ));
+            $filtered_meta = audit_filter_postmeta($meta_rows);
+            
+            // Row 2: Content + Meta
+            echo '<tr>';
+            echo '<td colspan="3" style="vertical-align:top;">';
+            if (!empty($filtered_meta)) {
+                echo '<table class="megamenu-audit-meta-table">';
+                foreach ($filtered_meta as $key => $value) {
+                    // Apply special formatting (e.g., utc_start datetime)
+                    $display_value = audit_format_meta_value($key, $value);
+                    // Truncate extremely long values
+                    if (strlen($display_value) > 1000) {
+                        $display_value = substr($display_value, 0, 1000) . '... [truncated]';
+                    }
+                    echo '<tr>';
+                    echo '<td>' . esc_html($key) . '</td>';
+                    echo '<td>' . esc_html($display_value) . '</td>';
+                    echo '</tr>';
+                }
+                echo '</table>';
+            } else {
+                echo '<em>No bespoke meta found</em>';
+            }
+            echo '</td>';
+            echo '<td style="vertical-align:top;">';
+            echo '<div class="megamenu-audit-content">';
+            if (!empty($post_content)) {
+                // Apply content filters for readability
+                echo wp_kses_post(apply_filters('the_content', $post_content));
+            } else {
+                echo '<em>No content</em>';
+            }
+            echo '</div>';
+            echo '</td>';
+            echo '</tr>';
+            
+            // Row 3: Featured Image (explicit post_id to avoid global context issues)
+            $featured = audit_get_featured_image($post_id);
+            echo '<tr>';
+            echo '<td><strong>Featured Image</strong></td>';
+            echo '<td colspan="3">';
+            if ($featured['url']) {
+                echo '<div class="megamenu-audit-images">';
+                echo '<div class="megamenu-audit-image-item">';
+                echo '<a href="' . esc_url($featured['full_url']) . '" target="_blank">';
+                echo '<img src="' . esc_url($featured['url']) . '" alt="" loading="lazy">';
+                echo '</a>';
+                echo '<a href="' . esc_url($featured['full_url']) . '" target="_blank">' . esc_html(basename(parse_url($featured['full_url'], PHP_URL_PATH))) . '</a>';
+                echo '</div>';
+                echo '</div>';
+            } else {
+                echo '<em>No featured image</em>';
+            }
+            echo '</td>';
+            echo '</tr>';
+            
+            // Row 4: Extracted Images (from content and meta)
+            $images = audit_extract_image_urls($post_content, $filtered_meta);
+            echo '<tr>';
+            echo '<td><strong>Content Images</strong></td>';
+            echo '<td colspan="3">';
+            if (!empty($images)) {
+                echo '<div class="megamenu-audit-images">';
+                foreach ($images as $img_url) {
+                    echo '<div class="megamenu-audit-image-item">';
+                    echo '<a href="' . esc_url($img_url) . '" target="_blank">';
+                    echo '<img src="' . esc_url($img_url) . '" alt="" loading="lazy">';
+                    echo '</a>';
+                    echo '<a href="' . esc_url($img_url) . '" target="_blank">' . esc_html(basename(parse_url($img_url, PHP_URL_PATH))) . '</a>';
+                    echo '</div>';
+                }
+                echo '</div>';
+            } else {
+                echo '<em>No images found in content/meta</em>';
+            }
+            echo '</td>';
+            echo '</tr>';
+            
+            // Row 5: Videos
+            $videos = audit_extract_video_urls($filtered_meta);
+            echo '<tr>';
+            echo '<td><strong>Videos</strong></td>';
+            echo '<td colspan="3">';
+            if (!empty($videos)) {
+                echo '<div class="megamenu-audit-videos">';
+                foreach ($videos as $video) {
+                    echo '<div class="megamenu-audit-video-item">';
+                    echo '<div class="video-key">' . esc_html($video['key']) . ':</div>';
+                    echo audit_render_video_embed($video['url']);
+                    echo '</div>';
+                }
+                echo '</div>';
+            } else {
+                echo '<em>No videos found</em>';
+            }
+            echo '</td>';
+            echo '</tr>';
+        }
+        
+        echo '</table>';
+    }
+    
+    echo '</div>';
+}
+
+// =============================================================================
+// MEGAMENU AUDIT FILTERS AND VIEWS
+// =============================================================================
+
+/**
+ * Map user-friendly type argument to actual WordPress post_type slugs.
+ * 
+ * This handles the mapping between URL parameter values and actual CPT slugs.
+ * The site uses these custom post types:
+ * - 'profile' (CPT slug: profile)
+ * - 'event' (CPT slug: event)
+ * - 'resource' (CPT slug: resource)
+ * - Standard WP types: 'page', 'post'
+ *
+ * @param array $type_args Array of type strings from URL parameter
+ * @return array Array of actual post_type slugs for WP queries
+ */
+function audit_map_type_arg_to_post_types($type_args) {
+    if (empty($type_args)) {
+        return [];
+    }
+    
+    // Mapping from user-friendly names to actual post_type slugs
+    // Most are 1:1 but this allows for flexibility if CPT slugs differ
+    $type_map = [
+        // Custom post types (singular slugs as registered)
+        'profile'   => 'profile',
+        'profiles'  => 'profile',    // alias
+        'event'     => 'event',
+        'events'    => 'event',      // alias
+        'resource'  => 'resource',
+        'resources' => 'resource',   // alias
+        // Standard WordPress types
+        'page'      => 'page',
+        'pages'     => 'page',       // alias
+        'post'      => 'post',
+        'posts'     => 'post',       // alias
+    ];
+    
+    $mapped = [];
+    foreach ($type_args as $arg) {
+        $normalized = strtolower(trim($arg));
+        if (isset($type_map[$normalized])) {
+            $mapped[] = $type_map[$normalized];
+        }
+        // Unknown types are silently ignored
+    }
+    
+    // Remove duplicates (e.g., if user passed both 'profile' and 'profiles')
+    $mapped = array_unique($mapped);
+    
+    // Debug output when WP_DEBUG is enabled
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('[Audit] Type mapping: requested=' . implode(',', $type_args) . ' resolved=' . implode(',', $mapped));
+    }
+    
+    return $mapped;
+}
+
+/**
+ * Get featured image URL for a specific post
+ * 
+ * Uses explicit post_id to avoid global $post context issues.
+ *
+ * @param int $post_id The post ID
+ * @param string $size Image size (default: 'medium')
+ * @return array ['url' => string|null, 'full_url' => string|null]
+ */
+function audit_get_featured_image($post_id) {
+    if (empty($post_id)) {
+        return ['url' => null, 'full_url' => null];
+    }
+    
+    $thumb_id = get_post_thumbnail_id($post_id);
+    if (!$thumb_id) {
+        return ['url' => null, 'full_url' => null];
+    }
+    
+    $medium_url = wp_get_attachment_image_url($thumb_id, 'medium');
+    $full_url = wp_get_attachment_image_url($thumb_id, 'full');
+    
+    return [
+        'url' => $medium_url ?: null,
+        'full_url' => $full_url ?: null
+    ];
+}
+
+/**
+ * Format utc_start meta value as readable datetime
+ *
+ * @param string $value Raw meta value (Unix timestamp or ISO string)
+ * @return string Formatted datetime "yyyy-mm-dd hh:mm" or original value on failure
+ */
+function audit_format_utc_start($value) {
+    if (empty($value)) {
+        return $value;
+    }
+    
+    try {
+        // Try Unix timestamp first
+        if (is_numeric($value)) {
+            $dt = new DateTime('@' . intval($value));
+            $dt->setTimezone(new DateTimeZone('UTC'));
+            return $dt->format('Y-m-d H:i');
+        }
+        
+        // Try ISO string parsing
+        $dt = new DateTime($value, new DateTimeZone('UTC'));
+        return $dt->format('Y-m-d H:i');
+    } catch (Exception $e) {
+        // Fallback to raw value
+        return $value;
+    }
+}
+
+/**
+ * Format meta value for display, with special handling for known keys
+ *
+ * @param string $key Meta key
+ * @param string $value Meta value
+ * @return string Formatted value
+ */
+function audit_format_meta_value($key, $value) {
+    // Special formatting for utc_start
+    if ($key === 'utc_start') {
+        return audit_format_utc_start($value);
+    }
+    
+    return $value;
+}
+
+/**
+ * Filter menu items by post type(s)
+ *
+ * @param array $items Flat array of menu items
+ * @param array $types Array of post_type strings to include
+ * @return array Filtered items
+ */
+function audit_filter_by_type($items, $types) {
+    if (empty($types)) {
+        return $items;
+    }
+    
+    return array_filter($items, function($item) use ($types) {
+        return in_array($item['linked_post_type'], $types, true);
+    });
+}
+
+/**
+ * Get all posts of specified types that have a specific meta_key
+ *
+ * @param array $types Post types to search (empty = all)
+ * @param string $meta_key Meta key to check for
+ * @return array Array of post data with meta value
+ */
+function audit_get_posts_with_meta($types, $meta_key) {
+    global $wpdb;
+    
+    $type_clause = '';
+    if (!empty($types)) {
+        $placeholders = implode(',', array_fill(0, count($types), '%s'));
+        $type_clause = $wpdb->prepare("AND p.post_type IN ($placeholders)", $types);
+    }
+    
+    $query = $wpdb->prepare("
+        SELECT p.ID, p.post_title, p.post_type, p.post_name, pm.meta_value
+        FROM {$wpdb->posts} p
+        INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+        WHERE pm.meta_key = %s
+        AND p.post_status = 'publish'
+        $type_clause
+        ORDER BY p.post_type, p.post_title
+    ", $meta_key);
+    
+    return $wpdb->get_results($query);
+}
+
+/**
+ * Get all posts of specified types that do NOT have a specific meta_key
+ *
+ * @param array $types Post types to search (required for performance)
+ * @param string $meta_key Meta key to check for absence
+ * @return array Array of post data
+ */
+function audit_get_posts_without_meta($types, $meta_key) {
+    global $wpdb;
+    
+    if (empty($types)) {
+        // Require type filter for safety (avoid scanning entire posts table)
+        return [];
+    }
+    
+    $placeholders = implode(',', array_fill(0, count($types), '%s'));
+    $args = array_merge($types, [$meta_key]);
+    
+    $query = $wpdb->prepare("
+        SELECT p.ID, p.post_title, p.post_type, p.post_name
+        FROM {$wpdb->posts} p
+        WHERE p.post_type IN ($placeholders)
+        AND p.post_status = 'publish'
+        AND NOT EXISTS (
+            SELECT 1 FROM {$wpdb->postmeta} pm 
+            WHERE pm.post_id = p.ID AND pm.meta_key = %s
+        )
+        ORDER BY p.post_type, p.post_title
+    ", ...$args);
+    
+    return $wpdb->get_results($query);
+}
+
+/**
+ * Render active filters header
+ *
+ * @param array $filters Associative array of active filters
+ */
+function audit_render_filters_header($filters) {
+    if (empty($filters)) {
+        return;
+    }
+    
+    echo '<div style="background:#f0f0f0; padding:10px 15px; margin-bottom:20px; border-left:4px solid #0073aa; color:#333;">';
+    echo '<strong>Active filters:</strong> ';
+    $parts = [];
+    foreach ($filters as $key => $value) {
+        if (!empty($value)) {
+            $parts[] = esc_html($key) . '=' . esc_html(is_array($value) ? implode(',', $value) : $value);
+        }
+    }
+    echo implode(', ', $parts);
+    echo '</div>';
+}
+
+/**
+ * Render compact "has meta" report
+ *
+ * @param array $types Post types to filter
+ * @param string $meta_key Meta key to search for
+ */
+function audit_render_has_meta_report($types, $meta_key) {
+    $posts = audit_get_posts_with_meta($types, $meta_key);
+    
+    echo '<style>
+        .audit-report { background:#fff; color:#333; padding:20px; }
+        .audit-report table { width:100%; border-collapse:collapse; }
+        .audit-report th, .audit-report td { border:1px solid #ddd; padding:8px; text-align:left; color:#333; }
+        .audit-report th { background:#f5f5f5; }
+        .audit-report a { color:#0073aa; }
+    </style>';
+    
+    echo '<div class="audit-report">';
+    echo '<h2>Posts with meta key: <code>' . esc_html($meta_key) . '</code></h2>';
+    
+    if (!empty($types)) {
+        echo '<p>Filtered to types: ' . esc_html(implode(', ', $types)) . '</p>';
+    }
+    
+    echo '<p>Found: <strong>' . count($posts) . '</strong> posts</p>';
+    
+    if (empty($posts)) {
+        echo '<p><em>No matching posts found.</em></p>';
+    } else {
+        echo '<table>';
+        echo '<thead><tr><th>ID</th><th>Title</th><th>Type</th><th>Meta Value</th></tr></thead>';
+        echo '<tbody>';
+        foreach ($posts as $post) {
+            $can_edit = current_user_can('edit_post', $post->ID);
+            $edit_url = admin_url('post.php?post=' . $post->ID . '&action=edit');
+            $display_value = audit_format_meta_value($meta_key, $post->meta_value);
+            if (strlen($display_value) > 200) {
+                $display_value = substr($display_value, 0, 200) . '...';
+            }
+            
+            echo '<tr>';
+            echo '<td>' . esc_html($post->ID) . '</td>';
+            echo '<td>';
+            if ($can_edit) {
+                echo '<a href="' . esc_url($edit_url) . '" target="_blank">' . esc_html($post->post_title) . '</a>';
+            } else {
+                echo esc_html($post->post_title);
+            }
+            echo '</td>';
+            echo '<td>' . esc_html($post->post_type) . '</td>';
+            echo '<td>' . esc_html($display_value) . '</td>';
+            echo '</tr>';
+        }
+        echo '</tbody></table>';
+    }
+    echo '</div>';
+}
+
+/**
+ * Render compact "missing meta" report
+ *
+ * @param array $types Post types to filter (required)
+ * @param string $meta_key Meta key to check for absence
+ */
+function audit_render_missing_meta_report($types, $meta_key) {
+    if (empty($types)) {
+        echo '<div class="notice notice-error"><p>The &type= parameter is required when using has_not filter for performance reasons.</p></div>';
+        return;
+    }
+    
+    $posts = audit_get_posts_without_meta($types, $meta_key);
+    
+    echo '<style>
+        .audit-report { background:#fff; color:#333; padding:20px; }
+        .audit-report table { width:100%; border-collapse:collapse; }
+        .audit-report th, .audit-report td { border:1px solid #ddd; padding:8px; text-align:left; color:#333; }
+        .audit-report th { background:#f5f5f5; }
+        .audit-report a { color:#0073aa; }
+    </style>';
+    
+    echo '<div class="audit-report">';
+    echo '<h2>Posts missing meta key: <code>' . esc_html($meta_key) . '</code></h2>';
+    echo '<p>Filtered to types: ' . esc_html(implode(', ', $types)) . '</p>';
+    echo '<p>Found: <strong>' . count($posts) . '</strong> posts</p>';
+    
+    if (empty($posts)) {
+        echo '<p><em>No matching posts found (all posts of these types have this meta key).</em></p>';
+    } else {
+        echo '<table>';
+        echo '<thead><tr><th>ID</th><th>Title</th><th>Type</th><th>Slug</th></tr></thead>';
+        echo '<tbody>';
+        foreach ($posts as $post) {
+            $can_edit = current_user_can('edit_post', $post->ID);
+            $edit_url = admin_url('post.php?post=' . $post->ID . '&action=edit');
+            
+            echo '<tr>';
+            echo '<td>' . esc_html($post->ID) . '</td>';
+            echo '<td>';
+            if ($can_edit) {
+                echo '<a href="' . esc_url($edit_url) . '" target="_blank">' . esc_html($post->post_title) . '</a>';
+            } else {
+                echo esc_html($post->post_title);
+            }
+            echo '</td>';
+            echo '<td>' . esc_html($post->post_type) . '</td>';
+            echo '<td>' . esc_html($post->post_name) . '</td>';
+            echo '</tr>';
+        }
+        echo '</tbody></table>';
+    }
+    echo '</div>';
+}
+
+/**
+ * Render megamenu content audit in summary (document) view
+ *
+ * @param string $menu_slug Menu slug to audit
+ * @param string $root_slug Optional root item slug to start from
+ * @param array $type_filter Optional post type filter
+ * @param string $sortby Optional field to sort by
+ * @param string $sort_order Optional sort order (ASC/DESC)
+ */
+function render_megamenu_summary_view($menu_slug = 'megamenu', $root_slug = '', $type_filter = [], $sortby = '', $sort_order = 'ASC') {
+    // Use cached subtree (already fetched in page-audit.php, but safe to call again - will be cache hit)
+    $subtree_result = audit_get_megamenu_subtree_cached($menu_slug, $root_slug);
+    $subtree = $subtree_result['data'];
+    
+    if (!$subtree) {
+        echo '<div class="notice notice-error"><p>Menu not found: ' . esc_html($menu_slug) . '</p></div>';
+        return;
+    }
+    
+    $items = $subtree['items'];
+    $menu_info = $subtree['menu'];
+    
+    // Flatten for rendering
+    $flat_items = audit_flatten_menu_tree($items);
+    
+    // Apply type filter
+    if (!empty($type_filter)) {
+        $flat_items = audit_filter_by_type($flat_items, $type_filter);
+    }
+    
+    // Apply sorting if requested
+    if (!empty($sortby)) {
+        $flat_items = audit_sort_megamenu_items($flat_items, $sortby, $sort_order);
+    }
+    
+    if (empty($flat_items)) {
+        echo '<div class="notice notice-warning"><p>No menu items found matching criteria.</p></div>';
+        return;
+    }
+    
+    // Output CSS for summary view
+    echo '<style>
+        .megamenu-summary {
+            background: #fff;
+            color: #333;
+            padding: 30px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+        }
+        .megamenu-summary h1 {
+            color: #222;
+            border-bottom: 2px solid #0073aa;
+            padding-bottom: 10px;
+        }
+        .megamenu-summary-item {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid #ddd;
+        }
+        .megamenu-summary-heading {
+            font-size: 18px;
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 5px;
+        }
+        .megamenu-summary-heading a {
+            color: #0073aa;
+            text-decoration: none;
+        }
+        .megamenu-summary-heading a:hover {
+            text-decoration: underline;
+        }
+        .megamenu-summary-depth {
+            display: inline-block;
+            background: #666;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-right: 10px;
+            font-weight: normal;
+        }
+        .megamenu-summary-keyfields {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 15px;
+            padding: 8px 12px;
+            background: #f9f9f9;
+            border-left: 3px solid #ccc;
+        }
+        .megamenu-summary-keyfields code {
+            background: #eee;
+            padding: 1px 4px;
+            border-radius: 2px;
+        }
+        .megamenu-summary-meta {
+            margin-bottom: 15px;
+        }
+        .megamenu-summary-meta h4 {
+            font-size: 14px;
+            color: #444;
+            margin: 0 0 8px 0;
+        }
+        .megamenu-summary-meta ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 13px;
+        }
+        .megamenu-summary-meta li {
+            margin-bottom: 4px;
+        }
+        .megamenu-summary-meta .meta-key {
+            font-weight: 600;
+            color: #555;
+        }
+        .megamenu-summary-content {
+            margin-bottom: 15px;
+        }
+        .megamenu-summary-content h4 {
+            font-size: 14px;
+            color: #444;
+            margin: 0 0 8px 0;
+        }
+        .megamenu-summary-content-body {
+            padding: 10px 15px;
+            background: #fafafa;
+            border: 1px solid #eee;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .megamenu-summary-assets {
+            font-size: 13px;
+        }
+        .megamenu-summary-assets h4 {
+            font-size: 14px;
+            color: #444;
+            margin: 10px 0 5px 0;
+        }
+        .megamenu-summary-assets ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .megamenu-summary-assets li {
+            margin-bottom: 3px;
+            word-break: break-all;
+        }
+        .megamenu-summary-assets a {
+            color: #0073aa;
+        }
+        .megamenu-summary-missing {
+            background: #fff3cd;
+            padding: 15px;
+            border-left: 3px solid #ffc107;
+        }
+    </style>';
+    
+    echo '<div class="megamenu-summary">';
+    echo '<h1>Megamenu Content Audit - Summary View</h1>';
+    echo '<p><strong>Menu:</strong> ' . esc_html($menu_info['name']) . ' (' . esc_html($menu_info['slug']) . ')</p>';
+    if (!empty($root_slug)) {
+        echo '<p><strong>Root filter:</strong> ' . esc_html($root_slug) . '</p>';
+    }
+    if (!empty($type_filter)) {
+        echo '<p><strong>Type filter:</strong> ' . esc_html(implode(', ', $type_filter)) . '</p>';
+    }
+    echo '<p><strong>Total items:</strong> ' . count($flat_items) . '</p>';
+    
+    // Show sort status if sorting is active
+    audit_render_sort_status($sortby, $sort_order);
+    
+    echo '<hr style="margin: 20px 0;">';
+    
+    foreach ($flat_items as $item) {
+        $post_id = $item['linked_id'];
+        $has_post = !empty($post_id);
+        $can_edit = $has_post && current_user_can('edit_post', $post_id);
+        
+        echo '<div class="megamenu-summary-item' . ($has_post ? '' : ' megamenu-summary-missing') . '">';
+        
+        // Heading with depth and title (title links to public permalink)
+        echo '<div class="megamenu-summary-heading">';
+        echo '<span class="megamenu-summary-depth">Level ' . esc_html($item['level']) . '</span>';
+        if ($has_post) {
+            $permalink = get_permalink($post_id);
+            if ($permalink) {
+                echo '<a href="' . esc_url($permalink) . '" target="_blank" rel="noopener">' . esc_html($item['linked_title']) . '</a>';
+            } else {
+                echo esc_html($item['linked_title']);
+            }
+        } else {
+            echo esc_html($item['linked_title'] ?: $item['menu_title']);
+        }
+        echo '</div>';
+        
+        if ($has_post) {
+            // Fetch content on-demand (not in cached subtree)
+            $post_content = audit_get_post_content($post_id);
+            
+            // Key fields line (ID links to admin edit if can_edit)
+            $permalink = get_permalink($post_id);
+            echo '<div class="megamenu-summary-keyfields">';
+            echo '<strong>ID:</strong> ';
+            if ($can_edit) {
+                $edit_url = admin_url('post.php?post=' . $post_id . '&action=edit');
+                echo '<a href="' . esc_url($edit_url) . '" target="_blank" rel="noopener">' . esc_html($post_id) . '</a>';
+            } else {
+                echo esc_html($post_id);
+            }
+            echo ' | ';
+            echo '<strong>Type:</strong> ' . esc_html($item['linked_post_type']) . ' | ';
+            echo '<strong>Slug:</strong> <code>' . esc_html($item['linked_slug']) . '</code> | ';
+            echo '<strong>URL:</strong> <a href="' . esc_url($permalink) . '" target="_blank" rel="noopener">' . esc_html($permalink) . '</a>';
+            echo '</div>';
+            
+            // Get post meta
+            global $wpdb;
+            $meta_rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT meta_key, meta_value FROM {$wpdb->postmeta} WHERE post_id = %d",
+                $post_id
+            ));
+            $filtered_meta = audit_filter_postmeta($meta_rows);
+            
+            // Bespoke meta
+            if (!empty($filtered_meta)) {
+                echo '<div class="megamenu-summary-meta">';
+                echo '<h4>Custom Fields</h4>';
+                echo '<ul>';
+                foreach ($filtered_meta as $key => $value) {
+                    $display_value = audit_format_meta_value($key, $value);
+                    if (strlen($display_value) > 500) {
+                        $display_value = substr($display_value, 0, 500) . '... [truncated]';
+                    }
+                    echo '<li><span class="meta-key">' . esc_html($key) . ':</span> ' . esc_html($display_value) . '</li>';
+                }
+                echo '</ul>';
+                echo '</div>';
+            }
+            
+            // Post content (fetched on-demand)
+            if (!empty($post_content)) {
+                echo '<div class="megamenu-summary-content">';
+                echo '<h4>Content</h4>';
+                echo '<div class="megamenu-summary-content-body">';
+                echo wp_kses_post(apply_filters('the_content', $post_content));
+                echo '</div>';
+                echo '</div>';
+            }
+            
+            // Featured Image (explicit post_id)
+            $featured = audit_get_featured_image($post_id);
+            echo '<div class="megamenu-summary-assets">';
+            echo '<h4>Featured Image</h4>';
+            if ($featured['full_url']) {
+                echo '<p><a href="' . esc_url($featured['full_url']) . '" target="_blank">' . esc_html($featured['full_url']) . '</a></p>';
+            } else {
+                echo '<p><em>No featured image</em></p>';
+            }
+            
+            // Content Images (extracted from content and meta)
+            $images = audit_extract_image_urls($post_content, $filtered_meta);
+            echo '<h4>Content Images</h4>';
+            if (!empty($images)) {
+                echo '<ul>';
+                foreach ($images as $img_url) {
+                    echo '<li><a href="' . esc_url($img_url) . '" target="_blank">' . esc_html($img_url) . '</a></li>';
+                }
+                echo '</ul>';
+            } else {
+                echo '<p><em>No images found in content/meta</em></p>';
+            }
+            
+            // Videos (URLs only in summary view)
+            $videos = audit_extract_video_urls($filtered_meta);
+            echo '<h4>Videos</h4>';
+            if (!empty($videos)) {
+                echo '<ul>';
+                foreach ($videos as $video) {
+                    echo '<li><strong>' . esc_html($video['key']) . ':</strong> <a href="' . esc_url($video['url']) . '" target="_blank">' . esc_html($video['url']) . '</a></li>';
+                }
+                echo '</ul>';
+            } else {
+                echo '<p><em>No videos found</em></p>';
+            }
+            echo '</div>';
+            
+        } else {
+            echo '<p><em>Menu item only - no linked post</em></p>';
+        }
+        
+        echo '</div>';
+    }
+    
+    echo '</div>';
+}

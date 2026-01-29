@@ -43,6 +43,18 @@ function load_theme_functions() {
     // Include audit functions
     require_once get_template_directory() . '/functions/functions-audit.php';
     
+    // Magic-link media restrictions
+    require_once get_template_directory() . '/functions/functions-magic-link-media.php';
+    
+    // Profile edit functions (email gate, magic link handler)
+    require_once get_template_directory() . '/functions/functions-profile-edit.php';
+    
+    // Events sidebar functions
+    require_once get_template_directory() . '/functions/functions-events-sidebar.php';
+    
+    // Image audit functions (admin-only)
+    require_once get_template_directory() . '/functions/functions-audit-images.php';
+    
     add_post_type_support( 'page', 'excerpt' );
     add_action('admin_notices', 'show_content_url');
     function show_content_url() {

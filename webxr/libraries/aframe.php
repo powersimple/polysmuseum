@@ -42,16 +42,16 @@
 <script src="https://cdn.jsdelivr.net/npm/super-hands@^3.0.3/dist/super-hands.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-physics-extras@0.1.2/dist/aframe-physics-extras.min.js"></script>
 <script src="<?php echo get_stylesheet_directory_uri();?>/webxr/libraries/simple-navmesh-constraint.js"></script>
-
-  <!--  <script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls/dist/aframe-blink-controls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls/dist/aframe-blink-controls.min.js"></script>
    
     </script>
-    <!-- <script src="<?php echo get_stylesheet_directory_uri();?>/assets/js/aframe-troika-text.min.js"></script> -->
+  <!--  
     
     <script src="<?php echo get_stylesheet_directory_uri();?>/assets/js/msc_basis_transcoder.js"></script>
 
     <script src="https://unpkg.com/aframe-fps-counter-component/dist/aframe-fps-counter-component.min.js"></script>
 -->
+    <script src="<?php echo get_stylesheet_directory_uri();?>/assets/js/aframe-troika-text.min.js"></script>
 
 <style>
   .a-enter-ar-button{

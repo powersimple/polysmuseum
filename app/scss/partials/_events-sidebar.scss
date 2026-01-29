@@ -1,0 +1,299 @@
+/**
+ * Events Sidebar Styles
+ * 
+ * Sidebar component showing video embed + upcoming/recent events.
+ * Desktop: 20% viewport width sidebar
+ * Wide breakpoints: 2-column event lists
+ */
+
+// =============================================================================
+// SIDEBAR CONTAINER
+// =============================================================================
+
+.events-sidebar {
+    width: 100%;
+    background: var(--color-surface, #1a1a1a);
+    color: var(--color-text, #fff);
+    padding: 0;
+    
+    &__video {
+        width: 100%;
+        margin-bottom: 1.5rem;
+        
+        .video-position {
+            width: 100%;
+        }
+        
+        .video-wrap {
+            width: 100%;
+        }
+        
+        iframe {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            height: auto;
+        }
+    }
+    
+    &__sections {
+        padding: 0 1rem 1rem;
+    }
+    
+    &__section {
+        margin-bottom: 2rem;
+        
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+    
+    &__heading {
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-text-muted, #999);
+        margin: 0 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--color-border, #333);
+    }
+}
+
+// =============================================================================
+// EVENT LISTS
+// =============================================================================
+
+.events-sidebar-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    
+    @media (min-width: 1400px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.events-sidebar-empty {
+    font-size: 0.875rem;
+    color: var(--color-text-muted, #666);
+    font-style: italic;
+    margin: 0;
+    padding: 1rem 0;
+}
+
+// =============================================================================
+// FEATURED EVENT (Next Upcoming)
+// =============================================================================
+
+.events-sidebar-featured {
+    margin-bottom: 1rem;
+}
+
+// =============================================================================
+// EVENT ITEM
+// =============================================================================
+
+.events-sidebar-item {
+    position: relative;
+    display: block; // Block layout for vertical stacking: title -> thumb -> meta
+    padding: 0.5rem;
+    border-radius: 4px;
+    background: var(--color-surface-alt, #222);
+    text-decoration: none;
+    color: inherit;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+    
+    &:hover {
+        background: var(--color-surface-hover, #2a2a2a);
+        transform: translateY(-1px);
+        text-decoration: none;
+        color: inherit;
+    }
+    
+    // Tiny pencil icon for admin edit (absolute positioned, bottom-right)
+    &__edit-icon {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        z-index: 10;
+        font-size: 10px;
+        line-height: 1;
+        color: var(--color-text-muted, #777);
+        text-decoration: none;
+        opacity: 0.6;
+        transition: opacity 0.15s ease;
+        
+        &:hover {
+            opacity: 1;
+            color: var(--color-text-muted, #777);
+        }
+    }
+    
+    // Thumbnail link (first, full width)
+    &__thumb-link {
+        display: block;
+        width: 100%;
+        text-decoration: none;
+        margin-bottom: 0.25rem;
+    }
+    
+    // Title link (second, full width)
+    &__title-link {
+        display: block;
+        width: 100%;
+        text-decoration: none;
+        color: inherit;
+        margin-top: 4px;
+        margin-bottom: 0.5rem;
+        
+        &:hover {
+            text-decoration: none;
+            color: inherit;
+        }
+    }
+    
+    &__title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.3;
+    }
+    
+    &__thumb {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: 4px;
+        overflow: hidden;
+        background: var(--color-surface, #1a1a1a);
+    }
+    
+    &__img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    &__placeholder {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #333 0%, #444 100%);
+    }
+    
+    // Meta block (third)
+    &__meta {
+        display: block;
+    }
+    
+    // Small inline text links for Watch Video / Get Tickets (above date)
+    &__links {
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    &__watch-video,
+    &__get-tickets {
+        display: inline;
+        font-size: 0.75rem;
+        font-weight: normal;
+        color: var(--color-text-muted, #999);
+        text-decoration: none;
+        background: none;
+        padding: 0;
+        border: none;
+        
+        &:hover {
+            text-decoration: underline;
+            color: var(--color-text, #ccc);
+        }
+    }
+    
+    &__date {
+        font-size: 0.75rem;
+        color: var(--color-text-muted, #999);
+        margin-bottom: 0.125rem;
+    }
+    
+    &__cat {
+        font-size: 0.6875rem;
+        color: var(--color-primary, #0073aa);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    
+    &__tags {
+        font-size: 0.6875rem;
+        color: var(--color-text-muted, #777);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    // Featured variant (next upcoming)
+    &--featured {
+        padding: 0.75rem;
+        background: var(--color-primary-dark, #004466);
+        border: 1px solid var(--color-primary, #0073aa);
+        
+        .events-sidebar-item__title {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        
+        .events-sidebar-item__date {
+            font-size: 0.8125rem;
+            color: var(--color-text, #fff);
+        }
+        
+        &:hover {
+            background: var(--color-primary, #0073aa);
+        }
+    }
+}
+
+// =============================================================================
+// VIDEO PLAYER
+// =============================================================================
+
+.events-sidebar-video-player {
+    display: none;
+    width: 100%;
+    margin-bottom: 1rem;
+    
+    &.is-active {
+        display: block;
+    }
+    
+    iframe,
+    video {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border: none;
+        border-radius: 4px;
+    }
+}
+
+// =============================================================================
+// LAYOUT WITH SIDEBAR (for parent containers)
+// =============================================================================
+
+.has-events-sidebar {
+    display: flex;
+    flex-direction: column;
+    
+    @media (min-width: 992px) {
+        flex-direction: row;
+    }
+    
+    .main-content-area {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .events-sidebar {
+        @media (min-width: 992px) {
+            width: 20%;
+            min-width: 280px;
+            max-width: 400px;
+            flex-shrink: 0;
+        }
+    }
+}

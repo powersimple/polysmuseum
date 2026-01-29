@@ -693,7 +693,7 @@ function selectScreenImage( $meta_boxes ) {
 	$meta_boxes[] = array(
 		'id' => 'screen_image',
 		'title' => esc_html__( 'Screen Image', 'metabox-online-generator' ),
-		'post_types' => array( 'post', 'page','project' ),
+		'post_types' => array( 'post', 'page','event','profile','resource' ),
 		'context' => 'side',
 		'priority' => 'default',
 		'autosave' => false,

@@ -18,6 +18,7 @@
  * =============================================================================
  */
 
+@use "sass:color";
 @use "globals" as *;
 
 // =============================================================================
@@ -45,28 +46,28 @@ $gradient-academy: linear-gradient(
     135deg,
     rgba(#4a8fd9, 0.9) 0%,
     rgba($brand-academy, 0.95) 40%,
-    rgba(darken($brand-academy, 15%), 1) 100%
+    rgba(color.adjust($brand-academy, $lightness: -15%), 1) 100%
 );
 
 $gradient-polys: linear-gradient(
     135deg,
-    rgba(lighten($brand-polys, 15%), 0.9) 0%,
+    rgba(color.adjust($brand-polys, $lightness: 15%), 0.9) 0%,
     rgba($brand-polys, 0.95) 40%,
-    rgba(darken($brand-polys, 20%), 1) 100%
+    rgba(color.adjust($brand-polys, $lightness: -20%), 1) 100%
 );
 
 $gradient-metatraversal: linear-gradient(
     135deg,
-    rgba(lighten($brand-metatraversal, 15%), 0.9) 0%,
+    rgba(color.adjust($brand-metatraversal, $lightness: 15%), 0.9) 0%,
     rgba($brand-metatraversal, 0.95) 40%,
-    rgba(darken($brand-metatraversal, 20%), 1) 100%
+    rgba(color.adjust($brand-metatraversal, $lightness: -20%), 1) 100%
 );
 
 $gradient-rpg: linear-gradient(
     135deg,
-    rgba(lighten($brand-rpg, 20%), 0.9) 0%,
+    rgba(color.adjust($brand-rpg, $lightness: 20%), 0.9) 0%,
     rgba($brand-rpg, 0.95) 40%,
-    rgba(darken($brand-rpg, 10%), 1) 100%
+    rgba(color.adjust($brand-rpg, $lightness: -10%), 1) 100%
 );
 
 // =============================================================================

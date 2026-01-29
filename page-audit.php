@@ -9,6 +9,12 @@
  * - Missing required fields
  * - Menu relationships
  * - Event-Profile connections
+ * 
+ * Modes:
+ * - Default: Menu analysis for Polys events
+ * - ?mode=megamenu: Site content audit via megamenu traversal
+ *   - &menu=<slug>: Menu slug to audit (default: 'megamenu')
+ *   - &root=<slug>: Optional root item slug to start from
  */
 
 require_once get_template_directory() . '/functions/functions-audit.php';
@@ -19,6 +25,161 @@ get_header();
 if (!current_user_can('manage_options')) {
     wp_die('Unauthorized access');
 }
+
+// =============================================================================
+// PARSE COMMON FILTER ARGUMENTS
+// =============================================================================
+// &type= : comma-separated post types (user-friendly names)
+$type_filter_raw = [];
+if (isset($_GET['type']) && !empty($_GET['type'])) {
+    $type_filter_raw = array_map('sanitize_text_field', explode(',', $_GET['type']));
+    $type_filter_raw = array_filter($type_filter_raw); // remove empty
+}
+
+// Map user-friendly type names to actual post_type slugs
+$type_filter = audit_map_type_arg_to_post_types($type_filter_raw);
+
+// Debug output when WP_DEBUG is enabled
+if (defined('WP_DEBUG') && WP_DEBUG && !empty($type_filter_raw)) {
+    echo '<!-- Audit Debug: type_arg=' . esc_html(implode(',', $type_filter_raw)) . ' resolved=' . esc_html(implode(',', $type_filter)) . ' -->';
+}
+
+// &has= : meta key that must exist
+$has_meta = isset($_GET['has']) ? sanitize_text_field($_GET['has']) : '';
+
+// &has_not= or &has!= : meta key that must NOT exist
+// Note: PHP converts "has!" to "has_" in $_GET, so we check both patterns
+// Preferred syntax: &has_not=key (cleaner URL encoding)
+$has_not_meta = '';
+if (isset($_GET['has_not']) && !empty($_GET['has_not'])) {
+    $has_not_meta = sanitize_text_field($_GET['has_not']);
+} elseif (isset($_GET['has_']) && !empty($_GET['has_'])) {
+    // Fallback for &has!=key which PHP parses as has_
+    $has_not_meta = sanitize_text_field($_GET['has_']);
+}
+
+// =============================================================================
+// STANDALONE META REPORTS (work without mode=megamenu)
+// =============================================================================
+if (!empty($has_meta)) {
+    echo '<div class="wrap audit-page">';
+    echo '<p><a href="' . esc_url(remove_query_arg(['has', 'has_not', 'has_', 'type'])) . '">&larr; Back to Audit Home</a></p>';
+    
+    // Build active filters for header (show raw input for clarity)
+    $active_filters = ['has' => $has_meta];
+    if (!empty($type_filter_raw)) {
+        $active_filters['type'] = $type_filter_raw;
+    }
+    audit_render_filters_header($active_filters);
+    
+    // Pass mapped types to the report
+    audit_render_has_meta_report($type_filter, $has_meta);
+    
+    echo '</div>';
+    get_footer();
+    return;
+}
+
+if (!empty($has_not_meta)) {
+    echo '<div class="wrap audit-page">';
+    echo '<p><a href="' . esc_url(remove_query_arg(['has', 'has_not', 'has_', 'type'])) . '">&larr; Back to Audit Home</a></p>';
+    
+    // Build active filters for header (show raw input for clarity)
+    $active_filters = ['has_not' => $has_not_meta];
+    if (!empty($type_filter_raw)) {
+        $active_filters['type'] = $type_filter_raw;
+    }
+    audit_render_filters_header($active_filters);
+    
+    // Pass mapped types to the report
+    audit_render_missing_meta_report($type_filter, $has_not_meta);
+    
+    echo '</div>';
+    get_footer();
+    return;
+}
+
+// =============================================================================
+// MEGAMENU CONTENT AUDIT MODE
+// =============================================================================
+if (isset($_GET['mode']) && $_GET['mode'] === 'megamenu') {
+    $menu_slug = isset($_GET['menu']) ? sanitize_text_field($_GET['menu']) : 'megamenu';
+    $root_slug = isset($_GET['root']) ? sanitize_text_field($_GET['root']) : '';
+    $view_mode = isset($_GET['view']) ? sanitize_text_field($_GET['view']) : '';
+    $force_requested = isset($_GET['force']) && $_GET['force'] === '1';
+    $clear_cache_requested = isset($_GET['clear_cache']) && $_GET['clear_cache'] === '1';
+    
+    // Sorting parameters
+    $sortby = isset($_GET['sortby']) ? sanitize_key($_GET['sortby']) : '';
+    $sort_order = isset($_GET['sort']) ? strtoupper(sanitize_text_field($_GET['sort'])) : 'ASC';
+    if (!in_array($sort_order, ['ASC', 'DESC'], true)) {
+        $sort_order = 'ASC';
+    }
+    
+    echo '<div class="wrap audit-page">';
+    echo '<p><a href="' . esc_url(remove_query_arg(['mode', 'menu', 'root', 'view', 'type', 'force', 'clear_cache'])) . '">&larr; Back to Menu Analysis</a></p>';
+    
+    // Handle cache clearing (requires manage_options)
+    if ($clear_cache_requested) {
+        if (current_user_can('manage_options')) {
+            $deleted = audit_clear_cache($menu_slug, $root_slug);
+            echo '<div class="notice notice-success" style="padding:10px;margin-bottom:15px;"><strong>Cache cleared.</strong> Deleted ' . intval($deleted) . ' transient(s).</div>';
+        } else {
+            echo '<div class="notice notice-error" style="padding:10px;margin-bottom:15px;"><strong>Permission denied.</strong> Cache clearing requires administrator privileges.</div>';
+        }
+    }
+    
+    // Production guardrails check
+    $guardrails = audit_check_production_guardrails($force_requested);
+    if ($guardrails['blocked']) {
+        echo '<div class="notice notice-warning" style="padding:15px;margin-bottom:15px;">';
+        echo '<strong>Megamenu Audit Blocked</strong><br>';
+        echo wp_kses_post($guardrails['reason']);
+        echo '</div>';
+        echo '</div>';
+        get_footer();
+        return;
+    }
+    
+    // Build active filters for header
+    $active_filters = ['mode' => 'megamenu'];
+    if (!empty($menu_slug) && $menu_slug !== 'megamenu') {
+        $active_filters['menu'] = $menu_slug;
+    }
+    if (!empty($root_slug)) {
+        $active_filters['root'] = $root_slug;
+    }
+    if (!empty($view_mode)) {
+        $active_filters['view'] = $view_mode;
+    }
+    if (!empty($type_filter_raw)) {
+        $active_filters['type'] = $type_filter_raw;
+    }
+    audit_render_filters_header($active_filters);
+    
+    // Get cached subtree (lightweight menu structure)
+    $subtree_result = audit_get_megamenu_subtree_cached($menu_slug, $root_slug, $clear_cache_requested);
+    
+    // Render instrumentation (admin only)
+    $render_start = microtime(true);
+    audit_render_instrumentation($subtree_result['cache_hit'], $subtree_result['build_time']);
+    
+    // Route to appropriate view
+    if ($view_mode === 'summary') {
+        render_megamenu_summary_view($menu_slug, $root_slug, $type_filter, $sortby, $sort_order);
+    } else {
+        // Default table view - pass type filter and sort params
+        render_megamenu_content_audit($menu_slug, $root_slug, $type_filter, $sortby, $sort_order);
+    }
+    
+    echo '</div>';
+    get_footer();
+    return;
+}
+
+// =============================================================================
+// DEFAULT MODE: Menu Analysis
+// =============================================================================
 
 // Add the metadata (gated for safety)
 if (isset($_GET['update_event_types']) && current_user_can('manage_options')) {
@@ -775,6 +936,36 @@ if (isset($_GET['event_menu'])) {
         echo '<li><a href="?event_menu=polys*">Analyze All Polys Menus</a></li>';
         echo '<li><a href="?event_menu=virtual-red-carpet-*">Analyze All Virtual Red Carpet Menus</a></li>';
         echo '</ul>';
+        
+        echo '<hr>';
+        echo '<h2>Site Content Audit</h2>';
+        echo '<p>Audit site content by traversing the megamenu structure:</p>';
+        echo '<ul>';
+        echo '<li><a href="?mode=megamenu">Audit Megamenu (table view)</a></li>';
+        echo '<li><a href="?mode=megamenu&view=summary">Audit Megamenu (summary doc view)</a></li>';
+        echo '<li><a href="?mode=megamenu&root=the-polys">Audit → The Polys section</a></li>';
+        echo '<li><a href="?mode=megamenu&root=metatraversal">Audit → Metatraversal section</a></li>';
+        echo '<li><a href="?mode=megamenu&root=academy">Audit → Academy section</a></li>';
+        echo '</ul>';
+        
+        echo '<h3>Filter by Post Type</h3>';
+        echo '<ul>';
+        echo '<li><a href="?mode=megamenu&type=profile">Megamenu → Profiles only</a></li>';
+        echo '<li><a href="?mode=megamenu&type=event">Megamenu → Events only</a></li>';
+        echo '<li><a href="?mode=megamenu&type=page">Megamenu → Pages only</a></li>';
+        echo '<li><a href="?mode=megamenu&view=summary&type=profile">Summary view → Profiles only</a></li>';
+        echo '</ul>';
+        
+        echo '<h3>Meta Field Reports</h3>';
+        echo '<p>Find posts with or without specific meta fields:</p>';
+        echo '<ul>';
+        echo '<li><a href="?has=email&type=profile">Profiles with "email" field</a></li>';
+        echo '<li><a href="?has_not=email&type=profile">Profiles missing "email" field</a></li>';
+        echo '<li><a href="?has=utc_start&type=event">Events with "utc_start" field</a></li>';
+        echo '<li><a href="?has_not=utc_start&type=event">Events missing "utc_start" field</a></li>';
+        echo '</ul>';
+        echo '<p><em>Syntax: <code>?has=meta_key</code> or <code>?has_not=meta_key</code> with optional <code>&type=post_type</code></em></p>';
+        
         echo '</div>';
     }
 }

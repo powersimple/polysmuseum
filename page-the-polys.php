@@ -29,11 +29,11 @@ $section_menu = get_post_meta($post->ID,"section_menu",true);
     <div class="col-md-5 right">
       <div class="sticky">
         <?php if($default_video_url != ''){
-          // require_once('templates/embed-video.php');
+          require_once('templates/embed-video.php');
         } ?>
       </div><!-- /.sticky -->
     </div><!-- /.col-md-5.right -->
   </div><!-- /.container-flex -->
 </main>
 
-<?php get_footer(); ?>
+<?php get_footer(); ?>     
