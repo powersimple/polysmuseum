@@ -148,7 +148,7 @@
 </a-entity>
 
             <a-entity id="polys6-logo-model" class="center-obj-zone" static-body
-                        gltf-model="#The5thPolysLogo"  visible="true"
+                        gltf-model="#The6thPolysLogo"  visible="true"
                         scale="8 8 8" position="0 36 0" rotation="0 0
                          0"
                         ></a-entity>
@@ -190,6 +190,15 @@
                 >  </a-entity>
 
                 <a-entity id="ring5" class="center-obj-zone" static-body
+                gltf-model="#ring" class="collision" visible="true"
+                scale="4 4 4"
+                position="0 2 0"
+                static-body="shape: box;" 
+                >  </a-entity>
+                </a-entity>
+                </a-entity><!-- awards 2022-->
+
+                <a-entity id="ring6" class="center-obj-zone" static-body
                 gltf-model="#ring" class="collision" visible="true"
                 scale="4 4 4"
                 position="0 2 0"
