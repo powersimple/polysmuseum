@@ -148,7 +148,7 @@
 </a-entity>
 
             <a-entity id="polys6-logo-model" class="center-obj-zone" static-body
-                        gltf-model="#The5thPolysLogo"  visible="true"
+                        gltf-model="#The6thPolysLogo"  visible="true"
                         scale="8 8 8" position="0 36 0" rotation="0 0
                          0"
                         ></a-entity>
