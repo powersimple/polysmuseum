@@ -198,6 +198,15 @@
                 </a-entity>
                 </a-entity><!-- awards 2022-->
 
+                <a-entity id="ring6" class="center-obj-zone" static-body
+                gltf-model="#ring" class="collision" visible="true"
+                scale="4 4 4"
+                position="0 2 0"
+                static-body="shape: box;" 
+                >  </a-entity>
+                </a-entity>
+                </a-entity><!-- awards 2022-->
+
           
         <a-entity id="trophy-rotation" class="center-obj-zone" 
                 visible="true"
