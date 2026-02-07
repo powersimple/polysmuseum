@@ -34,15 +34,15 @@ Key changes:
 - Added `webxr` component with Quest passthrough features (mesh-detection, plane-detection, hand-tracking)
 - Removed duplicate `""` at end of old renderer line
 
-**B. Fix logo model reference (line 151).** Change `gltf-model="#The5thPolysLogo"` to `gltf-model="#The6thPolysLogo"`.
+**B. Logo model reference is already correct** — `gltf-model="#The6thPolysLogo"` on line 151. No change needed.
 
-**C. Fix duplicate `id="trophy-rotation"` (lines 130 and 202).** Rename the first one to `id="trophy-rotation-inner"`.
+**C. Fix duplicate `id="trophy-rotation"` (lines ~130 and ~211).** Rename the first one to `id="trophy-rotation-inner"`.
 
 **D. Fix ring entity `class` attributes.** HTML elements can only have one `class` attribute — the second overwrites the first. On ring entities that have both `class="center-obj-zone"` and `class="collision"`, merge them: `class="center-obj-zone collision"`. Apply to rings 1, 3, 4, 5 and the golden-gizmo-ring entities.
 
-**E. Add ring6.** After ring5 (line 197), add ring6. See the ring layout section below for positions.
+**E. Move ring6 inside ring-wrapper and fix broken nesting.** Currently ring6 (lines ~201-208) sits OUTSIDE the `ring-wrapper` entity and has duplicate `</a-entity>` closing tags that break the DOM tree. Move ring6 inside `ring-wrapper` (after ring5, before the wrapper's closing tag) and remove the duplicate `</a-entity>` and duplicate `<!-- awards 2022-->` comment on lines ~207-208.
 
-**F. Arrange rings in a hexagonal two-tier layout.** Replace the positions of rings 1-6 with this hexagonal pattern. The rings sit inside the golden gizmo wrapper (radius ~25 units). Use alternating heights for a staggered crown effect:
+**F. Arrange rings in a hexagonal two-tier layout.** Replace the positions of ALL 6 rings with this hexagonal pattern. The rings sit inside the golden gizmo wrapper (radius ~25 units). Use alternating heights for a staggered crown effect:
 
 ```
 ring1: position="21.65 3 12.5"    (60° high tier)
