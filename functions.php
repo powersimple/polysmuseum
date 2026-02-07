@@ -31,6 +31,7 @@ function load_theme_functions() {
     require_once("functions/functions-custom-menu-admin.php");
     require_once("functions/functions-entities.php");
     require_once("functions/functions-publish.php");
+     require_once("functions/functions-sheets.php");
     require_once("functions/parsers.php");
     require_once("functions/import.php");
     require_once("functions/profiler/profiler.php");

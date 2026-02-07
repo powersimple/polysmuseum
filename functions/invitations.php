@@ -224,6 +224,10 @@ foreach($ros as $i =>$item){ // this is the top level of the event itself
     print "<h1><hr>$event_title</h1>";
     print "START TIME: " .date("Y-M-D H:i",$start)."<BR>";
 
+    if(@$_GET['table']){
+        print "<table border='1' cellpadding='5' cellspacing='0'>";
+        print "<tr><th>CODE</th><th>TIME</th><th>DURATION (min)</th><th>SESSION / PERSON</th></tr>";
+    }
 
     //SESSION LEVEL
    foreach($sessions as $s => $session){ // THIS IS THE EVENT SESSION LOOP
@@ -289,7 +293,28 @@ if($duration>0){
       }
       $end = $start + ($duration);
 }
-if(@$_GET['list']){
+if(@$_GET['table']){
+    // Table view: CODE, Time, Duration (minutes), Session Title, then list people
+    print "<tr>";
+    print "<td>$code"."$display_session_counter</td>";
+    print "<td>".date("h:ia",$start)."</td>";
+    print "<td>$minutes</td>";
+    print "<td>$session[title]</td>";
+    print "</tr>";
+    
+    // List people for this session
+    if(array_key_exists("children",$session)){
+        foreach($session['children'] as $p => $speaker){
+            if(@$speaker['post']->post_type == 'profile'){
+                print "<tr>";
+                print "<td colspan='3'></td>";
+                print "<td>".$speaker['post']->post_title."</td>";
+                print "</tr>";
+            }
+        }
+    }
+
+} else if(@$_GET['list']){
     print "$code"."$display_session_counter";
     print "|".date("h:ia",$start);
     echo "|$minutes|";
@@ -305,21 +330,33 @@ if(@$_GET['list']){
 } else{
 
     print "<h3>$code"."$display_session_counter <a href='/wp-admin/post.php?action=edit&post=$session_id' target='_blank'> $session[title]</a></h3>";
-    echo "Length: $minutes minute";
-    if($minutes>1){
-        echo "s ";
-    } else {
-        print " ";
-    }
-    if($seconds){
-        echo " $seconds seconds";
-    }
-    echo "<br>Type: ".ucfirst($session_type)." ";
-
-    print "Start: ".date("h:ia",$start)." ";
     
-
-    echo "- ".date("h:ia",$end)." ";
+    if($session_type && $session_type != 'SESSION TYPE NOT SET'){
+        echo ucfirst($session_type)."<br>";
+    }
+    
+    print "Start: ".date("h:ia",$start);
+    if($end){
+        echo " - ".date("h:ia",$end);
+    }
+    echo "<br>";
+    
+    if($minutes > 0 || $seconds > 0){
+        echo "Length: ";
+        if($minutes > 0){
+            echo "$minutes minute";
+            if($minutes > 1){
+                echo "s";
+            }
+        }
+        if($seconds > 0){
+            if($minutes > 0){
+                echo " ";
+            }
+            echo "$seconds seconds";
+        }
+        echo "<br>";
+    }
    
   
 
@@ -361,6 +398,11 @@ if(@$_GET['list']){
         //SPEAKER LEVEL
         $session_counter++;
     }
+    
+    if(@$_GET['table']){
+        print "</table>";
+    }
+    
        print "<hr>";
        if(@$_GET['moderators']==1){
 
@@ -378,12 +420,18 @@ if(@$_GET['list']){
 }
 
 foreach($invitation_statuses as $is => $invitation_status){
+    if($is === 'no-status'){
+        continue;
+    }
     print "<span class='$is'>".strtoupper(str_replace("_","",$is)).'</span><br><ol class="$is">';
             foreach($invitation_status as $key=>$status){
                 extract($status);
                 extract($speaker_info);
                 
-                print "<li class='$is'>$session_name | <a target='_new' href='/wp-admin/post.php?action=edit&post=$id'><span class='$is'>".$speaker."</span></a> $guest_type";
+                print "<li class='$is'>$session_name | <a target='_new' href='/wp-admin/post.php?action=edit&post=$id'><span class='$is'>".$speaker."</span></a>";
+                if($guest_type && $guest_type != ''){
+                    print " $guest_type";
+                }
                 if($email !=""){
                     print " | <a class='email' href='mailto:$email'>$email</a>";
                 } else {

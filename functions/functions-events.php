@@ -1745,7 +1745,21 @@ function ros_items($session, $event_title = ''){
             
 
             
-             print "<li class='".@$confirmation_status."'> <a href='/wp-admin/post.php?action=edit&post=$speaker[ID]' target='_blank'>$speaker[title]</a>, $guest_type, $appearance_type, ".@$confirmation_status."<BR>";
+             print "<li class='".@$confirmation_status."'> <a href='/wp-admin/post.php?action=edit&post=$speaker[ID]' target='_blank'>$speaker[title]</a><br><span class='speaker-metadata'>";
+             $metadata_parts = [];
+             if($guest_type && $guest_type != ''){
+                 $metadata_parts[] = $guest_type;
+             }
+             if($appearance_type && $appearance_type != ''){
+                 $metadata_parts[] = $appearance_type;
+             }
+             if(@$confirmation_status && @$confirmation_status != '' && @$confirmation_status != 'no-status'){
+                 $metadata_parts[] = @$confirmation_status;
+             }
+             if(!empty($metadata_parts)){
+                 print implode(", ", $metadata_parts);
+             }
+             print "</span>";
            
             
          //    print "<span class='confirmation-notes'>".ucfirst(@$point_of_contact)." $notes";

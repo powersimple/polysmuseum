@@ -20,11 +20,17 @@
         $summit_square_model = $_GET['summit_model'];
     }
 
-    $aframe_version="1.4.2";
-    if(@$_GET['aframe-version']){
-      $aframe_version=$_GET['aframe-version'];
+  $default_version = '1.4.2';
+$aframe_version = $default_version;
 
-    }
+$meta_version = get_post_meta($post->ID, 'aframe_version', true);
+if ($meta_version !== '' && $meta_version !== null) {
+    $aframe_version = $meta_version;
+}
+
+if (!empty($_GET['aframe-version'])) {
+    $aframe_version = $_GET['aframe-version'];
+}
 
 ?>
 

@@ -1,7 +1,7 @@
 <?php
     get_header();
     require_once "functions/functions-awards.php";
-     // $pedestals = get_pedestals('polys6');
+      $pedestals = get_pedestals('polys6');
     //    var_dump($pedestals);
       $assets = [];
      
@@ -59,8 +59,9 @@
      
     }
 
+
 ?>
-<!--<a-entity id="golden-gizmo-wrapper" position="-2 -7 -3" rotation="0 45 0" scale="6 6 6" visible="true">
+<a-entity id="golden-gizmo-wrapper" position="-2 -7 -3" rotation="0 45 0" scale="6 6 6" visible="true">
        <a-entity id="golden-gizmo-ring-x" class="center-obj-zone" static-body
                 gltf-model="#golden-gizmo-ring" class="collision" visible="true"
                 scale="25 25 25"
@@ -89,7 +90,7 @@
                 animation="property: object3D.rotation.x; to: 360; easing: linear; dur: 24000; loop: true;"
 
                 ></a-entity>
-</a-entity>--><!-- golden gizmo ring -->
+</a-entity><!-- golden gizmo ring -->
   
 
 
@@ -100,7 +101,10 @@
 
          
 
-<!--               
+<!--
+
+
+               
                 <a-entity id="nav" class="center-obj-zone" static-body
                 scale=".6 .6 .6 "
                 position="0.124 .8 3.97"
@@ -109,17 +113,16 @@
                 </a-entity><!-- platform
                   animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 24000; loop: true;"  
                 -->
-                  <!--
     <a-entity id="pedestals" position="0 4.2 0" rotation="0 0 0" >
     
   <?php
-    //  include "webxr/polys6/pedestals.php";
+      include "webxr/polys6/pedestals.php";
         if($showplatform == "true"){
           
         }
 
         ?>
-        </a-entity>--><!-- pedestals  -->
+        </a-entity><!-- pedestals  -->
         <?php
              include "webxr/polys6/lights.php"; 
              if($showplatform == "true"){
@@ -145,7 +148,7 @@
 </a-entity>
 
             <a-entity id="polys6-logo-model" class="center-obj-zone" static-body
-                        gltf-model="#AcademyLogo"  visible="true"
+                        gltf-model="#The5thPolysLogo"  visible="true"
                         scale="8 8 8" position="0 36 0" rotation="0 0
                          0"
                         ></a-entity>
@@ -158,7 +161,7 @@
                 position="0 0 0"
                 static-body="shape: box;" 
                 >
-    <!--<a-entity id="ring1" class="center-obj-zone" static-body
+    <a-entity id="ring1" class="center-obj-zone" static-body
                 gltf-model="#ring" class="collision" visible="true"
                 scale="4 4 4"
                 position="-26 0 0"
@@ -193,10 +196,24 @@
                 static-body="shape: box;" 
                 >  </a-entity>
                 </a-entity>
-                </a-entity>-><!-- awards 2022-->
+                </a-entity><!-- awards 2022-->
 
           
-   
+        <a-entity id="trophy-rotation" class="center-obj-zone" 
+                visible="true"
+                scale="1 1 1"
+                position="-0.77 -3.88154 -6.23"
+                rotation="0 0 0" 
+                animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 24000; loop: true;">
+
+        <a-entity id="trophy-model" class="center-obj-zone" 
+                gltf-model="#trophy"  visible="true"
+                scale="10 10 10"
+                position="0 0 0"
+                rotation="0 0 0" 
+           >
+
+        </a-entity>
                 
        
         
@@ -206,22 +223,7 @@
 
     </a-entity>
 </a-entity>
-<a-entity id="trophy-rotation" class="center-obj-zone" 
-                visible="true"
-                scale="10 10 10"
-                position="0 0 0"
-                rotation="0 0 0" 
-             >
-
-        <a-entity id="trophy-model" class="center-obj-zone" 
-                gltf-model="#trophy"  visible="true"
-                scale="10 10 10"
-                position="0 0 0"
-                rotation="0 0 0" 
-           >
-
-        </a-entity>     
-        </a-entity>
+       
         <?php
              
              if(@$_GET['showtrophy'] == "true"){
@@ -229,7 +231,7 @@
              }
                 ?>
 
-            
+            </a-entity>
 
 
 
@@ -253,4 +255,4 @@
   </main>
 <?php
      get_footer();
-?>`
+?>

@@ -48,7 +48,7 @@ function setTaxonomy(data, tax) {
 
 function setTags(data) {
     if (!data || !Array.isArray(data)) {
-        console.log('setTags: data is not an array or is undefined');
+     //   console.log('setTags: data is not an array or is undefined');
         return data;
     }
     for (var i = 0; i < data.length; i++) {

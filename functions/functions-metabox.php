@@ -730,6 +730,11 @@ function use_libraries( $meta_boxes ) {
 				'type' => 'checkbox',
 				'name' => esc_html__( 'Use A-Frame', 'online-generator' ),
 				'id'   => $prefix . 'use_aframe',
+			],[
+				'type' => 'text',
+				'name' => esc_html__( 'A-Frame Version', 'online-generator' ),
+				'id'   => $prefix . 'aframe_version',
+				 'size' => 5,
 			],
 			[
 				'type' => 'checkbox',

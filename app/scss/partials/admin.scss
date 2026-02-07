@@ -59,7 +59,7 @@
 .no-status{
   //  font-size:150%;
     text-decoration: underline;
-    color:#944;
+    color:#fff;
 }
 .confirmation-notes{
     font-weight:bold;
@@ -99,4 +99,9 @@
     padding-bottom:25px;
     border-bottom:1px dashed #fff;
     margin-bottom:50px;
+}
+
+.speaker-metadata{
+    color:#fff;
+    font-size:1rem;
 }

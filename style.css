@@ -408,7 +408,7 @@ blockquote {
 
 .no-status {
   text-decoration: underline;
-  color: #944;
+  color: #fff;
 }
 
 .confirmation-notes {
@@ -459,6 +459,11 @@ blockquote {
   padding-bottom: 25px;
   border-bottom: 1px dashed #fff;
   margin-bottom: 50px;
+}
+
+.speaker-metadata {
+  color: #fff;
+  font-size: 1rem;
 }
 
 /*--------------------------------------------------------------
@@ -3140,9 +3145,6 @@ iframe {
   margin-bottom: 1em;
 }
 
-.main li {
-  font-size: 1.5rem;
-}
 @media (max-width: 768px) {
   .main li {
     font-size: 1rem;
