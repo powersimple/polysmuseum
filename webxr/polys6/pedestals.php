@@ -79,7 +79,7 @@
 
 
    <!--TROPHY-->
-   <a-entity id="<?=$pedestal['slug']?>-grab" class="clickable grabbable center-obj-zone" static-body="shape: box; mass: 2" position="0.00729 1.92767 0.00835" mixin="obj" rotation="0 30 0" scale=".5 .5 .5" gltf-model="#trophy">
+   <a-entity id="<?=$pedestal['slug']?>-grab" class="clickable grabbable center-obj-zone" static-body="shape: box; mass: 2" position="0.00729 2.59 0.00835" mixin="obj" rotation="0 30 0" scale=".5 .5 .5" gltf-model="#trophy">
    <?php
     if($counter==0){}
         ?> 

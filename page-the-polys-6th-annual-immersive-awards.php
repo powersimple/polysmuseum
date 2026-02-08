@@ -197,7 +197,7 @@
                 <a-entity id="ring6" class="center-obj-zone collision" static-body
                 gltf-model="#ring" visible="true"
                 scale="1 1 1"
-                position="0 5 0"
+                position="0 4.065 0"
                 static-body="shape: box;" 
                 ></a-entity>
                 </a-entity><!-- ring-wrapper -->
