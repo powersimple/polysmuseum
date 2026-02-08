@@ -57,7 +57,7 @@ if (!empty($_GET['aframe-version'])) {
 
     <script src="https://unpkg.com/aframe-fps-counter-component/dist/aframe-fps-counter-component.min.js"></script>
 -->
-    <script src="<?php echo get_stylesheet_directory_uri();?>/assets/js/aframe-troika-text.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-troika-text@0.12.0/dist/aframe-troika-text.min.js"></script>
 
 <style>
   .a-enter-ar-button{
