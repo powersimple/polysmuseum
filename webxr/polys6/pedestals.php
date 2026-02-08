@@ -83,14 +83,14 @@
    <?php
     if($counter==0){}
         ?> 
-<a-light id="light-p5c-3" color="white" position="-2.63319 0.97826 2.92914" rotation="4.99 -41.95 -17.04" light="color: #ffc800; angle: 19.82; type: spot; intensity: 20; distance: 3.39" visible="">
+<a-light id="light-<?=$pedestal['slug']?>-1" color="white" position="-2.63319 0.97826 2.92914" rotation="4.99 -41.95 -17.04" light="color: #ffc800; angle: 19.82; type: spot; intensity: 100; decay: 1; distance: 15" visible="">
 </a-light>
     <!-- Left Angle Light (45 degrees) -->
-    <a-light id="light-p5c-2" color="white" position="1.88137 1.75 3.51503" rotation="0 45 0" light="color: #ffc800; angle: 20; type: spot; intensity: 5; distance: 2.5" visible="">
+    <a-light id="light-<?=$pedestal['slug']?>-2" color="white" position="1.88137 1.75 3.51503" rotation="0 45 0" light="color: #ffc800; angle: 20; type: spot; intensity: 50; decay: 1; distance: 15" visible="">
     </a-light>
 
     <!-- Right Angle Light (-45 degrees) -->
-    <a-light id="light-p5c-3" color="white" position="4.4343 0.29826 3.72449" rotation="0.67 45 0" light="color: #ffc800; angle: 20; type: spot; intensity: 31.12; distance: 4.37" visible="">
+    <a-light id="light-<?=$pedestal['slug']?>-3" color="white" position="4.4343 0.29826 3.72449" rotation="0.67 45 0" light="color: #ffc800; angle: 20; type: spot; intensity: 150; decay: 1; distance: 15" visible="">
     </a-light>
         <?php
     

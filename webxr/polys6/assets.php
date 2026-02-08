@@ -7,7 +7,7 @@
 <a-asset-item id="chair" response-type="arraybuffer" src="/assets/models/chair.glb"></a-asset-item>
 
 
-<a-asset-item id="golden-gizmo-ring" response-type="arraybuffer" src="/assets/models/polys/5th/GoldenGizmoRing.glb"></a-asset-item>
+<a-asset-item id="golden-gizmo-ring" response-type="arraybuffer" src="/assets/models/polys/6th/GoldenGizmoRing.glb"></a-asset-item>
 
 
 
@@ -15,7 +15,7 @@
 
 <a-asset-item id="The6thPolysLogo" response-type="arraybuffer" src="/assets/models/polys/6th/6thPolysLogo-Trophy.glb"></a-asset-item>
 
-<a-asset-item id="ring" response-type="arraybuffer" position="0 0 -5" src="/assets/models/polys/4th/RedRing2024.glb">
+<a-asset-item id="ring" response-type="arraybuffer" position="0 0 -5" src="/assets/models/polys/6th/RedRing.glb">
 
 
 <?php if(@$_GET['leadsponsor']){
@@ -103,15 +103,3 @@ if(@$asset_list){// this var is created in panels.php
 
 <a-asset-item id="pedestal" response-type="arraybuffer" src="/assets/models/polys/pedestal.glb"></a-asset-item>
 
-<!--logos
-
-<a-asset-item id="futurewei" response-type="arraybuffer" src="/assets/models/polys/Logo_Futurewei.glb"></a-asset-item>
-<a-asset-item id="powersimple" response-type="arraybuffer" src="/assets/models/polys/Logo_Powersimple.glb"></a-asset-item>
-<a-asset-item id="metavrse" response-type="arraybuffer" src="/assets/models/polys/Logo_MetaVRse.glb"></a-asset-item>
-<a-asset-item id="point-cloud" response-type="arraybuffer" src="/assets/models/polys/a-point-cloud-production.glb"></a-asset-item>
-<a-asset-item id="threelbxr" response-type="arraybuffer" src="/assets/models/polys/3rd/3lbxr.glb"></a-asset-item>
-<a-asset-item id="vartisans" response-type="arraybuffer" src="/assets/models/polys/3rd/vartisans.glb"></a-asset-item>
-<a-asset-item id="xrwomen" response-type="arraybuffer" src="/assets/models/partners/XRWomen.glb"></a-asset-item>
-<a-asset-item id="cause-christi" response-type="arraybuffer" src="/assets/models/polys/3rd/causechristi.glb"></a-asset-item>
-<a-asset-item id="vrm" response-type="arraybuffer" src="/assets/models/polys/3rd/vrm.glb"></a-asset-item>
--->

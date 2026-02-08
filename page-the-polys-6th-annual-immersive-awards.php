@@ -21,22 +21,24 @@
    </div>
 <?php
 }
- //  include "webxr/polys6/drawer-experiences.php";
- //   include "webxr/polys2/drawer-nominations.php";
+ //  include "webxr/polys2/drawer-nominations.php";
 ?>
 
    
 
-<a-scene grab-panels item-grab device-set nomination-link anti-drop device-orientation-permission-ui physics="iterations: 30" renderer="antialias: true;
-                   colorManagement: true;
-                   sortObjects: true;
-                   maxCanvasWidth: 8000;
-                   maxCanvasHeight: 1800;"" gltf-model="dracoDecoderPath: assets/draco/;" 
-    device-orientation-permission-ui physics="iterations: 30;"
+<a-scene grab-panels item-grab device-set nomination-link anti-drop device-orientation-permission-ui
+    physics="iterations: 30"
+    renderer="antialias: true;
+             colorManagement: true;
+             sortObjects: true;
+             maxCanvasWidth: 5600;
+             maxCanvasHeight: 3200;
+             foveationLevel: 0;"
+    gltf-model="dracoDecoderPath: assets/draco/;"
     inspector="https://cdn.jsdelivr.net/gh/aframevr/aframe-inspector@master/dist/aframe-inspector.min.js"
-    loading-screen="backgroundColor: #12171a" renderer="colorManagement: true; foveationLevel: 0;maxCanvasWidth:5600;
-                   maxCanvasHeight: 3200;"
-    background="color: #000000">
+    loading-screen="backgroundColor: #12171a"
+    background="color: #000000; transparent: true"
+    webxr="requiredFeatures: local-floor; optionalFeatures: bounded-floor,hand-tracking,layers,mesh-detection,plane-detection;">
 
     <a-assets timeout="80000"> <a-entity tracked-controls="controller: 0; idPrefix: OpenVR"></a-entity>
     <a-entity tracked-controls="controller: 1; idPrefix: OpenVR"></a-entity>
@@ -61,34 +63,30 @@
 
 
 ?>
-<a-entity id="golden-gizmo-wrapper" position="-2 -7 -3" rotation="0 45 0" scale="6 6 6" visible="true">
-       <a-entity id="golden-gizmo-ring-x" class="center-obj-zone" static-body
-                gltf-model="#golden-gizmo-ring" class="collision" visible="true"
-                scale="25 25 25"
+<a-entity id="golden-gizmo-wrapper" position="-2 -7 -3" rotation="0 45 0" scale="1 1 1" visible="true">
+       <a-entity id="golden-gizmo-ring-x" class="center-obj-zone collision" static-body
+                gltf-model="#golden-gizmo-ring" visible="true"
+                scale="1 1 1"
                 rotation="0 15 0"
                 position="0 0 0" static-body="shape: box;" 
                 animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 24000; loop: true;"
-
                 ></a-entity>
 
-               
-                <a-entity id="golden-gizmo-ring-y" class="center-obj-zone" static-body
-                gltf-model="#golden-gizmo-ring" class="collision" visible="true"
-                scale="25 25 25"
+                <a-entity id="golden-gizmo-ring-y" class="center-obj-zone collision" static-body
+                gltf-model="#golden-gizmo-ring" visible="true"
+                scale="1 1 1"
                 rotation="0 90 90"
                 position="0 0 0" static-body="shape: box;" 
                 animation="property: object3D.rotation.x; to: 360; easing: linear; dur: 24000; loop: true;"
-
                 ></a-entity>
              
             
-                <a-entity id="golden-gizmo-ring-z" class="center-obj-zone" static-body
-                gltf-model="#golden-gizmo-ring" class="collision" visible="true"
-                scale="25 25 25"
+                <a-entity id="golden-gizmo-ring-z" class="center-obj-zone collision" static-body
+                gltf-model="#golden-gizmo-ring" visible="true"
+                scale="1 1 1"
                 rotation="0 0 90"
                 position="0 0 0" static-body="shape: box;" 
                 animation="property: object3D.rotation.x; to: 360; easing: linear; dur: 24000; loop: true;"
-
                 ></a-entity>
 </a-entity><!-- golden gizmo ring -->
   
@@ -127,7 +125,7 @@
              include "webxr/polys6/lights.php"; 
              if($showplatform == "true"){
             ?>
-        <a-entity id="trophy-rotation" class="center-obj-zone" 
+        <a-entity id="trophy-rotation-inner" class="center-obj-zone" 
                 visible="true"
                 scale="1 1 1"
                 position="0 -43.5 -29"
@@ -161,57 +159,55 @@
                 position="0 0 0"
                 static-body="shape: box;" 
                 >
-    <a-entity id="ring1" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="-26 0 0"
+                <a-entity id="ring1" class="center-obj-zone collision" static-body
+                gltf-model="#ring" visible="true"
+                scale="1 1 1"
+                position="0 -2.5 -18.28297"
                 static-body="shape: box;" 
                 ></a-entity>
 
                 <a-entity id="ring2" class="center-obj-zone" static-body
-                gltf-model="#ring"  visible="true"
-                scale="4 4 4"
-                position="0 0 -26"
+                gltf-model="#ring" visible="true"
+                scale="1 1 1"
+                position="-23.12244 0 0"
                 static-body="shape: box;" 
-                >  </a-entity>
+                ></a-entity>
                 
-                <a-entity id="ring3" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="0 0 26"
+                <a-entity id="ring3" class="center-obj-zone collision" static-body
+                gltf-model="#ring" visible="true"
+                scale="1 1 1"
+                position="0 -2.5 23.63067"
                 static-body="shape: box;" 
-                >  </a-entity>
+                ></a-entity>
                 
-                <a-entity id="ring4" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="26 0 0"
+                <a-entity id="ring4" class="center-obj-zone collision" static-body
+                gltf-model="#ring" visible="true"
+                scale="3.16611 3.16611 3.16611"
+                position="-2.1696 -1.09789 0"
                 static-body="shape: box;" 
-                >  </a-entity>
+                ></a-entity>
 
-                <a-entity id="ring5" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="0 2 0"
+                <a-entity id="ring5" class="center-obj-zone collision" static-body
+                gltf-model="#ring" visible="true"
+                scale="1 1 1"
+                position="17.66401 -5 0"
                 static-body="shape: box;" 
-                >  </a-entity>
-                </a-entity>
-                </a-entity><!-- awards 2022-->
+                ></a-entity>
 
-                <a-entity id="ring6" class="center-obj-zone" static-body
-                gltf-model="#ring" class="collision" visible="true"
-                scale="4 4 4"
-                position="0 2 0"
+                <a-entity id="ring6" class="center-obj-zone collision" static-body
+                gltf-model="#ring" visible="true"
+                scale="1 1 1"
+                position="0 5 0"
                 static-body="shape: box;" 
-                >  </a-entity>
-                </a-entity>
+                ></a-entity>
+                </a-entity><!-- ring-wrapper -->
                 </a-entity><!-- awards 2022-->
 
           
         <a-entity id="trophy-rotation" class="center-obj-zone" 
                 visible="true"
                 scale="1 1 1"
-                position="-0.77 -3.88154 -6.23"
+                position="0 0 0"
                 rotation="0 0 0" 
                 animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 24000; loop: true;">
 
