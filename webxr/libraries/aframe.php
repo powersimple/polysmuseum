@@ -20,7 +20,7 @@
         $summit_square_model = $_GET['summit_model'];
     }
 
-  $default_version = '1.4.2';
+  $default_version = '1.7.0';
 $aframe_version = $default_version;
 
 $meta_version = get_post_meta($post->ID, 'aframe_version', true);
@@ -41,23 +41,27 @@ if (!empty($_GET['aframe-version'])) {
 
 
 <script src="https://aframe.io/releases/<?=$aframe_version?>/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
+<script>
+// Polyfill: Three.js r125+ removed PlaneBufferGeometry alias
+if (typeof THREE !== 'undefined' && !THREE.PlaneBufferGeometry) {
+    THREE.PlaneBufferGeometry = THREE.PlaneGeometry;
+}
+</script>
+<script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.controls.min.js"></script>
+<script>
+// Remove aframe-extras grabbable so super-hands can register its own version
+if (AFRAME.components['grabbable']) { delete AFRAME.components['grabbable']; }
+if (AFRAME.components['hoverable']) { delete AFRAME.components['hoverable']; }
+if (AFRAME.components['clickable']) { delete AFRAME.components['clickable']; }
+</script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-event-set-component@5.0.0/dist/aframe-event-set-component.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/super-hands@3.0.3/dist/super-hands.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe-hand-tracking-controls-extras@0.4.0/dist/aframe-hand-tracking-controls-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-aabb-collider-component@3.1.0/dist/aframe-aabb-collider-component.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/super-hands@^3.0.3/dist/super-hands.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-physics-extras@0.1.2/dist/aframe-physics-extras.min.js"></script>
 <script src="<?php echo get_stylesheet_directory_uri();?>/webxr/libraries/simple-navmesh-constraint.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls/dist/aframe-blink-controls.min.js"></script>
-   
-    </script>
-  <!--  
-    
-    <script src="<?php echo get_stylesheet_directory_uri();?>/assets/js/msc_basis_transcoder.js"></script>
-
-    <script src="https://unpkg.com/aframe-fps-counter-component/dist/aframe-fps-counter-component.min.js"></script>
--->
-    <script src="https://cdn.jsdelivr.net/npm/aframe-troika-text@0.12.0/dist/aframe-troika-text.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe-blink-controls@0.4.0/dist/aframe-blink-controls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe-troika-text@0.12.0/dist/aframe-troika-text.min.js"></script>
 
 <style>
   .a-enter-ar-button{

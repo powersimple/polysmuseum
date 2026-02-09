@@ -79,7 +79,7 @@
 
 
    <!--TROPHY-->
-   <a-entity id="<?=$pedestal['slug']?>-grab" class="clickable grabbable center-obj-zone" static-body="shape: box; mass: 2" position="0.00729 2.59 0.00835" mixin="obj" rotation="0 30 0" scale=".5 .5 .5" gltf-model="#trophy">
+   <a-entity id="<?=$pedestal['slug']?>-grab" class="clickable grabbable center-obj-zone" static-body="shape: box; mass: 2" position="0.007 1.928 0.00835" mixin="obj" rotation="0 30 0" scale=".5 .5 .5" gltf-model="#trophy">
    <?php
     if($counter==0){}
         ?> 
@@ -191,7 +191,7 @@ fontSize:.2;align:center; anchor:center;maxWidth:3;'material="shader: standard; 
            geometry="primitive: circle;"
                                            scale="1 1 1" position="0 .5 0" ></a-image>
 <!-- nominee label-->
-       <a-entity id="label-<?=$nomination['slug']?>" troika-text='value:<?=$nomination['title']?>; color:#f5f5f5;  wrapCount:18; color:#fff; 
+       <a-entity id="label-<?=$nomination['slug']?>" troika-text='value:<?=$nomination['title']?>; color:#f5f5f5; color:#fff; 
        fontSize:.25;align:center; anchor:center;maxWidth:3;'material="shader: standard; metalness: 0.8;" rotation="0 0 0" position="0 -0.8 0"> </a-entity>
 
 

@@ -1,6 +1,6 @@
 <?php
 
-$speed = "1";
+$speed = "5";
 if(@$_GET['speed']){
     $speed = $_GET['speed'];    
 }
@@ -47,35 +47,51 @@ $camera = "$cam_x $cam_y $cam_z";
                 line-height="50" text="wrapCount: 25"></a-text>
         </a-entity>
 
-        <a-entity id="rig" rotation-reader thumbstick-logging
-        movement-controls="speed: <?=$speed?>; constrainToNavMesh: true;fly: true " position="0 0.1 1">
-        <!-- Player Character -->
-        <a-box id="body" plane-hit aabb-collider="collideNonVisible: true; objects: .zone" static-body="shape: box"
-            position="0 0.05 0" width="0.25" height="0.25" depth="0.25" visible="false"></a-box>
-        
-            <!-- CAMERA 
-                summit coords position="-40 35 -105" f
+<a-entity id="rig"
+    movement-controls="speed: <?=$speed?>; fly: true; constrainToNavMesh: false;"
+    position="0 0.1 1">
 
-            -->
-            
-        <a-entity id="camera" camera="fov:<?=$fov?>" camera look-controls raycaster="far: 5; objects: .clickable"
-            super-hands="colliderEvent: raycaster-intersection; colliderEventProperty: els; colliderEndEvent:raycaster-intersection-cleared; colliderEndEventProperty: clearedEls;"
-            position="<?=$camera?>" 
-        
-            rotation="180 0 0"
-            
-            ><!--             position="-39 32 -112" 
--->
-            <a-entity id="crosshair" cursor="rayOrigin:mouse" position="0 0 -0.2"
-                geometry="primitive: ring; radiusInner: 0.002; radiusOuter: 0.003"
-                material="shader: flat" raycaster="far: 5; objects: .clickable" visible="false"></a-entity>
-        </a-entity>
-        <a-entity mixin="hand" hand-controls="hand: left; handModelStyle: lowPoly; color: #0055ff">
-            <!--<a-entity fps-counter></a-entity>-->
-
-        </a-entity>
-        <a-entity mixin="hand" hand-controls="hand: right; handModelStyle: lowPoly; color: #0055ff"
-            blink-controls="cameraRig: #rig;  teleportOrigin: #camera; collisionEntities: #mountain-model; hitCylinderColor: #00; interval: 10; curveHitColor: #e9974c; curveNumberPoints: 40; curveShootingSpeed: 8">
-        </a-entity>
+    <a-entity id="camera" camera="fov: <?=$fov?>"
+        look-controls="pointerLockEnabled: false"
+        wasd-controls="fly: true; acceleration: 20"
+        raycaster="far: 5; objects: .clickable"
+        cursor="rayOrigin: mouse"
+        position="<?=$camera?>"
+        rotation="0 0 0">
+        <a-entity id="crosshair" position="0 0 -0.2"
+            geometry="primitive: ring; radiusInner: 0.002; radiusOuter: 0.003"
+            material="shader: flat" visible="false"></a-entity>
     </a-entity>
+
+    <a-entity id="left-hand"
+        hand-tracking-controls="hand: left; modelColor: #0055ff"
+        meta-touch-controls="hand: left"
+        laser-controls="hand: left"
+        raycaster="objects: .clickable, .grabbable; far: 5"
+        super-hands="colliderEvent: raycaster-intersection;
+                     colliderEventProperty: els;
+                     colliderEndEvent: raycaster-intersection-cleared;
+                     colliderEndEventProperty: clearedEls;
+                     grabStartButtons: gripdown, triggerdown;
+                     grabEndButtons: gripup, triggerup;">
+    </a-entity>
+
+    <a-entity id="right-hand"
+        hand-tracking-controls="hand: right; modelColor: #0055ff"
+        meta-touch-controls="hand: right"
+        laser-controls="hand: right"
+        raycaster="objects: .clickable, .grabbable; far: 5"
+        super-hands="colliderEvent: raycaster-intersection;
+                     colliderEventProperty: els;
+                     colliderEndEvent: raycaster-intersection-cleared;
+                     colliderEndEventProperty: clearedEls;
+                     grabStartButtons: gripdown, triggerdown;
+                     grabEndButtons: gripup, triggerup;"
+        blink-controls="cameraRig: #rig; teleportOrigin: #camera;
+                        collisionEntities: .collision;
+                        hitCylinderColor: #FF0; interval: 10;
+                        curveHitColor: #e9974c; curveNumberPoints: 40;
+                        curveShootingSpeed: 8;">
+    </a-entity>
+</a-entity>
 

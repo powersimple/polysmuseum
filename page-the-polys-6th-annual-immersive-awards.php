@@ -30,7 +30,7 @@
     physics="iterations: 30"
     renderer="antialias: true;
              colorManagement: true;
-             sortObjects: true;
+             sortTransparentObjects: true;
              maxCanvasWidth: 5600;
              maxCanvasHeight: 3200;
              foveationLevel: 0;"
@@ -40,8 +40,7 @@
     background="color: #000000; transparent: true"
     webxr="requiredFeatures: local-floor; optionalFeatures: bounded-floor,hand-tracking,layers,mesh-detection,plane-detection;">
 
-    <a-assets timeout="80000"> <a-entity tracked-controls="controller: 0; idPrefix: OpenVR"></a-entity>
-    <a-entity tracked-controls="controller: 1; idPrefix: OpenVR"></a-entity>
+    <a-assets timeout="80000">
         <!-- Loads assets -->
         <?php
             include "webxr/polys6/assets.php";
@@ -51,6 +50,11 @@
 
     </a-assets>
     <a-sky src="#sky" animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 1200000; loop: true;"></a-sky>
+
+    <!-- Invisible floor for teleport (blink-controls targets .collision) -->
+    <a-plane id="floor" class="collision" rotation="-90 0 0"
+             width="200" height="200" position="0 -8 0"
+             material="shader: flat; color: #000; opacity: 0; transparent: true; side: double"></a-plane>
 
     <?php
             include "webxr/polys6/rigging.php";
