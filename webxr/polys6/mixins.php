@@ -1,9 +1,9 @@
 <a-mixin id="obj" hoverable
-                grabbable="startButtons: trackpaddown, triggerdown, gripclose, gripdown, abuttondown, bbuttondown, xbuttondown, ybuttondown, thumbstickdown, mousedown; endButtons: trackpadup, triggerup, gripopen, gripup, abuttonup, bbuttonup, xbuttonup, ybuttonup, thumbstickup, mouseup"
+                grabbable="startButtons: triggerdown, gripdown; endButtons: triggerup, gripup"
                 scale="1 1 1" rotation="0 0 0"
                 animation="property: object3D.position.y; to: 1.45; startEvents: standtrigger; dur: 5000" shadow>
             </a-mixin>
-            <a-mixin id="button" static-body hoverable
+            <a-mixin id="button" hoverable
                 clickable="startButtons: trackpaddown, triggerdown, gripclose, gripdown, thumbstickdown, mousedown; endButtons: trackpadup, triggerup, gripopen, gripup, thumbstickup, mouseup"
                 shadow></a-mixin>
             <a-mixin id="holoprojector" color="#ff6a00" position="0 0.3 0" rotation="180 0 0" height="0.05"
@@ -14,8 +14,8 @@
                 colliderEventProperty: els;
                 colliderEndEvent: collisions;
                 colliderEndEventProperty: clearedEls;
-                grabStartButtons: trackpaddown, triggerdown, gripclose, gripdown, thumbstickdown, mousedown; 
-                grabEndButtons: trackpadup, triggerup, gripopen, gripup, thumbstickup, mouseup"
+                grabStartButtons: gripdown, triggerdown;
+                grabEndButtons: gripup, triggerup;"
 				 ></a-mixin>            
             <a-mixin id="table-label" position="0 0 -1" rotation="0 -90 0" visible="false"
                 text="width: 2; color: black; lineHeight: 60; wrap-count: 35"></a-mixin>

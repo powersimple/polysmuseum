@@ -56,6 +56,7 @@ if (AFRAME.components['clickable']) { delete AFRAME.components['clickable']; }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-event-set-component@5.0.0/dist/aframe-event-set-component.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/aframe-physics-extras@0.1.2/dist/aframe-physics-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/super-hands@3.0.3/dist/super-hands.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-hand-tracking-controls-extras@0.4.0/dist/aframe-hand-tracking-controls-extras.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/aframe-aabb-collider-component@3.1.0/dist/aframe-aabb-collider-component.min.js"></script>

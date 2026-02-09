@@ -51,9 +51,10 @@
     </a-assets>
     <a-sky src="#sky" animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 1200000; loop: true;"></a-sky>
 
-    <!-- Invisible floor for teleport (blink-controls targets .collision) -->
+    <!-- Invisible floor for teleport fallback and trophy catching -->
     <a-plane id="floor" class="collision" rotation="-90 0 0"
-             width="200" height="200" position="0 -8 0"
+             width="200" height="200" position="0 -10 0"
+             static-body="shape: box;"
              material="shader: flat; color: #000; opacity: 0; transparent: true; side: double"></a-plane>
 
     <?php
@@ -68,32 +69,31 @@
 
 ?>
 <a-entity id="golden-gizmo-wrapper" position="-2 -7 -3" rotation="0 45 0" scale="1 1 1" visible="true">
-       <a-entity id="golden-gizmo-ring-x" class="center-obj-zone collision" static-body
+       <a-entity id="golden-gizmo-ring-x" class="center-obj-zone collision"
                 gltf-model="#golden-gizmo-ring" visible="true"
                 scale="1 1 1"
                 rotation="0 15 0"
-                position="0 0 0" static-body="shape: box;" 
+                position="0 0 0"
                 animation="property: object3D.rotation.y; to: -360; easing: linear; dur: 24000; loop: true;"
                 ></a-entity>
 
-                <a-entity id="golden-gizmo-ring-y" class="center-obj-zone collision" static-body
+                <a-entity id="golden-gizmo-ring-y" class="center-obj-zone collision"
                 gltf-model="#golden-gizmo-ring" visible="true"
                 scale="1 1 1"
                 rotation="0 90 90"
-                position="0 0 0" static-body="shape: box;" 
+                position="0 0 0"
                 animation="property: object3D.rotation.x; to: 360; easing: linear; dur: 24000; loop: true;"
                 ></a-entity>
              
             
-                <a-entity id="golden-gizmo-ring-z" class="center-obj-zone collision" static-body
+                <a-entity id="golden-gizmo-ring-z" class="center-obj-zone collision"
                 gltf-model="#golden-gizmo-ring" visible="true"
                 scale="1 1 1"
                 rotation="0 0 90"
-                position="0 0 0" static-body="shape: box;" 
+                position="0 0 0"
                 animation="property: object3D.rotation.x; to: 360; easing: linear; dur: 24000; loop: true;"
                 ></a-entity>
 </a-entity><!-- golden gizmo ring -->
-  
 
 
 <a-entity id="awards-2022" position="-1.264 -8 -6.661" rotation="0 0 0" scale="1 1 1" visible="true">
@@ -149,7 +149,7 @@
          
 </a-entity>
 
-            <a-entity id="polys6-logo-model" class="center-obj-zone" static-body
+            <a-entity id="polys6-logo-model" class="center-obj-zone"
                         gltf-model="#The6thPolysLogo"  visible="true"
                         scale="8 8 8" position="0 36 0" rotation="0 0
                          0"
@@ -157,48 +157,47 @@
    
   
 
-                        <a-entity id="ring-wrapper" class="center-obj-zone" static-body
+                        <a-entity id="ring-wrapper" class="center-obj-zone"
                 visible="true"
                 scale="1 1 1"
-                position="0 0 0"
-                static-body="shape: box;" 
+                position="0 0 0" 
                 >
-                <a-entity id="ring1" class="center-obj-zone collision" static-body
+                <a-entity id="ring1" class="center-obj-zone collision"
                 gltf-model="#ring" visible="true"
                 scale="1 1 1"
                 position="0 -2.5 -18.28297"
                 static-body="shape: box;" 
                 ></a-entity>
 
-                <a-entity id="ring2" class="center-obj-zone" static-body
+                <a-entity id="ring2" class="center-obj-zone collision"
                 gltf-model="#ring" visible="true"
                 scale="1 1 1"
                 position="-23.12244 0 0"
                 static-body="shape: box;" 
                 ></a-entity>
                 
-                <a-entity id="ring3" class="center-obj-zone collision" static-body
+                <a-entity id="ring3" class="center-obj-zone collision"
                 gltf-model="#ring" visible="true"
                 scale="1 1 1"
                 position="0 -2.5 23.63067"
                 static-body="shape: box;" 
                 ></a-entity>
                 
-                <a-entity id="ring4" class="center-obj-zone collision" static-body
+                <a-entity id="ring4" class="center-obj-zone collision"
                 gltf-model="#ring" visible="true"
                 scale="3.16611 3.16611 3.16611"
                 position="-2.1696 -1.09789 0"
                 static-body="shape: box;" 
                 ></a-entity>
 
-                <a-entity id="ring5" class="center-obj-zone collision" static-body
+                <a-entity id="ring5" class="center-obj-zone collision"
                 gltf-model="#ring" visible="true"
                 scale="1 1 1"
                 position="17.66401 -5 0"
                 static-body="shape: box;" 
                 ></a-entity>
 
-                <a-entity id="ring6" class="center-obj-zone collision" static-body
+                <a-entity id="ring6" class="center-obj-zone collision"
                 gltf-model="#ring" visible="true"
                 scale="1 1 1"
                 position="0 4.065 0"
@@ -207,7 +206,7 @@
                 </a-entity><!-- ring-wrapper -->
                 </a-entity><!-- awards 2022-->
 
-          
+      <!--    
         <a-entity id="trophy-rotation" class="center-obj-zone" 
                 visible="true"
                 scale="1 1 1"
@@ -223,7 +222,7 @@
            >
 
         </a-entity>
-                
+            -->
        
         
   
@@ -256,6 +255,67 @@
 
 
 
+
+    <script>
+    AFRAME.registerComponent("anti-drop", {
+        init: function() {
+            this.sceneEl = document.querySelector('a-scene');
+            this.grabbablelist = this.sceneEl.getElementsByClassName("grabbable");
+            this.tick = AFRAME.utils.throttleTick(this.tick, 3000, this);
+        },
+        dropcheck: function() {
+            for (let each of this.grabbablelist) {
+                let poss = each.getAttribute('position');
+                if (poss.y <= -12) {
+                    console.log('antidrop engage on ' + each.id);
+                    each.object3D.position.set(each.object3D.position.x, 2, each.object3D.position.z);
+                    if (each.components['dynamic-body']) {
+                        each.components['dynamic-body'].syncToPhysics();
+                    }
+                }
+            }
+        },
+        tick: function(t, dt) {
+            this.dropcheck();
+        }
+    });
+    </script>
+
+    <script>
+    AFRAME.registerComponent('device-set', {
+        init: function() {
+            var sceneEl = document.querySelector('a-scene');
+            var grabbable = sceneEl.querySelectorAll('.grabbable');
+            var rig = document.querySelector('#rig');
+            if (AFRAME.utils.device.isMobile() === true) {
+                for (let each of grabbable) {
+                    each.removeAttribute('dynamic-body');
+                    each.removeAttribute('grabbable');
+                    each.setAttribute('static-body', {shape: 'box'});
+                }
+            } else if (AFRAME.utils.device.checkHeadsetConnected() === true) {
+                console.log('VR detected - trophies will have gravity');
+                setTimeout(function() {
+                    for (let each of grabbable) {
+                        if (each.getAttribute('dynamic-body')) {
+                            each.removeAttribute('dynamic-body');
+                            each.setAttribute('dynamic-body', {shape: 'box', mass: 2});
+                            if (each.components['dynamic-body']) {
+                                each.components['dynamic-body'].syncToPhysics();
+                            }
+                        }
+                    }
+                }, 5000);
+            } else {
+                console.log('PC detected - trophies static');
+                for (let each of grabbable) {
+                    each.removeAttribute('dynamic-body');
+                    each.setAttribute('static-body', {shape: 'box'});
+                }
+            }
+        }
+    });
+    </script>
 
 </a-scene>
 <main role="main" class="main <?=$section_class?>">

@@ -56,6 +56,10 @@ $camera = "$cam_x $cam_y $cam_z";
         wasd-controls="fly: true; acceleration: 20"
         raycaster="far: 5; objects: .clickable"
         cursor="rayOrigin: mouse"
+        super-hands="colliderEvent: raycaster-intersection;
+                     colliderEventProperty: els;
+                     colliderEndEvent: raycaster-intersection-cleared;
+                     colliderEndEventProperty: clearedEls;"
         position="<?=$camera?>"
         rotation="0 0 0">
         <a-entity id="crosshair" position="0 0 -0.2"
@@ -66,11 +70,11 @@ $camera = "$cam_x $cam_y $cam_z";
     <a-entity id="left-hand"
         hand-tracking-controls="hand: left; modelColor: #0055ff"
         meta-touch-controls="hand: left"
-        laser-controls="hand: left"
-        raycaster="objects: .clickable, .grabbable; far: 5"
-        super-hands="colliderEvent: raycaster-intersection;
+        physics-collider
+        static-body="shape: sphere; sphereRadius: 0.05"
+        super-hands="colliderEvent: collisions;
                      colliderEventProperty: els;
-                     colliderEndEvent: raycaster-intersection-cleared;
+                     colliderEndEvent: collisions;
                      colliderEndEventProperty: clearedEls;
                      grabStartButtons: gripdown, triggerdown;
                      grabEndButtons: gripup, triggerup;">
@@ -79,16 +83,16 @@ $camera = "$cam_x $cam_y $cam_z";
     <a-entity id="right-hand"
         hand-tracking-controls="hand: right; modelColor: #0055ff"
         meta-touch-controls="hand: right"
-        laser-controls="hand: right"
-        raycaster="objects: .clickable, .grabbable; far: 5"
-        super-hands="colliderEvent: raycaster-intersection;
+        physics-collider
+        static-body="shape: sphere; sphereRadius: 0.05"
+        super-hands="colliderEvent: collisions;
                      colliderEventProperty: els;
-                     colliderEndEvent: raycaster-intersection-cleared;
+                     colliderEndEvent: collisions;
                      colliderEndEventProperty: clearedEls;
                      grabStartButtons: gripdown, triggerdown;
                      grabEndButtons: gripup, triggerup;"
         blink-controls="cameraRig: #rig; teleportOrigin: #camera;
-                        collisionEntities: .collision;
+                        collisionEntities: #ring1, #ring2, #ring3, #ring4, #ring5, #ring6, #floor;
                         hitCylinderColor: #FF0; interval: 10;
                         curveHitColor: #e9974c; curveNumberPoints: 40;
                         curveShootingSpeed: 8;">
