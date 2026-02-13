@@ -46,7 +46,19 @@ $section_hero_class = get_post_meta($post->ID, 'section_hero_class', true);
         <div class="page-content">
             <?php the_content(); ?>
         </div>
-        
+      <div class="widget-container">
+      
+      <?php
+      print do_blocks(do_shortcode($post->post_content));
+      if(@$section_class == 'ceremony'){
+        if(@$section_menu){
+          require_once "functions/functions-awards.php";
+          $awards = get_menu_array($section_menu);
+          require_once('templates/awards.php');
+        }
+      }
+      ?>
+    </div><!-- /.widget-container -->
     </article>
     
     <?php endwhile; endif; ?>

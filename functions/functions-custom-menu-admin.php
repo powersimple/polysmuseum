@@ -537,7 +537,7 @@ CUSTOM MENU META: appearance_type
 
 function kia_custom_fields_appearance_type( $item_id, $item,$label ) {
 
-    if($item->object == 'event'){
+    if($item->object == 'event' || $item->object == 'resource'){
         
         ?>
 

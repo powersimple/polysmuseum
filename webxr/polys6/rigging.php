@@ -47,8 +47,83 @@ $camera = "$cam_x $cam_y $cam_z";
                 line-height="50" text="wrapCount: 25"></a-text>
         </a-entity>
 
+<script>
+AFRAME.registerComponent('thumbstick-move', {
+    schema: {
+        speed: {type: 'number', default: 5},
+        fly: {type: 'boolean', default: true},
+        turnSpeed: {type: 'number', default: 2}
+    },
+    init: function () {
+        this.leftAxis = {x: 0, y: 0};
+        this.rightAxis = {x: 0, y: 0};
+        this.moveVector = new THREE.Vector3();
+        this.direction = new THREE.Vector3();
+        this.rotation = new THREE.Euler();
+
+        var self = this;
+        this.el.sceneEl.addEventListener('loaded', function () {
+            var leftHand = document.getElementById('left-hand');
+            var rightHand = document.getElementById('right-hand');
+            if (leftHand) {
+                leftHand.addEventListener('thumbstickmoved', function (evt) {
+                    self.leftAxis.x = evt.detail.x;
+                    self.leftAxis.y = evt.detail.y;
+                });
+            }
+            if (rightHand) {
+                rightHand.addEventListener('thumbstickmoved', function (evt) {
+                    self.rightAxis.x = evt.detail.x;
+                    self.rightAxis.y = evt.detail.y;
+                });
+            }
+        });
+    },
+    tick: function (t, dt) {
+        if (dt > 100) dt = 100;
+        var seconds = dt / 1000;
+        var speed = this.data.speed;
+        var turnSpeed = this.data.turnSpeed;
+        var lx = this.leftAxis.x;
+        var ly = this.leftAxis.y;
+        var rx = this.rightAxis.x;
+
+        var deadzone = 0.15;
+        if (Math.abs(lx) < deadzone) lx = 0;
+        if (Math.abs(ly) < deadzone) ly = 0;
+        if (Math.abs(rx) < deadzone) rx = 0;
+
+        if (lx === 0 && ly === 0 && rx === 0) return;
+
+        var camera = document.getElementById('camera');
+        if (!camera) return;
+        var camObj = camera.object3D;
+
+        // Yaw rotation from left stick X or right stick X
+        if (lx !== 0) {
+            this.el.object3D.rotation.y -= lx * turnSpeed * seconds;
+        }
+        if (rx !== 0) {
+            this.el.object3D.rotation.y -= rx * turnSpeed * seconds;
+        }
+
+        // Forward/backward from left stick Y
+        if (ly !== 0) {
+            camObj.getWorldDirection(this.direction);
+            if (!this.data.fly) {
+                this.direction.y = 0;
+            }
+            this.direction.normalize();
+            this.direction.multiplyScalar(-ly * speed * seconds);
+            this.el.object3D.position.add(this.direction);
+        }
+    }
+});
+</script>
+
 <a-entity id="rig"
     movement-controls="speed: <?=$speed?>; fly: true; constrainToNavMesh: false;"
+    thumbstick-move="speed: <?=$speed?>; fly: true; turnSpeed: 2"
     position="0 0.1 1">
 
     <a-entity id="camera" camera="fov: <?=$fov?>"

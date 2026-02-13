@@ -136,10 +136,26 @@ function profile_info( $meta_boxes ) {
 				'name' => esc_html__( 'Email', 'metabox-online-generator' ),
 			),
 			array(
+				'id' => 'phone',
+				'type' => 'text',
+				'name' => esc_html__( 'Phone', 'metabox-online-generator' ),
+			),
+			array(
 				'id' => 'sort_name',
 				'type' => 'text',
 				'name' => esc_html__( 'Sort Name As', 'metabox-online-generator' ),
 			),
+			 [
+                'type'    => 'select',
+                'name'    => esc_html__( 'Media Release On File', 'online-generator' ),
+                'id'      => $prefix . 'media_release_on_file',
+                'options' => [
+                    'Perpetual Polys Release' => esc_html__( 'Perpetual Polys Release', 'online-generator' ),
+                    '5th Polys Release'       => esc_html__( '5th Polys Release', 'online-generator' ),
+                    'WebXR Summits Release'   => esc_html__( 'WebXR Summits Release', 'online-generator' ),
+                ],
+                'std'     => 'No Release on File',
+            ],
 			array(
 				'id' => 'profile_wikipedia',
 				'type' => 'url',
@@ -219,10 +235,27 @@ function setProfileURL( $meta_boxes ) { // this shows the box were
 				'name' => esc_html__( 'Contact Title', 'metabox-online-generator' ),
 			),
 			array(
+				'id' => 'phone',
+				'type' => 'text',
+				'name' => esc_html__( 'Phone', 'metabox-online-generator' ),
+			),
+			array(
 				'id' => 'sort_name',
 				'type' => 'text',
 				'name' => esc_html__( 'Sort Name As', 'metabox-online-generator' ),
 			),
+			 [
+                'type'    => 'select',
+                'name'    => esc_html__( 'Media Release On File', 'online-generator' ),
+                'id'      => 'media_release_on_file',
+                'options' => [
+					''     =>  esc_html__( 'No Release on File', 'online-generator' ),
+                    'Perpetual Polys Release' => esc_html__( 'Perpetual Polys Release', 'online-generator' ),
+                    '5th Polys Release'       => esc_html__( '5th Polys Release', 'online-generator' ),
+                    'WebXR Summits Release'   => esc_html__( 'WebXR Summits Release', 'online-generator' ),
+                ],
+              
+            ],
 			array(
 				'id' => 'email',
 				'type' => 'text',
