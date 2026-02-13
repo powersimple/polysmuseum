@@ -4,7 +4,7 @@
    foreach($awards as $key => $award){// outer menu loop
     print "<ul class='awards-list'>";
     foreach($award['children'] as $c =>$child){// EVENTS
-        if($child['classes'][0] == 'nomination' || $child['classes'][0] == 'honor'){
+        if(@$child['classes'][0] == 'nomination' || @$child['classes'][0] == 'honor'){
           
             if(strpos($child['title'],"–") !== false){
                 $label = explode("–",$child['title']);
@@ -26,7 +26,7 @@
               
   
    <?php
-     if($child['classes'][0] == 'nomination' || $child['classes'][0] == 'honor'){
+     if(@$child['classes'][0] == 'nomination' || @$child['classes'][0] == 'honor'){
        $link = get_permalink($child['ID']);
        ?>
        <div class="row justify-content-center">

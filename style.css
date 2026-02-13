@@ -7219,19 +7219,24 @@ main .summit {
   border-radius: 50%;
   width: 75px;
   height: 75px;
-  margin-left: 15px;
+  margin-left: 18px;
+  margin-top: 4px;
   display: block;
 }
 
-li.nominee {
+.nominee ul, .honoree ul {
+  padding: 0px;
+}
+
+li.nominee, li.honoree {
   display: block;
   clear: both;
 }
-li.nominee a {
+li.nominee a, li.honoree a {
   display: inline-block;
   vertical-align: middle;
 }
-li.nominee span {
+li.nominee span, li.honoree span {
   display: inline-block;
   font-weight: bold;
   margin-right: 10px;
@@ -7240,7 +7245,7 @@ li.nominee span {
   font-family: "AgencyFB";
   color: #fff;
 }
-li.nominee img {
+li.nominee img, li.honoree img {
   margin-right: 10px;
 }
 
@@ -7271,7 +7276,7 @@ td.nominee-info a.nominee :hover {
 }
 
 .nominee-image {
-  background: url(images/icons/minilaurel.png) no-repeat -4px -4px;
+  background: url(images/icons/minilaurel.png) no-repeat 0px 0px;
   background-size: contain;
   width: 110px !important;
   height: 100px !important;
