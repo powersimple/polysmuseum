@@ -11,7 +11,8 @@
     border-radius: 50%;
     width:75px;
     height:75px;
-    margin-left:15px;
+    margin-top: 4px;
+    margin-left: 18px;
 
     display: block;
 }
@@ -64,7 +65,7 @@ td.nominee-info a.nominee {
     }
 }
 .nominee-image{
-    background:url(images/icons/minilaurel.png) no-repeat -4px -4px;
+    background:url(images/icons/minilaurel.png) no-repeat 0px 0px;
     background-size:contain;
     width: 110px !important;
     height:100px !important;
@@ -157,7 +158,7 @@ input[type=radio] {
 #noms-list{
     //hack
     .nominee-image{
-        background:url(images/icons/minilaurel.png) no-repeat 1px -3px;
+        background:url(images/icons/minilaurel.png) no-repeat 0px 0px;
         background-size:contain;
         width: 110px !important;
         height:100px !important;

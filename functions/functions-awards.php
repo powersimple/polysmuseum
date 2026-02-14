@@ -931,25 +931,19 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
 
           }
 
-  function get_nominee_info($nominee,$counter){
-    extract($nominee);
-    $item_class='';
-    if($counter == 0){
-      $item_class='nominee';
-      
-    }
+  function get_nominee_info($nominee, $counter){
+    $meta = @$nominee['meta'];
+    $title = @$nominee['title'];
+    $item_class = ($counter == 0) ? 'nominee' : '';
+    $resource_url = @$meta['resource_url'][0];
 
-    if(@$meta['resource_url'][0] != ''){
-
-      print "<a href='".$meta['resource_url'][0]."' target='_blank' class='$item_class'><span>$title</span></a>";
-    
+    if($resource_url != ''){
+      print "<a href='" . esc_url($resource_url) . "' target='_blank' class='$item_class'><span>" . esc_html($title) . "</span></a>";
     } else {
-      print "<span>$title</span>";
+      print "<span>" . esc_html($title) . "</span>";
     }
-    
-  //  print " ".wrapmeta(@$meta,'resource_url',"a");
-  get_nominee_meta(@$meta);
 
+    get_nominee_meta($meta);
   }
 
   /**
@@ -962,89 +956,109 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
   function get_nominees_and_winners($items, $counter){
     if(!is_array($items) || empty($items)) return;
 
-    // Sort so presenters come first at each level
-    $sorted = [];
-    $rest = [];
-    foreach($items as $key => $item){
-      if(@$item['classes'][0] == 'presenter'){
-        $sorted[$key] = $item;
-      } else {
-        $rest[$key] = $item;
+    // Sort presenters first at Level 3
+    if($counter == 0){
+      $sorted = [];
+      $rest = [];
+      foreach($items as $key => $item){
+        if(@$item['classes'][0] == 'presenter'){
+          $sorted[$key] = $item;
+        } else {
+          $rest[$key] = $item;
+        }
       }
+      $items = $sorted + $rest;
     }
-    $sorted = $sorted + $rest;
 
-    foreach($sorted as $c => $child){
+    foreach($items as $c => $child){
       $meta = @$child['meta'];
       $classes = @$child['classes'];
       $title = @$child['title'];
       $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0], "thumbnail");
 
-      // Track participants for contact mode
-      if(!array_key_exists($child['post']->ID, @$GLOBALS['participants'])){
+      // Track participants
+      if(@$child['post'] && !array_key_exists($child['post']->ID, @$GLOBALS['participants'])){
         $GLOBALS['participants'][$child['post']->ID] = [
           "name" => $title,
           "email" => @$meta['email'][0],
         ];
       }
 
-      if(@$classes[0] == 'presenter'){
-        // Presenter block — not inside <li>, uses <h4>
-        print "<div class='col-12 col-sm-6'>";
+      if($counter == 0 && @$classes[0] == 'presenter'){
+        //
+        // PRESENTER — full-width row, NOT inside <li>
+        //
+        print "<div class='presenter-row'>";
         print "<h4 class='presenter'>";
-        if($thumbnail_src != '' && $counter == 0){
-          print "<img src='$thumbnail_src' alt='".esc_attr($title)."' title='".esc_attr($title)."' class='nomination-thumbnail'>";
+        if($thumbnail_src != ''){
+          print "<img src='" . esc_attr($thumbnail_src) . "' alt='" . esc_attr($title) . "' title='" . esc_attr($title) . "' class='nomination-thumbnail'>";
         }
-        if($child['attr_title'] != ''){
-          print esc_html($child['attr_title']). " ";
+        if(@$child['attr_title'] != ''){
+          print esc_html($child['attr_title']) . " ";
         } else {
           print "Presented by ";
         }
-        print "<span class='presented-by'>";
-        print esc_html($title);
-        get_nominee_meta($meta);
-        print "</span>";
+        print "<span class='presented-by'>" . esc_html($title) . "</span>";
         print "</h4>";
+        print "<div class='presenter-socials'>";
+        get_nominee_meta($meta);
+        print "</div>";
         print "</div>";
         print "<hr>";
 
-      } else {
-        // Nominee / honoree / winner / credit
-        if($counter == 0){
-          $item_class = (@$classes[0] == 'honoree') ? 'honoree' : 'nominee';
-        } else {
-          $item_class = 'nominee-credit';
-        }
-
+      } else if($counter == 0){
+        //
+        // LEVEL 3 NOMINEE — 3-column row
+        //
+        $item_class = (@$classes[0] == 'honoree') ? 'honoree' : 'nominee';
         print "<li class='$item_class'>";
 
-        // Only show thumbnail at Level 3 (counter == 0)
-        if($thumbnail_src != '' && $counter == 0){
+        // COL 1: thumbnail
+        print "<div class='nominee-thumb'>";
+        if($thumbnail_src != ''){
           $resource_url = @$meta['resource_url'][0];
           if($resource_url != ''){
-            print "<a href='".esc_url($resource_url)."' target='_blank' class='nominee-image'>";
+            print "<a href='" . esc_url($resource_url) . "' target='_blank' class='nominee-image'>";
           } else {
             print "<span class='nominee-image'>";
           }
-          print "<img src='$thumbnail_src' class='nomination-thumbnail'>";
+          print "<img src='" . esc_attr($thumbnail_src) . "' class='nomination-thumbnail'>";
           if($resource_url != ''){
             print "</a>";
           } else {
             print "</span>";
           }
+        }
+        if(@$classes[0] == 'winner'){
+          print "<span class='winner'></span>";
+        } else if(@$classes[0] == 'honoree'){
+          print "<span class='honoree'></span>";
+        }
+        print "</div>";
 
-          // Badge spans for winner/honoree
-          if(@$classes[0] == 'winner'){
-            print "<span class='winner'></span>";
-          } else if(@$classes[0] == 'honoree'){
-            print "<span class='honoree'></span>";
-          }
+        // COL 2: name + Level 3 socials
+        print "<div class='nominee-title'>";
+        get_nominee_info($child, $counter);
+        print "</div>";
+
+        // COL 3: Level 4+ credits
+        if(!empty($child['children'])){
+          print "<div class='nominee-credits'>";
+          print "<ul>";
+          get_nominees_and_winners($child['children'], $counter + 1);
+          print "</ul>";
+          print "</div>";
         }
 
-        // Nominee info (title + resource link) and social links
+        print "</li>";
+
+      } else {
+        //
+        // LEVEL 4/5 — simple credit lines, no wrapper divs
+        //
+        print "<li class='nominee-credit'>";
         get_nominee_info($child, $counter);
 
-        // Recurse into children (Level 4 -> Level 5)
         if(!empty($child['children'])){
           print "<ul>";
           get_nominees_and_winners($child['children'], $counter + 1);

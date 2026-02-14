@@ -168,6 +168,7 @@ if(@$_GET['calendar']){
 } else {
     print "<a href='?calendar=1'>Calendar mode</a>";
 }
+print " | <a href='?sheet=1'>Sheet mode</a>";
 print "<hr><BR>";
 
 
@@ -221,8 +222,16 @@ foreach($ros as $i =>$item){ // this is the top level of the event itself
 
 
 // HEADING OR EACH OUTER LOOP
-    print "<h1><hr>$event_title</h1>";
-    print "START TIME: " .date("Y-M-D H:i",$start)."<BR>";
+    if(@$_GET['sheet']){
+        // Only print header once for the first event
+        if($i == array_key_first($ros)){
+            print "<pre>";
+            print "CODE\tSTART\tEND\tDURATION\tSEGMENT\tTYPE\tTALENT\n";
+        }
+    } else {
+        print "<h1><hr>$event_title</h1>";
+        print "START TIME: " .date("Y-M-D H:i",$start)."<BR>";
+    }
 
     if(@$_GET['table']){
         print "<table border='1' cellpadding='5' cellspacing='0'>";
@@ -293,7 +302,103 @@ if($duration>0){
       }
       $end = $start + ($duration);
 }
-if(@$_GET['table']){
+if(@$_GET['sheet']){
+    $session_classes = @$session['classes'];
+    $is_award = (in_array(@$session_classes[0], ['nomination', 'honor']));
+
+    if($is_award){
+        // Count nominees (Level 3 children without "presenter" class)
+        $presenter_name = '';
+        $nominee_count = 0;
+        $talent_names = [];
+
+        if(!empty($session['children'])){
+            foreach($session['children'] as $ch){
+                if(@$ch['classes'][0] == 'presenter'){
+                    $presenter_name = $ch['title'];
+                } else {
+                    $nominee_count++;
+                    // Collect Level 4 names
+                    if(!empty($ch['children'])){
+                        foreach($ch['children'] as $l4){
+                            $talent_names[] = $l4['title'];
+                        }
+                    }
+                }
+            }
+        }
+
+        $talent_str = implode(', ', $talent_names);
+        $category_name = $session['title'];
+
+        // 5 sub-rows
+        $sub_rows = [
+            ['Host Intro', 60, $category_name, ''],
+            ['Presenter Intro', 60, $category_name, $presenter_name],
+            ['Nomination Reel', 30 * max($nominee_count, 1), $category_name, $talent_str],
+            ['Reveal', 30, $category_name, ''],
+            ['Acceptance Speech', 60, $category_name, $talent_str],
+        ];
+
+        foreach($sub_rows as $sub){
+            $sub_end = $start + $sub[1];
+            $dur_min = $sub[1] / 60;
+            $dur_display = (floor($dur_min) == $dur_min)
+                ? number_format($dur_min, 0)
+                : number_format($dur_min, 1);
+
+            $start_display = date("g:i A", $start + ($offset * 3600));
+            $end_display = date("g:i A", $sub_end + ($offset * 3600));
+
+            print "$code$display_session_counter\t";
+            print "$start_display\t";
+            print "$end_display\t";
+            print "$dur_display\t";
+            print "$sub[0]\t";
+            print "$sub[2]\t";
+            print "$sub[3]\n";
+
+            $start = $sub_end;
+        }
+
+        $end = $start;
+
+    } else {
+        // Regular session — one row
+        $dur_sec = intval(@$session['event_length_seconds']);
+        $end = $start + $dur_sec;
+        $dur_min = $dur_sec / 60;
+        $dur_display = ($dur_sec == 0) ? '0'
+            : ((floor($dur_min) == $dur_min)
+                ? number_format($dur_min, 0)
+                : number_format($dur_min, 1));
+
+        $start_display = date("g:i A", $start + ($offset * 3600));
+        $end_display = date("g:i A", $end + ($offset * 3600));
+        $type_display = ucwords(str_replace('-', ' ',
+            strtolower(@$session['event_type'])));
+
+        // Collect talent (Level 3 profile children)
+        $talent = [];
+        if(!empty($session['children'])){
+            foreach($session['children'] as $ch){
+                if(@$ch['post']->post_type == 'profile'){
+                    $talent[] = $ch['title'];
+                }
+            }
+        }
+        $talent_str = implode(', ', $talent);
+
+        print "$code$display_session_counter\t";
+        print "$start_display\t";
+        print "$end_display\t";
+        print "$dur_display\t";
+        print "$session[title]\t";
+        print "$type_display\t";
+        print "$talent_str\n";
+    }
+
+} else if(@$_GET['table']){
     // Table view: CODE, Time, Duration (minutes), Session Title, then list people
     print "<tr>";
     print "<td>$code"."$display_session_counter</td>";
@@ -399,6 +504,9 @@ if(@$_GET['table']){
         $session_counter++;
     }
     
+    if(@$_GET['sheet'] && $i == array_key_last($ros)){
+        print "</pre>";
+    }
     if(@$_GET['table']){
         print "</table>";
     }

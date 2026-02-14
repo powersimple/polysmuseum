@@ -7,59 +7,64 @@
 
     font-family: 'AgencyFB';
 }
-.nomination-thumbnail {
+.nomination-thumbnail{
     border-radius: 50%;
-    width: 75px;
-    height: 75px;
-    margin-left: 18px;
+    width:75px;
+    height:75px;
     margin-top: 4px;
+    margin-left: 18px;
     display: inline-block;
     vertical-align: middle;
 }
-li.nominee, li.honoree {
+li.nominee, li.honoree{
     display: flex;
-    flex-wrap: wrap;
     align-items: flex-start;
-    gap: 0;
+    padding: 0.5rem 0;
 
-    // Thumbnail + name row
-    > .nominee-image {
-        flex-shrink: 0;
+    // COL 1: thumbnail — fixed width
+    .nominee-thumb{
+        flex: 0 0 120px;
+        padding-top: 4px;
     }
 
-    // Level 3 nominee title — double size
-    > span:not(.nominee-image):not(.winner):not(.honoree) {
-        font-weight: bold;
-        font-family: 'AgencyFB';
-        color: #fff;
-        font-size: 1.5em;
-        line-height: 1.2;
-        display: inline-flex;
-        align-items: center;
-        min-height: 100px;
+    // COL 2: name + socials — fixed width like a table cell
+    .nominee-title{
+        flex: 0 0 280px;
+        padding: 0 10px;
+        font-size: 2rem;
+        line-height: 120%;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+
+        > span{
+            display: inline;
+        }
+        > a{
+            display: inline;
+        }
     }
 
-    // Social icons at Level 3 — keep normal size
-    > a {
-        display: inline-flex;
-        align-items: center;
-        min-height: 100px;
-        margin-left: 4px;
+    // COL 3: credits — takes remaining space
+    .nominee-credits{
+        flex: 1 1 auto;
+        padding-left: 10px;
+
+        ul{
+            margin: 0;
+            padding: 0;
+        }
     }
 
-    // Inner credits list takes full width below the thumbnail row
-    > ul {
-        flex-basis: 100%;
-        padding-left: 0;
-        margin: 0;
+    @media (max-width: 767px){
+        flex-wrap: wrap;
+        .nominee-thumb{ flex: 0 0 110px; }
+        .nominee-title{ flex: 1 1 auto; min-width: 150px; }
+        .nominee-credits{ flex: 0 0 100%; padding-left: 0; margin-top: 0.3rem; }
     }
 
-    a {
-        display: inline-block;
-        vertical-align: middle;
-    }
-
-    span {
+    a{ display: inline-block; vertical-align: middle; }
+    span{
         display: inline-block;
         font-weight: bold;
         margin-right: 6px;
@@ -67,34 +72,22 @@ li.nominee, li.honoree {
         font-family: 'AgencyFB';
         color: #fff;
     }
-
-    img {
-        margin-right: 0;
-    }
+    img{ margin-right: 0; }
 }
 
-li.nominee-credit, li.honoree-credit {
+li.nominee-credit, li.honoree-credit{
     display: block;
     margin: 0;
-    padding: 0;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    font-size: 75%;
-    line-height: 1.3;
+    padding: 1px 0;
+    font-size: 80%;
+    line-height: 1.2;
 
-    span {
+    span{
         margin-left: 0;
         margin-right: 4px;
-        font-family: 'AgencyFB';
-        color: #fff;
     }
 
-    .social-icon {
-        font-size: 0.85em;
-    }
-
-    // Nested ul for Level 5 team members
-    ul {
+    ul{
         padding-left: 1em;
         margin: 0;
     }
@@ -111,6 +104,22 @@ h4.presenter{
         margin-bottom: 1em;
     }
 }
+.presenter-row{
+    width: 100%;
+    padding: 0.5rem 0;
+}
+.presenter-socials{
+    display: block;
+    margin-top: 0.25rem;
+}
+.back-to-top{
+    display: block;
+    text-align: center;
+    margin: 1.5rem 0;
+    font-size: 0.85em;
+    color: #0ff;
+    &:hover{ color: #fff; }
+}
 td.nominee-info a.nominee {
     
     :hover{
@@ -118,33 +127,20 @@ td.nominee-info a.nominee {
         text-decoration: underline;
     }
 }
-.nominee-image {
-    background: url(images/icons/minilaurel.png) no-repeat 0px 0px;
-    background-size: contain;
+.nominee-image{
+    background:url(images/icons/minilaurel.png) no-repeat 0px 0px;
+    background-size:contain;
     width: 110px !important;
-    height: 100px !important;
+    height:100px !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
 
-ul.nominee-list {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
+ul.nominee-list{
     padding: 0;
-    margin: 0;
-
-    @media (min-width: 768px) {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 2rem 3rem;
-    }
-    @media (min-width: 1200px) {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    li {
+    li{
         list-style: none;
         margin-bottom: 0;
     }
@@ -155,9 +151,8 @@ li.honoree{
 .honoree .nominee-image{
     padding:0px 0px
 }
-.winner::before {
+.winner::before{
     content: "WINNER";
-    text-align: center;
     color: #e9e14d;
     display: inline-block;
     font-weight: bold;
@@ -173,8 +168,8 @@ li.honoree{
     height:100px;
 
 }
-.winner {
-    background: url(images/icons/minipoly.png) center center no-repeat;
+.winner{
+    background:url(images/icons/minipoly.png) center center no-repeat;
     background-size: contain;
     width: 29px;
     height: 29px;
@@ -229,7 +224,7 @@ input[type=radio] {
 #noms-list{
     //hack
     .nominee-image{
-        background:url(images/icons/minilaurel.png) no-repeat 1px -3px;
+        background:url(images/icons/minilaurel.png) no-repeat 0px 0px;
         background-size:contain;
         width: 110px !important;
         height:100px !important;
@@ -368,20 +363,6 @@ input[type=radio] {
             text-align: center;
         }
     }*/
-    .back-to-top {
-        display: block;
-        text-align: center;
-        margin: 1.5rem 0;
-        font-size: 0.85em;
-        color: #0ff;
-        &:hover {
-            color: #fff;
-        }
-    }
-    .social-icon {
-        margin-right: 3px;
-        vertical-align: middle;
-    }
     ul.awards-list {
         font-size: 1em;
         text-align: center;
