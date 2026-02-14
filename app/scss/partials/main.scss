@@ -284,7 +284,37 @@ em{
         z-index: 10;
         background-color: #000;
         padding-left:0px;
-        
+
     }
 }
 
+// =============================================================================
+// Global List Reset & Calendar Button (moved from style.scss)
+// =============================================================================
+ul {
+    padding-left: 20px;
+
+    li {
+        list-style: disc;
+    }
+}
+
+.calendar-button {
+    display: inline-block;
+    padding: 10px 15px;
+    margin: 5px;
+    background-color: #4CAF50;
+    color: #fff;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+
+    span {
+        text-decoration: none;
+    }
+
+    &:hover {
+        background-color: #45a049;
+        color: #fff;
+    }
+}

@@ -43,10 +43,6 @@
     li {
         margin-bottom: .5em;
     }
-    @font-face {
-        font-family: "Freight Sans Book";
-        src: url("fonts/FreightSansBook.otf") format("opentype");
-    }
     @media print {
         a[href]:after {
             content: none !important;

@@ -1,38 +1,79 @@
-/*--------------------------------------------------------------
-	Typography
---------------------------------------------------------------*/
+// =============================================================================
+// Typography - Fonts, type scale, and text utilities
+// =============================================================================
 @use "globals" as *;
+
+// -----------------------------------------------------------------------------
+// Font Face Declarations (consolidated from multiple partials)
+// -----------------------------------------------------------------------------
+@font-face {
+    font-family: 'CreamCake';
+    src: url('fonts/CreamCake.otf');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'AgencyFB';
+    src: url('fonts/AGENCYB.ttf');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'AgencyFB-Regular';
+    src: url('fonts/AGENCYR.ttf');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Exodar';
+    src: url('fonts/ExodarOutline-Light.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Freight Sans Book";
+    src: url("fonts/FreightSansBook.otf") format("opentype");
+    font-display: swap;
+}
+
+// -----------------------------------------------------------------------------
+// Base Typography
+// -----------------------------------------------------------------------------
 body {
     font-size: 1em;
 }
 
 a {
-    color: #111;
+    color: $blue;
+    font-size: 1em;
+
+    &:hover,
+    &:focus {
+        text-decoration: none;
+        color: #333;
+        outline: 0;
+    }
 }
 
-a:hover,
-a:focus {
-    text-decoration: none;
-    color: #333;
-    outline: 0;
+.bg-dark {
+    a {
+        color: #aaa;
+
+        &:hover,
+        &:focus {
+            color: #fff;
+        }
+    }
 }
 
-.bg-dark a {
-    color: #aaa;
-}
-
-.bg-dark a:hover,
-.bg-dark a:focus {
-    color: #fff;
-}
-
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+// -----------------------------------------------------------------------------
+// Headings
+// -----------------------------------------------------------------------------
+h1, h2, h3, h4, h5, h6 {
     line-height: 120%;
     margin-bottom: .5em;
     color: $blue;
@@ -41,14 +82,11 @@ h6 {
 h1 {
     font-size: 2.5rem;
     font-weight: 700;
-    text-align:center;
-  
+    text-align: center;
 }
 
 h2 {
     font-size: 1.618rem;
-
-   
 }
 
 h3 {
@@ -71,27 +109,21 @@ h6 {
     font-weight: 600;
 }
 
-p,
-ol,
-ul,
-blockquote {
+// -----------------------------------------------------------------------------
+// Body Text
+// -----------------------------------------------------------------------------
+p, ol, ul, blockquote {
     margin: 0 0 0px;
     font-size: 1.5rem;
 }
 
-main p,
-li {
+main p, li {
     font-size: 1rem;
-}
-
-a {
-    color: #4173D8;
-    font-size: 1em;
 }
 
 p {
     text-align: left;
-    line-height:150%;
+    line-height: 150%;
 }
 
 strong {
@@ -105,6 +137,9 @@ blockquote {
     padding: 0;
 }
 
+// -----------------------------------------------------------------------------
+// Utility Classes
+// -----------------------------------------------------------------------------
 .font-alt {
     font-family: 'Open Sans';
     text-transform: uppercase;
@@ -124,6 +159,9 @@ blockquote {
     text-shadow: none !important;
 }
 
+// -----------------------------------------------------------------------------
+// Module Titles
+// -----------------------------------------------------------------------------
 .module-title {
     position: relative;
     letter-spacing: 4px;
@@ -132,6 +170,10 @@ blockquote {
     font-size: 30px;
     color: #111;
     margin: 0 0 35px;
+
+    & + .module-subtitle {
+        margin-top: -35px;
+    }
 }
 
 .module-subtitle {
@@ -147,63 +189,55 @@ blockquote {
     margin-bottom: 20px;
 }
 
-.module-title+.module-subtitle {
-    margin-top: -35px;
-}
-
-
-/* Restaurant module header */
-
+// -----------------------------------------------------------------------------
+// Alt Module Subtitle
+// -----------------------------------------------------------------------------
 .alt-module-subtitle {
     display: table;
+
+    h5 {
+        display: table-cell;
+        white-space: pre;
+        padding: 0 8px;
+        color: #111;
+    }
 }
 
-.alt-module-subtitle h5 {
-    display: table-cell;
-    white-space: pre;
-    padding: 0 8px;
-    color: #111;
-}
-
-
-/* Finance case study header */
-
+// -----------------------------------------------------------------------------
+// Finance / Landing / Portfolio (legacy sections)
+// -----------------------------------------------------------------------------
 .finance-image-content {
     border: 1px solid #e5e5e5;
     padding: 60px 0px;
+
+    .module-title {
+        margin-bottom: 20px;
+    }
+
+    .alt-features-item {
+        margin-top: 40px;
+    }
 }
 
-.finance-image-content .module-title {
-    margin-bottom: 20px;
-}
+.landing-reason {
+    .module-title {
+        color: #e6af4b;
 
-.finance-image-content .alt-features-item {
-    margin-top: 40px;
-}
-
-
-/* Landing Page */
-
-.landing-reason .module-title {
-    color: #e6af4b;
-}
-
-.landing-reason .module-title+.module-subtitle {
-    margin-top: -60px;
-    margin-bottom: 40px;
+        & + .module-subtitle {
+            margin-top: -60px;
+            margin-bottom: 40px;
+        }
+    }
 }
 
 .free-trial {
     background-color: rgba(88, 20, 158, 0.9);
-    color: #FFFFFF;
+    color: #fff;
+
+    .color-golden {
+        color: #e6af4b;
+    }
 }
-
-.free-trial .color-golden {
-    color: #e6af4b;
-}
-
-
-/*  Special Portfolio Page  */
 
 .special-portfolio-header-title {
     border: 1px solid rgba(255, 255, 255, 0.7);

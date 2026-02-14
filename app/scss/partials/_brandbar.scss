@@ -22,17 +22,6 @@
 @use "globals" as *;
 
 // =============================================================================
-// Font Face - Exodar (RPG brand font, scoped to section bar only)
-// =============================================================================
-@font-face {
-    font-family: 'Exodar';
-    src: url('fonts/ExodarOutline-Light.otf') format('opentype');
-    font-weight: 300;
-    font-style: normal;
-    font-display: swap;
-}
-
-// =============================================================================
 // Brand Color Anchors (harmonized with Polys gold #E79633)
 // =============================================================================
 $brand-academy: #275689;      // Metallic blue

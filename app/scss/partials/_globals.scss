@@ -1,30 +1,69 @@
+// =============================================================================
+// Global Variables - Single source of truth for all theme tokens
+// =============================================================================
+
 // Typography
 $font-family-base: 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 $font-weight-base: 500;
 
+// -----------------------------------------------------------------------------
+// Colors - Grays
+// -----------------------------------------------------------------------------
 $darkest_gray: #101619;
-$dark_gray: #999999;
-$gray: #999999;
-$light_gray: #cccccc;
-$lightest_gray:#f4f4f4;
-$gray_text:#8A8A8A;
+$dark_gray: #999;
+$gray: #999;
+$light_gray: #ccc;
+$lightest_gray: #f4f4f4;
+$gray_text: #8a8a8a;
 
+// -----------------------------------------------------------------------------
+// Colors - Blues
+// -----------------------------------------------------------------------------
 $darkest_blue: #102246;
 $dark_blue: #183369;
 $blue: #4173D8;
-$light_blue:#a2c1ef;
-$green_text: #2ecc71;
+$light_blue: #a2c1ef;
+
+// -----------------------------------------------------------------------------
+// Colors - Greens
+// -----------------------------------------------------------------------------
 $green: #6FAD48;
-$green_bg:#3A6129;
+$green_text: #2ecc71;
+$green_bg: #3A6129;
 $light_green: #74fcac;
 
-// 2020 colors
-
+// -----------------------------------------------------------------------------
+// Colors - 2020 Palette
+// -----------------------------------------------------------------------------
 $hot_yellow: #f1c40f;
-$bright-yellow:#ffe270;
-$power-purple:#3f2a8c;
-$deep-purple:#1d1649;
+$bright-yellow: #ffe270;
+$power-purple: #3f2a8c;
+$deep-purple: #1d1649;
 $light-purple: #bf49f2;
-$haven-red:#e74c3c;
+$haven-red: #e74c3c;
 
+// -----------------------------------------------------------------------------
+// Colors - Summit Series
+// -----------------------------------------------------------------------------
+$developer_summit: #00BAFF;
+$design_summit: #bd1704;
+$business_summit: #864d09;
+$education_summit: #530066;
+$brand_summit: #610000;
+$production_summit: #062C73;
 
+// -----------------------------------------------------------------------------
+// Breakpoints
+// -----------------------------------------------------------------------------
+$bp-mobile: 767px;
+$bp-tablet: 991px;
+$bp-desktop: 1200px;
+$bp-wide: 1400px;
+
+// -----------------------------------------------------------------------------
+// Common Values
+// -----------------------------------------------------------------------------
+$border-radius-sm: 5px;
+$border-radius-md: 10px;
+$border-radius-round: 50%;
+$transition-base: 0.3s ease;

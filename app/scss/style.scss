@@ -10,32 +10,41 @@ Compiled using: VITE
 DO NOT EDIT IN STYLE.CSS
 */
 
-//@use "partials/colors" as *;
-
-// Import partials
+// =============================================================================
+// Foundation
+// =============================================================================
 @use "partials/reset";
 @use "partials/typography";
-@use "partials/admin";
-//@use "partials/guide";
+
+// =============================================================================
+// Layout & Navigation
+// =============================================================================
 @use "partials/megamenu";
 @use "partials/brandbar" as sectionbar;  // Section bar - L2 nav from megamenu
 @use "partials/drawer";
-@use "partials/jqueryui";
-@use "partials/loader";
 @use "partials/header";
-@use "partials/nav";
 @use "partials/footer";
 @use "partials/footer-brand";  // Footer brand panels with metallic gradients
-@use "partials/filters";
 @use "partials/main";
+
+// =============================================================================
+// Components
+// =============================================================================
+@use "partials/jqueryui";
+@use "partials/loader";
+@use "partials/filters";
 @use "partials/sections";
 @use "partials/video";
 @use "partials/hero";
 @use "partials/page-frame";  // Canonical page layout system
-@use "partials/sponsors";
 @use "partials/slick";
+@use "partials/sponsors";
+
+// =============================================================================
+// Features
+// =============================================================================
 @use "partials/profile";
-@use "partials/guide";    
+@use "partials/guide";
 @use "partials/hardware";
 @use "partials/runofshow";
 @use "partials/nominees";
@@ -43,40 +52,16 @@ DO NOT EDIT IN STYLE.CSS
 @use "partials/audit";
 @use "partials/exhibits";
 @use "partials/events-sidebar";
+@use "partials/admin";
 
-// Custom event themes
+// =============================================================================
+// Brand Themes
+// =============================================================================
 @use "partials/_summit-series";
 @use "partials/_the-polys";
 @use "partials/_metatraversal";
-@use "partials/_ready-player-golf";
 
-// Import fonts
+// =============================================================================
+// External Fonts
+// =============================================================================
 @import url('https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;600;900&display=swap&family=Zen+Dots&family=Goldman');
-
-// Global styles
-ul {
-    padding-left: 20px;
-    li {
-        list-style: disc;
-    }
-}
-
-.calendar-button {
-    display: inline-block;
-    padding: 10px 15px;
-    margin: 5px;
-    background-color: #4CAF50;
-    color: white;
-    cursor: pointer;
-    border: none;
-    border-radius: 5px;
-    
-    span {
-        text-decoration: none;
-    }
-    
-    &:hover {
-        background-color: #45a049;
-        color: #fff;
-    }
-}
