@@ -174,129 +174,54 @@
 }
 
 // ==========================================================================
-// Nominee List & Category Styles
+// Category Title (award section headings) — H3 level
 // ==========================================================================
 
 .nomination-category {
-    font-size: 200%;
-    text-align: center;
-    color: #f1c40f;
-    text-shadow: 2px 2px 2px #000;
-    font-family: 'AgencyFB';
-}
+    font-size: clamp(1.9rem, 2.8vw, 2.9rem);
+    letter-spacing: 0.02em;
+    text-align: left;
+    font-family: 'AgencyFB', 'Raleway', sans-serif;
+    font-weight: 800;
+    margin-top: clamp(2.75rem, 5vw, 4rem);
+    margin-bottom: clamp(1.125rem, 2vw, 1.75rem);
+    padding-bottom: 0.75rem;
+    border-bottom: none;
+    position: relative;
+    text-shadow: 0 0.0625rem 0.25rem rgba(0, 0, 0, 0.55);
 
-.nomination-thumbnail {
-    border-radius: 50%;
-    width: 75px;
-    height: 75px;
-    margin-top: 4px;
-    margin-left: 18px;
-    display: inline-block;
-    vertical-align: middle;
-}
+    // Gradient text fill — brighter cinematic sweep (near-white to light)
+    background: linear-gradient(90deg, #ffffff, #e0e8f5);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 
-li.nominee, li.honoree {
-    display: flex;
-    align-items: flex-start;
-    padding: 0.5rem 0;
-
-    // COL 1: thumbnail — fixed width
-    .nominee-thumb {
-        flex: 0 0 120px;
-        padding-top: 4px;
+    @supports not (background-clip: text) {
+        background: none;
+        color: #ffffff;
     }
 
-    // COL 2: name + socials — fixed width like a table cell
-    .nominee-title {
-        flex: 0 0 280px;
-        padding: 0 10px;
-        font-size: 2rem;
-        line-height: 120%;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: baseline;
-
-        > span {
-            display: inline;
-        }
-
-        > a {
-            display: inline;
-        }
-    }
-
-    // COL 3: credits — takes remaining space
-    .nominee-credits {
-        flex: 1 1 auto;
-        padding-left: 10px;
-
-        ul {
-            margin: 0;
-            padding: 0;
-        }
-    }
-
-    @media (max-width: 767px) {
-        flex-wrap: wrap;
-        .nominee-thumb  { flex: 0 0 110px; }
-        .nominee-title  { flex: 1 1 auto; min-width: 150px; }
-        .nominee-credits { flex: 0 0 100%; padding-left: 0; margin-top: 0.3rem; }
-    }
-
-    a {
-        display: inline-block;
-        vertical-align: middle;
-    }
-
-    span {
-        display: inline-block;
-        font-weight: bold;
-        margin-right: 6px;
-        vertical-align: middle;
-        font-family: 'AgencyFB';
-        color: #fff;
-    }
-
-    img {
-        margin-right: 0;
-    }
-}
-
-li.nominee-credit, li.honoree-credit {
-    display: block;
-    margin: 0;
-    padding: 1px 0;
-    font-size: 80%;
-    line-height: 1.2;
-
-    span {
-        margin-left: 0;
-        margin-right: 4px;
-    }
-
-    ul {
-        padding-left: 1em;
-        margin: 0;
+    // Accent bar: wider, intentional brand accent
+    &::after {
+        content: '';
+        display: block;
+        width: clamp(6rem, 12vw, 10rem);
+        height: 0.125rem;
+        margin-top: 0.875rem;
+        background: linear-gradient(90deg, rgba(34, 240, 255, 0.75), rgba(247, 192, 74, 0.75));
+        border-radius: 1px;
     }
 }
 
 // ==========================================================================
-// Nominee Image (laurel icon)
+// Nominee List Container
 // ==========================================================================
-
-.nominee-image {
-    background: url(images/icons/minilaurel.png) no-repeat 0px 0px;
-    background-size: contain;
-    width: 110px !important;
-    height: 100px !important;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
 
 ul.nominee-list {
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
 
     li {
         list-style: none;
@@ -304,12 +229,326 @@ ul.nominee-list {
     }
 }
 
+// ==========================================================================
+// Nominee / Honoree Cards — 3-col desktop, stacked mobile
+// ==========================================================================
+
+li.nominee, li.honoree {
+    display: grid;
+    // ≥768: thumb(auto) | title(dominant) | credits(constrained)
+    grid-template-columns: auto minmax(0, 1.6fr) minmax(12rem, 0.9fr);
+    gap: 1.25rem;
+    align-items: start;
+    padding: 1.5rem;
+    position: relative;
+    background: var(--ink-2);
+    border: 2px solid var(--stroke-strong);
+    border-radius: var(--r-md);
+    box-shadow:
+        0 0.625rem 1.75rem rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    transition: transform 200ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out;
+    list-style: none;
+    // NO overflow:hidden — laurel must not be clipped by card boundary
+
+    // Inner highlight — soft top light + specular corner vignette
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background:
+            radial-gradient(ellipse at 90% 10%, rgba(255, 255, 255, 0.05), transparent 50%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 40%);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    &:hover,
+    &:focus-within {
+        transform: translateY(-0.25rem);
+        border-color: rgba(255, 255, 255, 0.32);
+        box-shadow:
+            0 1.25rem 3.5rem rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.12),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        &:hover, &:focus-within {
+            transform: none;
+        }
+    }
+
+    // -------------------------------------------------------
+    // MOBILE (<768px): 2-col top row, credits full-width below
+    // -------------------------------------------------------
+    @media (max-width: 767px) {
+        grid-template-columns: auto 1fr;
+        grid-template-rows: auto auto;
+        padding: 1.125rem;
+
+        .nominee-thumb  { grid-column: 1; grid-row: 1; }
+        .nominee-title  { grid-column: 2; grid-row: 1; align-self: center; }
+
+        // Credits flush left — full card width, no thumb gutter offset
+        .nominee-credits {
+            grid-column: 1 / -1;
+            grid-row: 2;
+            padding: 0;
+            max-width: none;
+        }
+
+        // Socials right-aligned on mobile
+        .nominee-socials {
+            justify-content: flex-end;
+        }
+    }
+
+    // -------------------------------------------------------
+    // COL 1: Thumbnail cluster
+    // -------------------------------------------------------
+    .nominee-thumb {
+        padding: 0;
+    }
+
+    // -------------------------------------------------------
+    // COL 2: Title + socials (title-level socials sit below name)
+    // -------------------------------------------------------
+    .nominee-title {
+        font-size: clamp(1.35rem, 2.2vw, 2.2rem);
+        font-weight: 700;
+        line-height: 1.15;
+        color: var(--text-0);
+        text-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.55);
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+        padding: 0;
+        padding-right: 1rem;
+        align-self: center;
+        min-width: 0; // allow text wrapping inside grid
+
+        // Title text — block level, drop shadow on every variant
+        > span {
+            display: block;
+            font-family: 'AgencyFB', 'Raleway', sans-serif;
+            text-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.8);
+        }
+
+        > a {
+            display: block;
+            text-decoration: none;
+            text-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.8);
+        }
+
+        > a > span {
+            font-family: 'AgencyFB', 'Raleway', sans-serif;
+        }
+    }
+
+    // -------------------------------------------------------
+    // Socials — small icons below name
+    // -------------------------------------------------------
+    .nominee-socials {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-top: 0.125rem;
+        flex-wrap: wrap;
+
+        a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.75rem;
+            height: 2.75rem;
+            color: var(--text-2);
+            text-decoration: none;
+            transition: color 200ms ease-out;
+            font-size: 0.9rem;
+
+            &:hover {
+                color: var(--teal-0);
+            }
+        }
+    }
+
+    // -------------------------------------------------------
+    // COL 3: Credits — constrained, top-aligned, compact
+    // -------------------------------------------------------
+    .nominee-credits {
+        padding: 0;
+        max-width: 22rem;
+        justify-self: end;
+
+        ul {
+            margin: 0;
+            padding: 0 0 0 20px;
+        }
+    }
+
+    // Card-level defaults
+    a {
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    span {
+        display: inline-block;
+        font-weight: 700;
+        margin-right: 0.375rem;
+        vertical-align: middle;
+        color: var(--text-0);
+    }
+
+    img {
+        margin-right: 0;
+    }
+}
+
+// ==========================================================================
+// LAUREL + THUMBNAIL SYSTEM (single source of truth)
+// ==========================================================================
+//
+// DOM:  .nominee-image > img.nomination-thumbnail
+// Laurel: .nominee-image::after (pseudo-element, centered via translate)
+// Image clipping: on the <img> itself (border-radius + object-fit)
+// NO overflow:hidden on wrapper. NO breakpoint-specific laurel sizing.
+//
+// Change these two variables to resize everything:
+// --thumb-size controls the photo; --laurel-pad controls ring width.
+// ==========================================================================
+
+.nominee-image {
+    --thumb-size: 7rem;
+    --laurel-pad: 1rem;
+
+    // Wrapper sized to laurel (image + padding on each side)
+    position: relative;
+    flex-shrink: 0;
+    width: calc(var(--thumb-size) + var(--laurel-pad) * 2);   // 9rem
+    height: calc(var(--thumb-size) + var(--laurel-pad) * 2);
+
+    // ---- LAUREL (::after) — ONE selector, deterministic, no drift ----
+    &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: calc(var(--thumb-size) + var(--laurel-pad) * 2);
+        height: calc(var(--thumb-size) + var(--laurel-pad) * 2);
+        background: url(images/icons/minilaurel.png) no-repeat center center;
+        background-size: contain;
+        pointer-events: none;
+        z-index: 1;
+        // No transforms, no scale, no breakpoint overrides
+    }
+}
+
+// ---- IMAGE ----
+.nomination-thumbnail {
+    position: relative;
+    z-index: 2;
+    display: block;
+    width: 7rem;
+    height: 7rem;
+    margin: 14px 0 0 18px;
+    border-radius: 999px;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: box-shadow 200ms ease-out;
+
+    li.nominee:hover &,
+    li.honoree:hover & {
+        box-shadow:
+            inset 0 1px 3px rgba(0, 0, 0, 0.3),
+            0 0 0.75rem rgba(34, 240, 255, 0.2);
+    }
+}
+
 li.honoree {
     list-style: none;
 }
 
-.honoree .nominee-image {
-    padding: 0px 0px;
+// ==========================================================================
+// Credit Lines — H5 level sizing
+// ==========================================================================
+
+li.nominee-credit, li.honoree-credit {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 0;
+    margin-block: 0.1875rem;  // tight vertical rhythm between credit lines
+    padding: 0;
+    font-size: clamp(0.9rem, 1.2vw, 1.05rem);
+    line-height: 1.35;
+    color: var(--text-2);
+    font-weight: 500;
+
+    span {
+        margin-left: 0;
+        margin-right: 0.25rem;
+        font-weight: 600;
+        color: var(--text-1);
+    }
+
+    ul {
+        padding-left: 1em;
+        margin: 0.1875rem 0 0;
+    }
+
+    // Social icons — tight under the credit name
+    .nominee-socials {
+        display: flex;
+        gap: 0.125rem;
+        margin-top: 0;  // flush under the name
+        flex-wrap: wrap;
+
+        a {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 1.75rem;  // compact vertical tap area
+            font-size: 0.75rem;
+            color: var(--text-2);
+            text-decoration: none;
+            transition: color 200ms ease-out;
+
+            &:hover {
+                color: var(--teal-0);
+            }
+        }
+
+        // Mobile: push socials right
+        @media (max-width: 767px) {
+            align-self: flex-end;
+        }
+    }
+}
+
+// ==========================================================================
+// Social Icons — global sizing inside nominee cards
+// ==========================================================================
+
+li.nominee, li.honoree {
+    .fa, .fab, .fas, .far {
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-2);
+        transition: color 200ms ease-out;
+
+        &:hover {
+            color: var(--teal-0);
+        }
+    }
 }
 
 // ==========================================================================
@@ -317,92 +556,360 @@ li.honoree {
 // ==========================================================================
 
 .winner {
-    background: url(images/icons/minipoly.png) center center no-repeat;
-    background-size: contain;
-    width: 29px;
-    height: 29px;
-    display: inline-block;
-    vertical-align: middle;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.25rem;
+
+    // Trophy icon at native resolution (27×100px)
+    background: url(images/icons/minipoly.png) left center no-repeat;
+    background-size: 27px auto;
+    padding-left: calc(27px + 0.375rem);
+    min-height: 100px;
 
     &::before {
         content: "WINNER";
-        color: #e9e14d;
+        color: var(--gold-0);
         display: inline-block;
-        font-weight: bold;
+        font-weight: 700;
         font-style: italic;
-        font-size: 100%;
-        margin-left: 6px;
-        vertical-align: middle;
+        font-size: 2rem;
+        margin-top: 2rem;
+        letter-spacing: 0.04em;
+        line-height: 1;
     }
 }
 
 .winner2020 {
     background: url(images/icons/minipoly.png) center center no-repeat;
     background-size: contain;
-    height: 100px;
+    height: 6.25rem;
 }
 
 .choice {
     text-align: center;
     vertical-align: middle;
-    width: 50px;
+    width: 3.125rem;
 }
 
 // ==========================================================================
-// Ballot Form
+// Winner Card — Gold Border Accent
+// ==========================================================================
+
+li.nominee:has(.winner) {
+    border-color: var(--gold-0, #f7c04a);
+    border-left: 3px solid var(--gold-0, #f7c04a);
+}
+
+// ==========================================================================
+// Nomination Description — Full-width under category title
+// ==========================================================================
+
+.nomination-description {
+    width: 100%;
+    margin-bottom: 1.5rem;
+    font-size: clamp(0.9375rem, 1.2vw, 1.0625rem);
+    line-height: 1.6;
+    color: var(--text-1, #c7d2e6);
+
+    p {
+        margin: 0 0 0.75rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+}
+
+// ==========================================================================
+// Ballot Form — Responsive Grid (Quest-first, mobile second)
 // ==========================================================================
 
 #ballot {
+    // ── Global ballot controls ──
     input[type=submit] {
-        border: 2px outset #ccc;
-        border-radius: 5px;
-        background: rgba(0, 0, 104, 0.7);
-        color: #ff0;
-        padding: 10px;
+        border: 1px solid var(--stroke-strong);
+        border-radius: var(--r-sm);
+        background: var(--ink-2);
+        color: var(--gold-0);
+        padding: 0.75rem 1.5rem;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 200ms ease-out, color 200ms ease-out;
 
-        &:hover {
-            color: #006;
-            background: rgba(200, 200, 0, 0.7);
+        &:hover  { background: var(--gold-1); color: var(--text-0); }
+        &:focus-visible { outline: 2px solid var(--teal-0); outline-offset: 2px; }
+    }
+
+    .ballot-reminder {
+        text-align: center;
+        font-weight: 600;
+        color: var(--text-2);
+        margin-block: 1rem;
+    }
+
+    // ── Category section ──
+    .ballot-category {
+        border: 1px solid var(--stroke);
+        border-radius: var(--r-sm);
+        padding: 1rem;
+        margin-block: 1.5rem;
+    }
+
+    .category-header {
+        margin-bottom: 0.75rem;
+
+        .nomination-category {
+            margin: 0 0 0.5rem;
         }
     }
 
-    table {
-        width: 100%;
+    .category-status {
+        font-size: 0.9rem;
+        color: var(--text-2);
+        padding: 0.5rem 0.75rem;
+        border-left: 3px solid var(--stroke-strong);
+        margin-bottom: 0.75rem;
+
+        &.category-status--voted {
+            border-left-color: var(--teal-0);
+            color: var(--text-1);
+        }
     }
 
-    td.nominee span {
-        display: block;
-    }
-
-    th {
+    // ── Choice legend (column headers on wide screens) ──
+    .choice-legend {
+        display: grid;
+        grid-template-columns: 1fr repeat(3, 4rem);
+        gap: 0.5rem;
+        padding: 0.25rem 0;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-2);
         text-align: center;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        margin-bottom: 0.25rem;
+
+        > span:first-child { text-align: left; }
     }
 
-    input[type=radio] {
-        width: 100%;
-        height: 2em;
+    // ── Nominee list ──
+    .nominee-list {
+        display: flex;
+        flex-direction: column;
+    }
+
+    // ── Single nominee row ──
+    .nominee-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1rem;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+
+        &:last-child { border-bottom: none; }
+    }
+
+    // ── Left: thumbnail + meta ──
+    .nominee-left {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.75rem;
+        align-items: center;
+        min-width: 0;
+    }
+
+    // Thumbnail + laurel frame (laurel WRAPS image)
+    .nominee-thumb {
+        display: inline-block;
+        flex-shrink: 0;
+    }
+
+    .nominee-laurel {
+        display: inline-grid;
+        place-items: center;
+        background: url(images/icons/minilaurel.png) no-repeat center center;
+        background-size: contain;
+        width: 90px;
+        height: 90px;
+    }
+
+    // Suppress global .nominee-image sizing + ::after laurel
+    .nominee-image {
+        display: block;
+        width: auto;
+        height: auto;
+        &::after { display: none; }
+    }
+
+    .nomination-thumbnail {
+        display: block;
+        width: 60px;
+        height: 60px;
+        margin: 0;
+        border-radius: 999px;
+        object-fit: cover;
+    }
+
+    // ── Nominee meta ──
+    .nominee-meta {
+        min-width: 0;
+
+        > a, > span {
+            display: block;
+            font-weight: 600;
+            font-size: 1rem;
+            line-height: 1.3;
+            color: var(--text-0);
+        }
+    }
+
+    .nominee-credits {
+        margin: 0.25rem 0 0;
+        padding: 0 0 0 1rem;
+        font-size: 0.875rem;
+        color: var(--text-2);
+    }
+
+    .nominee-socials {
+        margin-top: 0.125rem;
+    }
+
+    // ── Right: choice pills ──
+    .nominee-choices {
+        display: grid;
+        grid-auto-flow: column;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .choice-pill {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.125rem;
+        width: 4rem;
+        min-height: 3rem;
+        border: 1px solid var(--stroke);
+        border-radius: var(--r-sm);
         cursor: pointer;
+        transition: background 150ms ease-out, border-color 150ms ease-out;
+        text-align: center;
+        padding: 0.25rem;
+
+        &:hover {
+            background: rgba(255,255,255,0.04);
+            border-color: var(--stroke-strong);
+        }
+
+        &:focus-within {
+            outline: 2px solid var(--teal-0);
+            outline-offset: 1px;
+        }
+
+        &.checked {
+            background: rgba(34, 240, 255, 0.1);
+            border-color: var(--teal-0);
+        }
     }
-}
 
-.checked {
-    background: rgba(0, 96, 0, 0.5);
-    border: 3px outer #0c0;
-}
+    .choice-label {
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-2);
+        pointer-events: none;
+    }
 
-.nom-cat {
-    border: 1px solid #ff0;
-    padding: 10px;
+    .choice-ui {
+        display: block;
+        width: 1.25rem;
+        height: 1.25rem;
+        border: 2px solid var(--stroke-strong);
+        border-radius: 50%;
+        transition: border-color 150ms, background 150ms;
+    }
+
+    // Radio checked → fill the dot
+    input[type=radio] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+        pointer-events: none;
+
+        &:checked ~ .choice-ui {
+            border-color: var(--teal-0);
+            background: var(--teal-0);
+            box-shadow: inset 0 0 0 3px var(--ink-2, #1a1a2e);
+        }
+    }
+
+    // ── Category footer ──
+    .category-footer {
+        text-align: center;
+        padding-top: 1rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid rgba(255,255,255,0.08);
+
+        .affirmation {
+            font-size: 0.85rem;
+            color: var(--text-2);
+            margin-bottom: 0.75rem;
+        }
+
+        .save-reminder {
+            font-size: 0.8rem;
+            color: var(--text-2);
+            margin-top: 0.5rem;
+        }
+    }
+
+    // ── Mobile breakpoint ──
+    @media (max-width: 640px) {
+        .choice-legend { display: none; }
+
+        .nominee-row {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+
+        .nominee-choices {
+            grid-auto-flow: column;
+            grid-template-columns: repeat(3, 1fr);
+            justify-items: stretch;
+        }
+
+        .choice-pill {
+            width: auto;
+            min-height: 2.75rem;
+            flex-direction: row;
+            gap: 0.375rem;
+            padding: 0.375rem 0.5rem;
+        }
+
+        .nominee-laurel {
+            width: 72px;
+            height: 72px;
+        }
+
+        .nomination-thumbnail {
+            width: 48px;
+            height: 48px;
+        }
+    }
 }
 
 #noms-list {
     .nominee-image {
-        background: url(images/icons/minilaurel.png) no-repeat 0px 0px;
-        background-size: contain;
-        width: 110px !important;
-        height: 100px !important;
         display: block;
-        padding-left: 1px;
+        // Inherits --thumb-size and --laurel-pad from .nominee-image
     }
 }
 
@@ -412,8 +919,9 @@ li.honoree {
 
 td.nominee-info a.nominee {
     &:hover {
-        color: #fff;
+        color: var(--text-0);
         text-decoration: underline;
+        text-decoration-color: var(--teal-0);
     }
 }
 

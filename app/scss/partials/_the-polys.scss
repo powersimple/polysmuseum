@@ -1,29 +1,169 @@
 // ==========================================================================
-// Presenter Styles
+// Presenter Styles — compact gold card
 // ==========================================================================
 
 h4.presenter {
     display: block;
-    font-size: 0.75em;
-    line-height: 150%;
-    margin-bottom: 1em;
-    color: #ccc;
+    line-height: 1.3;
+    margin-bottom: 0;
 
+    // Presenter image — matches nominee thumbnail size
     img {
         float: left;
-        margin-right: 1em;
-        margin-bottom: 1em;
+        margin-right: 1.25rem;
+        margin-bottom: 0.5rem;
+        border-radius: 50%;
+        width: 8rem;
+        height: 8rem;
+        object-fit: cover;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+
+    // "Presented by" label — small, quiet
+    .presented-by {
+        display: block;
+        font-size: 0.875rem;
+        letter-spacing: 0.06em;
+        color: var(--text-2);
+        font-weight: 600;
+        margin-bottom: 0.125rem;
     }
 }
 
 .presenter-row {
     width: 100%;
-    padding: 0.5rem 0;
+    position: relative;
+    // Deep ink surface with teal accent edge
+    background: linear-gradient(180deg, rgba(23, 32, 51, 0.95), rgba(17, 24, 38, 0.95));
+    border: 1px solid rgba(34, 240, 255, 0.22);
+    border-left: 2px solid rgba(34, 240, 255, 0.45);
+    border-radius: var(--r-md);
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    box-shadow:
+        0 0.625rem 1.75rem rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+
+    // Inner highlight — cool light from top
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: linear-gradient(180deg, rgba(34, 240, 255, 0.04), transparent 40%);
+        pointer-events: none;
+    }
+
+    &:hover {
+        transform: translateY(-0.125rem);
+        box-shadow:
+            0 1.25rem 3.5rem rgba(0, 0, 0, 0.5),
+            inset 0 1px 0 rgba(255, 255, 255, 0.1),
+            inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        &:hover { transform: none; }
+    }
+
+    // Presenter name = hero of the row
+    h4.presenter {
+        margin: 0;
+        flex: 1;
+        font-weight: 700;
+
+        // Name — big and bright
+        .presented-by {
+            font-size: clamp(1.125rem, 1.5vw, 1.25rem);
+            font-weight: 700;
+            color: var(--text-0);
+            letter-spacing: 0;
+            text-transform: none;
+            display: inline;
+            padding-left: 3px;
+        }
+
+        // Override: make the label small again when it's the actual label text
+        // PHP outputs: "Presented by " <span class="presented-by">Name</span>
+        // The text before <span> is the label, the span IS the name
+        font-size: 0.875rem;
+        color: var(--text-2);
+    }
+}
+
+// Multi-presenter layout: label on top, each presenter as image + name/socials pair
+.presenter-row--multi {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .presenter-label {
+        font-size: 0.875rem;
+        color: var(--text-2);
+        margin-bottom: 0.5rem;
+    }
+}
+
+.presenter-pairs {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem;
+    width: 100%;
+}
+
+.presenter-pair {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    .nomination-thumbnail {
+        float: none;
+        flex-shrink: 0;
+    }
+
+    .presenter-name-block {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+
+        .presented-by {
+            font-size: clamp(1.125rem, 1.5vw, 1.25rem);
+            font-weight: 700;
+            color: var(--text-0);
+            padding-left: 3px;
+        }
+    }
 }
 
 .presenter-socials {
-    display: block;
-    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    flex-shrink: 0;
+
+    a {
+        width: 2.75rem;
+        height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-2);
+        text-decoration: none;
+        transition: color 200ms ease-out;
+        font-size: 0.9rem;
+
+        &:hover {
+            color: var(--teal-0);
+        }
+    }
 }
 
 // ==========================================================================
@@ -34,11 +174,13 @@ h4.presenter {
     display: block;
     text-align: center;
     margin: 1.5rem 0;
-    font-size: 0.85em;
-    color: #0ff;
+    font-size: 0.875rem;
+    color: var(--teal-0);
+    text-decoration: none;
+    transition: color 200ms ease-out;
 
     &:hover {
-        color: #fff;
+        color: var(--text-0);
     }
 }
 
@@ -165,22 +307,78 @@ h4.presenter {
 }
 
 // ==========================================================================
-// Awards List
+// Awards List — Category Rail (pill navigation)
 // ==========================================================================
 
 ul.awards-list {
-    font-size: 1em;
-    text-align: center;
-    margin-bottom: 50px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0;
+    margin: 0 0 2.5rem;
+    list-style: none;
 
     li {
-        display: inline-block;
-        line-height: 120%;
-        padding: 0px 5px;
-        border-left: 1px solid #fff;
+        display: inline-flex;
+        border-left: none;
+        padding: 0;
+        line-height: 1;
 
-        &:first-child {
-            border-left: none;
+        a {
+            display: inline-flex;
+            align-items: center;
+            height: 2.5rem;
+            padding: 0 1rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--stroke);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            color: var(--text-1);
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: border-color 200ms ease-out, background 200ms ease-out, color 200ms ease-out, transform 200ms ease-out;
+
+            &:hover,
+            &:focus {
+                border-color: var(--teal-0);
+                background: var(--teal-1);
+                color: var(--text-0);
+                text-decoration: none;
+                transform: scale(1.02);
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                &:hover, &:focus { transform: none; }
+            }
+        }
+
+        // Active state (via JS class or :target)
+        &.active a,
+        a.active {
+            background: linear-gradient(180deg, rgba(34, 240, 255, 0.2), rgba(34, 240, 255, 0.1));
+            border-color: rgba(34, 240, 255, 0.55);
+            color: var(--text-0);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+    }
+
+    // Mobile: horizontal scroll with snap
+    @media (max-width: 767px) {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 0.5rem;
+        // Gradient fades on edges
+        mask-image: linear-gradient(to right, transparent, black 1.5rem, black calc(100% - 1.5rem), transparent);
+        -webkit-mask-image: linear-gradient(to right, transparent, black 1.5rem, black calc(100% - 1.5rem), transparent);
+
+        li {
+            scroll-snap-align: start;
+            flex-shrink: 0;
         }
     }
 }

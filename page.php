@@ -24,12 +24,7 @@ $section_class = get_post_meta($post->ID, 'section_class', true);
 $section_hero_class = get_post_meta($post->ID, 'section_hero_class', true);
 ?>
 
-<?php if ($hero_image): ?>
-<section class="parallax home-fade hero-content <?php echo esc_attr($section_hero_class); ?> <?php echo esc_attr($section_class); ?>" 
-         id="dynamic-hero" 
-         style="background-image:url(<?php echo esc_url($hero_image); ?>);">
-</section>
-<?php endif; ?>
+
 
 <main id="main-content" role="main" class="main <?php echo esc_attr($section_class); ?>">
     
@@ -43,9 +38,7 @@ $section_hero_class = get_post_meta($post->ID, 'section_hero_class', true);
         </header>
         <?php endif; ?>
         
-        <div class="page-content">
-            <?php the_content(); ?>
-        </div>
+     
       <div class="widget-container">
       
       <?php

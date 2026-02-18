@@ -92,10 +92,10 @@ $counter=0;
 
 ?>
 <div id="accordion" class="run-of-show">
-   
-   
 
- 
+
+
+
 </div>
 <?php
   $vrc = 'virtual-red-carpet-6';
@@ -107,6 +107,11 @@ $counter=0;
     if(@$_GET['ceremony']){
       $ceremony = $_GET['ceremony'];
     }
+
+// ─── Run of Show TSV output ──────────────────────────────
+if (isset($_GET['sheet'])) {
+    echo render_run_of_show_tsv($vrc, $ceremony, true);
+}
 
 
 $vrc = get_menu_array($vrc);

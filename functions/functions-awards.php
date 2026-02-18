@@ -943,7 +943,10 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
       print "<span>" . esc_html($title) . "</span>";
     }
 
+    // Wrap social/link icons in a dedicated container (below title, not inline)
+    print "<div class='nominee-socials'>";
     get_nominee_meta($meta);
+    print "</div>";
   }
 
   /**
@@ -953,28 +956,96 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
    * Level 5 (counter=2): Team members (no thumbnail)
    * Socials displayed at all levels.
    */
-  function get_nominees_and_winners($items, $counter){
+  function get_nominees_and_winners($items, $counter, $presenter_image_override = array(), $acceptance_image_override = ''){
     if(!is_array($items) || empty($items)) return;
 
-    // Sort presenters first at Level 3
+    // Normalize presenter_image_override to array for backward compat
+    if (!is_array($presenter_image_override)) {
+      $presenter_image_override = !empty($presenter_image_override) ? array($presenter_image_override) : array();
+    }
+
+    // Sort presenters first at Level 3, then collect and render as one combined row
     if($counter == 0){
-      $sorted = [];
+      $presenters = [];
       $rest = [];
       foreach($items as $key => $item){
         if(@$item['classes'][0] == 'presenter'){
-          $sorted[$key] = $item;
+          $presenters[$key] = $item;
         } else {
           $rest[$key] = $item;
         }
       }
-      $items = $sorted + $rest;
+
+      // Render combined presenter row if any presenters exist
+      if (!empty($presenters)) {
+        $presenter_names = [];
+        $presenter_imgs = [];
+        $presenter_metas = [];
+        $img_index = 0;
+
+        foreach ($presenters as $p) {
+          $p_meta = @$p['meta'];
+          $p_title = @$p['title'];
+          $p_thumb = getThumbnail(@$p_meta['_thumbnail_id'][0], "medium");
+
+          // Use override image if available (one per presenter, in order)
+          if (!empty($presenter_image_override[$img_index])) {
+            $presenter_imgs[] = $presenter_image_override[$img_index];
+          } elseif (!empty($presenter_image_override[0]) && count($presenter_image_override) === 1) {
+            // Single override image shared across presenters
+            $presenter_imgs[] = $presenter_image_override[0];
+          } elseif ($p_thumb != '') {
+            $presenter_imgs[] = $p_thumb;
+          }
+
+          $presenter_names[] = esc_html($p_title);
+          $presenter_metas[] = $p_meta;
+          $img_index++;
+
+          // Track participants
+          if (@$p['post'] && !array_key_exists($p['post']->ID, @$GLOBALS['participants'])) {
+            $GLOBALS['participants'][$p['post']->ID] = [
+              "name" => $p_title,
+              "email" => @$p_meta['email'][0],
+            ];
+          }
+        }
+
+        $label = (@$presenters[array_key_first($presenters)]['attr_title'] != '')
+          ? esc_html($presenters[array_key_first($presenters)]['attr_title']) . " "
+          : "Presented by ";
+
+        print "<div class='presenter-row presenter-row--multi'>";
+        print "<div class='presenter-label'>" . $label . "</div>";
+        print "<div class='presenter-pairs'>";
+        foreach ($presenter_names as $i => $pname) {
+          print "<div class='presenter-pair'>";
+          if (isset($presenter_imgs[$i])) {
+            print "<img src='" . esc_attr($presenter_imgs[$i]) . "' alt='" . $pname . "' class='nomination-thumbnail'>";
+          }
+          print "<div class='presenter-name-block'>";
+          print "<span class='presented-by'>" . $pname . "</span>";
+          print "<div class='presenter-socials'>";
+          if (isset($presenter_metas[$i])) {
+            get_nominee_meta($presenter_metas[$i]);
+          }
+          print "</div>";
+          print "</div>";
+          print "</div>";
+        }
+        print "</div>";
+        print "</div>";
+        print "<hr>";
+      }
+
+      $items = $rest;
     }
 
     foreach($items as $c => $child){
       $meta = @$child['meta'];
       $classes = @$child['classes'];
       $title = @$child['title'];
-      $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0], "thumbnail");
+      $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0], "medium");
 
       // Track participants
       if(@$child['post'] && !array_key_exists($child['post']->ID, @$GLOBALS['participants'])){
@@ -984,32 +1055,15 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
         ];
       }
 
-      if($counter == 0 && @$classes[0] == 'presenter'){
-        //
-        // PRESENTER — full-width row, NOT inside <li>
-        //
-        print "<div class='presenter-row'>";
-        print "<h4 class='presenter'>";
-        if($thumbnail_src != ''){
-          print "<img src='" . esc_attr($thumbnail_src) . "' alt='" . esc_attr($title) . "' title='" . esc_attr($title) . "' class='nomination-thumbnail'>";
-        }
-        if(@$child['attr_title'] != ''){
-          print esc_html($child['attr_title']) . " ";
-        } else {
-          print "Presented by ";
-        }
-        print "<span class='presented-by'>" . esc_html($title) . "</span>";
-        print "</h4>";
-        print "<div class='presenter-socials'>";
-        get_nominee_meta($meta);
-        print "</div>";
-        print "</div>";
-        print "<hr>";
-
-      } else if($counter == 0){
+      if($counter == 0){
         //
         // LEVEL 3 NOMINEE — 3-column row
         //
+        // Use acceptance_image for winners in honor categories
+        if (!empty($acceptance_image_override) && @$classes[0] == 'winner') {
+          $thumbnail_src = $acceptance_image_override;
+        }
+
         $item_class = (@$classes[0] == 'honoree') ? 'honoree' : 'nominee';
         print "<li class='$item_class'>";
 
@@ -1029,15 +1083,15 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
             print "</span>";
           }
         }
+        print "</div>";
+
+        // COL 2: winner indicator + name + Level 3 socials
+        print "<div class='nominee-title'>";
         if(@$classes[0] == 'winner'){
           print "<span class='winner'></span>";
         } else if(@$classes[0] == 'honoree'){
           print "<span class='honoree'></span>";
         }
-        print "</div>";
-
-        // COL 2: name + Level 3 socials
-        print "<div class='nominee-title'>";
         get_nominee_info($child, $counter);
         print "</div>";
 
@@ -1072,7 +1126,7 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
 
 
 
-          function get_nomination($children,$counter){
+          function get_nomination($children,$counter,$max_depth=0){
             
             foreach($children as $c =>$child){
               extract($child);
@@ -1081,7 +1135,7 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
               }
             //  print("<pre>".print_r($meta,true)."</pre>");
              // print $counter;
-             $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0],"thumbnail");
+             $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0],"medium");
               if($classes[0] == 'presenter'){
                 print "<h4 class='presenter'>";
                 if($thumbnail_src != '' && $counter == 0){
@@ -1127,12 +1181,15 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
                 print get_nominee_info($child,$counter);
                
                // print "|".@$child['meta']['github']."|";
-              if(is_array(@$children)){
+              // Recurse into children unless max_depth would be exceeded
+              if(is_array(@$children) && ($max_depth == 0 || ($counter + 1) < $max_depth)){
                 $counter++;
                 if($counter == 2 && count($children)){
                   print ",";
                 }
-                get_nomination($children,$counter);
+                print "<ul class='nominee-credits'>";
+                get_nomination($children,$counter,$max_depth);
+                print "</ul>";
                
                 $counter --;
               }
@@ -1161,7 +1218,7 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
               }
             //  print("<pre>".print_r($meta,true)."</pre>");
              // print $counter;
-             $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0],"thumbnail");
+             $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0],"medium");
           
              if(@$_GET['mode'] == 'social'){
           
@@ -1303,7 +1360,7 @@ $title : ";
               
               //  print("<pre>".print_r($meta,true)."</pre>");
                // print $counter;
-               $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0],"thumbnail");
+               $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0],"medium");
                $slug = $child['post']->post_name;
                
                if($child['post']->post_type == 'profile'){

@@ -4,7 +4,8 @@
       "Bash(dir:*)",
       "Bash(grep:*)",
       "Bash(wc:*)",
-      "Bash(npx sass:*)"
+      "Bash(npx sass:*)",
+      "Bash(findstr:*)"
     ]
   }
 }

@@ -3465,9 +3465,92 @@ function render_megamenu_summary_view($menu_slug = 'megamenu', $root_slug = '', 
         } else {
             echo '<p><em>Menu item only - no linked post</em></p>';
         }
-        
+
         echo '</div>';
     }
-    
+
     echo '</div>';
+}
+
+/**
+ * Render a "Keys" table showing Level 2 menu items (object_id + post_title).
+ *
+ * Level 2 = items whose parent is a top-level (level 1) item.
+ * In the get_nesting_level() convention used here, top-level items return 0
+ * and their direct children return 1. We want the direct children of top-level
+ * items, so we filter for nesting level === 1.
+ *
+ * @param array $menu_items_map Associative array of menu items keyed by ID.
+ * @param array $raw_items      The ordered menu_items array from $results['menu_items'].
+ */
+function audit_render_keys_table($menu_items_map, $raw_items) {
+    $rows = array();
+    foreach ($raw_items as $item) {
+        $level = get_nesting_level($menu_items_map, $item->ID);
+        if ($level !== 1) {
+            continue;
+        }
+        if (empty($item->object_id)) {
+            continue;
+        }
+        $post = get_post($item->object_id);
+
+        // Collect only direct children (level 3 = nesting level 2)
+        $children = array();
+        foreach ($raw_items as $child) {
+            if ((int) $child->menu_item_parent !== (int) $item->ID) {
+                continue;
+            }
+            if (get_nesting_level($menu_items_map, $child->ID) !== 2) {
+                continue;
+            }
+            if (empty($child->object_id)) {
+                continue;
+            }
+            $child_post = get_post($child->object_id);
+            if ($child_post) {
+                $children[] = $child_post->post_title;
+            }
+        }
+
+        $title = $post ? $post->post_title : '';
+
+        // Skip host intro items
+        $title_lower = strtolower($title);
+        if (strpos($title_lower, 'host intro') !== false) {
+            continue;
+        }
+
+        if (!empty($children)) {
+            $title .= ' — ' . implode(', ', $children);
+        }
+
+        $embed_video_url = get_post_meta($item->object_id, 'embed_video_url', true);
+        $video_url       = get_post_meta($item->object_id, 'video_url', true);
+
+        $rows[] = array(
+            'object_id'       => $item->object_id,
+            'post_title'      => $title,
+            'embed_video_url' => $embed_video_url ? $embed_video_url : '',
+            'video_url'       => $video_url ? $video_url : '',
+        );
+    }
+
+    if (empty($rows)) {
+        return;
+    }
+
+    echo '<h3>Keys</h3>';
+    echo '<table class="widefat">';
+    echo '<thead><tr><th>object_id</th><th>post_title</th><th>embed_video_url</th><th>video_url</th></tr></thead>';
+    echo '<tbody>';
+    foreach ($rows as $row) {
+        echo '<tr>';
+        echo '<td>' . esc_html($row['object_id']) . '</td>';
+        echo '<td>' . esc_html($row['post_title']) . '</td>';
+        echo '<td>' . esc_html($row['embed_video_url']) . '</td>';
+        echo '<td>' . esc_html($row['video_url']) . '</td>';
+        echo '</tr>';
+    }
+    echo '</tbody></table>';
 }

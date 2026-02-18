@@ -65,6 +65,14 @@ if (!empty($section_menu)) {
     }
 }
 
+// Fallback: use the home page's featured video if no video URL found
+if (empty($first_video_url)) {
+    $front_page_id = get_option('page_on_front');
+    if ($front_page_id) {
+        $first_video_url = get_post_meta($front_page_id, 'featured_video_url', true);
+    }
+}
+
 // Ensure video URL has autoplay params
 if (!empty($first_video_url)) {
     $first_video_url = event_format_video_url($first_video_url);
@@ -242,9 +250,11 @@ if (!function_exists('display_LookingGlass')) {
             
             <!-- Schedule/Run of Show -->
             <div id="ros-table">
-                <?php 
-                if (!empty($run_of_show)) {
-                    echo render_event_schedule($run_of_show, $section_class);
+                <?php
+                if (!empty($section_menu)) {
+                    require_once "functions/functions-awards.php";
+                    $awards = get_menu_array($section_menu);
+                    require_once('templates/awards.php');
                 }
                 ?>
             </div>

@@ -41,71 +41,79 @@
 }
 
 // -----------------------------------------------------------------------------
-// Base Typography
+// Base Typography — uses design system tokens from :root
 // -----------------------------------------------------------------------------
 body {
-    font-size: 1em;
+    font-size: clamp(1rem, 1.2vw, 1.125rem);
+    line-height: 1.55;
 }
 
 a {
-    color: $blue;
+    color: var(--text-0, $blue);
     font-size: 1em;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+    text-decoration-color: rgba(255, 255, 255, 0.35);
+    transition: text-decoration-color 200ms ease-out, color 200ms ease-out;
 
     &:hover,
     &:focus {
-        text-decoration: none;
-        color: #333;
+        text-decoration-color: var(--teal-0, #22f0ff);
+        color: var(--text-0, #fff);
         outline: 0;
     }
 }
 
 .bg-dark {
     a {
-        color: #aaa;
+        color: var(--text-1, #aaa);
 
         &:hover,
         &:focus {
-            color: #fff;
+            color: var(--text-0, #fff);
         }
     }
 }
 
 // -----------------------------------------------------------------------------
-// Headings
+// Headings — responsive clamp scale
 // -----------------------------------------------------------------------------
 h1, h2, h3, h4, h5, h6 {
-    line-height: 120%;
-    margin-bottom: .5em;
-    color: $blue;
+    line-height: 1.2;
+    margin-bottom: 0.5em;
+    color: var(--text-0, $blue);
+    font-weight: 700;
 }
 
 h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
+    font-size: clamp(2rem, 4vw, 3rem);
     text-align: center;
 }
 
 h2 {
-    font-size: 1.618rem;
+    font-size: clamp(1.5rem, 2.5vw, 2rem);
 }
 
 h3 {
-    font-size: 1.382rem;
-    font-weight: 700;
+    font-size: clamp(1.25rem, 2vw, 1.625rem);
 }
 
 h4 {
-    font-size: 1rem;
+    font-size: clamp(1.2rem, 1.5vw, 1.4rem);
     font-weight: 600;
 }
 
 h5 {
-    font-size: .9rem;
+    font-size: clamp(1rem, 1.2vw, 1.1rem);
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-2, #999);
 }
 
 h6 {
-    font-size: .8rem;
+    font-size: 0.875rem;
     font-weight: 600;
 }
 
@@ -113,17 +121,19 @@ h6 {
 // Body Text
 // -----------------------------------------------------------------------------
 p, ol, ul, blockquote {
-    margin: 0 0 0px;
-    font-size: 1.5rem;
+    margin: 0;
+    font-size: clamp(1rem, 1.2vw, 1.125rem);
 }
 
 main p, li {
     font-size: 1rem;
+    line-height: 1.55;
 }
 
 p {
     text-align: left;
-    line-height: 150%;
+    line-height: 1.55;
+    color: var(--text-1, inherit);
 }
 
 strong {

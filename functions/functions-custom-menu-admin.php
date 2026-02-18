@@ -414,7 +414,7 @@ $_event_type = get_post_meta( $item_id, '_event_type', true );
 <!-- -->
 
 
-<select size="13" name="_event_type[<?php echo $item_id ;?>]" id="custom-menu-meta-for-<?php echo $item_id ;?>">
+<select size="14" name="_event_type[<?php echo $item_id ;?>]" id="custom-menu-meta-for-<?php echo $item_id ;?>">
 <option value=""<?=selectedOption("",esc_attr($_event_type ))?>></option>
 	
 	
@@ -434,6 +434,7 @@ $_event_type = get_post_meta( $item_id, '_event_type', true );
 		<option value="thanks"<?=selectedOption("thanks",esc_attr($_event_type ))?>>Thanks</option>
 		<option value="credits"<?=selectedOption("credits",esc_attr($_event_type ))?>>Credits</option>
 		<option value="checkin"<?=selectedOption("checkin",esc_attr($_event_type ))?>>Watch Party Check-in</option>
+		<option value="checkin"<?=selectedOption("checkin",esc_attr($_event_type ))?>>Video Reel</option>
 		
 		
 
@@ -570,6 +571,7 @@ function kia_custom_fields_appearance_type( $item_id, $item,$label ) {
             <option value=""<?=selectedOption("",esc_attr($_appearance_type ))?>></option>
             
                         <option value="inperson"<?=selectedOption("inperson",esc_attr($_appearance_type ))?>>In Person | Main Stage</option>
+						<option value="centerstage"<?=selectedOption("centerstage",esc_attr($_appearance_type ))?>>In Person | Center Stage</option>
 						<option value="volcap"<?=selectedOption("volcap",esc_attr($_appearance_type ))?>>In Person | Volcap Stage</option>
 						
 						<option value="maybe"<?=selectedOption("maybe",esc_attr($_appearance_type ))?>>In Person Maybe</option>

@@ -23,6 +23,7 @@ function load_theme_functions() {
     require_once("functions/functions-profiles.php");
     require_once("functions/functions-events.php");
     require_once("functions/functions-awards.php");
+    require_once("functions/functions-run-of-show.php");
     require_once("functions/functions-virtual-production.php");
     require_once("functions/functions-rest-menus.php");
     require_once("functions/functions-rest-register.php");

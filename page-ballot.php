@@ -56,7 +56,7 @@ if($post->post_parent==0){
  }
   if(!@$_POST['email'] && !@$_POST['juror_id']){
 ?>
-<!--
+
 <form method="post" action="?">
     <p>Please Enter the Email Address where you received your Jury Invitation<br>
   Your votes will be anonomyized on the ballot. 
@@ -70,7 +70,6 @@ if($post->post_parent==0){
   </form>
  <hr>
  <br>
-  --> 
 
 <?php
 
@@ -136,44 +135,42 @@ if($post->post_parent==0){
 
 <?php
 if(@$juror_id != NULL || @$_GET['tally'=='']){
-$awards = get_menu_array('polys5');
+$awards = get_menu_array('polys6');
 
 
     foreach($awards as $key => $award){// outer menu loop
-        print "<h4>Please remember to save after voting in each category before voting in the next</h4>";
-        print "<table>";
+        print "<p class='ballot-reminder'>Please remember to save after voting in each category before voting in the next</p>";
         foreach($award['children'] as $c =>$child){// EVENTS loop
           if($child['classes'][0] == 'honor'){
             continue;
           }
-        
 
           if($child['classes'][0] == 'nomination' ){
-            print "<tr><td class='nom-cat'>";
+            print "<section class='ballot-category' data-award-id='" . esc_attr($child['ID']) . "'>";
             ?>
             <form method="post" action="?">
             <input type="hidden" name="juror_id" value="<?=$juror_id?>">
             <input type="hidden" name="award_id" value="<?=$child['ID']?>">
             
             <?php
+            print "<header class='category-header'>";
             print '<h3 class="nomination-category">'.$child['title'].'</h3>';
-          //  var_dump($child['ID']);
-            print "<table class='nominee-list'>";
+            print "</header>";
+
             get_ballot($child['ID'],$child['children'],0);//recursive nominees loop
-            print "<tr><th colspan='4'>";
-            print "I affirm that I have reviewed all nominees in this category<br>before casting a vote<br>";
-            print "<input type='submit' value='SAVE YOUR VOTE NOW for ".$child['title']."'><br>Please <strong>SAVE</strong> Before Proceeding to the next category!";
-            print "</th>";
-            print "</table>";
-          
+
+            print "<footer class='category-footer'>";
+            print "<div class='affirmation'>I affirm that I have reviewed all nominees in this category before casting a vote</div>";
+            print "<input type='submit' value='SAVE YOUR VOTE NOW for ".$child['title']."'>";
+            print "<div class='save-reminder'>Please <strong>SAVE</strong> before proceeding to the next category!</div>";
+            print "</footer>";
+
             print '</form>';
+            print "</section>"; // .ballot-category
           }
-          print "</td></tr>";
         
           
         }
-    
-        print "</table>";
 
       }
   print "</div>";

@@ -19,7 +19,8 @@
     border: none !important;
     box-sizing: border-box;
     overflow-x: clip;
-    
+
+    //test
     // Reset Bootstrap navbar padding
     &.navbar,
     &.navbar-custom,
@@ -140,34 +141,62 @@
     background-size: cover;
     background-attachment: scroll;
     transform: none;
+
+    // Cinematic depth overlay — disabled
+    // &::after {
+    //     content: '';
+    //     position: absolute;
+    //     inset: 0;
+    //     background: linear-gradient(to bottom, transparent 40%, rgba(0, 0, 0, 0.65) 100%);
+    //     pointer-events: none;
+    //     z-index: 1;
+    // }
+
+    // Ensure hero text content sits above the overlay
+    > * {
+        position: relative;
+        z-index: 2;
+    }
 }
 
-.hero-cover-10 {
-    min-height: 10vh;
+// Legacy hard-coded hero heights (kept for backward compat)
+.hero-cover-10 { min-height: 10vh; }
+.hero-cover-20 { min-height: 20vh; }
+.hero-cover-25 { min-height: 25vh; }
+.hero-cover-50 { min-height: calc(100vh - var(--total-header-offset, 50px)); }
+
+// Dynamic hero height — set via --hero-vh custom property from PHP
+[style*="--hero-vh"] {
+    min-height: var(--hero-vh, 25vh);
+    // background-position driven by CSS vars (fallback: center)
+    background-position: var(--hero-pos-x, center) var(--hero-pos-y, center);
+    background-repeat: no-repeat;
 }
 
-.hero-cover-20 {
-    min-height: 20vh;
-}
+// ── Hero fit classes ──────────────────────────────────────
+// Default is cover (set on the base #dynamic-hero rule above).
+// These opt-in classes override background-size per page.
 
-.hero-cover-25 {
-    min-height: 25vh;
-}
+.hero-fit-cover   { background-size: cover   !important; }
+.hero-fit-contain { background-size: contain !important; }
 
-.hero-cover-50 {
-    min-height: calc(100vh - var(--total-header-offset, 50px));
+#dynamic-hero.hero-fit-auto {
+    height: auto;
+    min-height: 0;
+    max-height: 80vh;
+    aspect-ratio: 1920 / 720;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
 }
 
 .parallax {
     background-attachment: fixed;
-    
+
     &#dynamic-hero,
     &.hero-content,
     &.home-section,
-    &.hero-cover-10,
-    &.hero-cover-20,
-    &.hero-cover-25,
-    &.hero-cover-50 {
+    &[class*="hero-cover-"] {
         background-attachment: scroll;
         transform: none;
     }

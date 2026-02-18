@@ -19,6 +19,7 @@
     "webxr",
     "immersigration"
   ],
+  
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {

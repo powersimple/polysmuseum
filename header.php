@@ -143,7 +143,7 @@ $body_brand = polys_get_current_brand();
                  Responsive, accessible navigation with L1-L4 support
                  Menu slug: 'megamenu' (set in WordPress Admin > Menus)
             ============================================================ -->
-            <?php echo render_megamenu_with_logo('megamenu'); ?>
+            <?php echo render_megamenu_with_logo('megamenu-polys'); ?>
           
           
       </div>  
@@ -154,7 +154,7 @@ $body_brand = polys_get_current_brand();
            Brand styling determined by URL path
            Renders only when an active L1 section with children is detected
       ============================================================ -->
-      <?php echo render_sectionbar('megamenu'); ?>
+      <?php echo render_sectionbar('megamenu-polys'); ?>
       
   </header>
   <!-- Parallax effect now handled by hero-parallax.js module (bundled in main.js) -->
@@ -198,7 +198,8 @@ function extract_number($class) {
       ?>
 
 
-        <section class="parallax home-fade home-full-height hero-content <?=$section_hero_class?> <?=@$section_class?> " id="dynamic-hero" style="background-image:url(<?=$hero_image?>);"></section>
+        <?php $hero_fit_class = !empty($padding_number) ? 'hero-fit-auto' : ''; ?>
+        <section class="parallax home-fade home-full-height hero-content <?=$section_hero_class?> <?=@$section_class?> <?=$hero_fit_class?>" id="dynamic-hero" style="--hero-img:url(<?=$hero_image?>);background-image:var(--hero-img);<?php if(!empty($padding_number)) echo '--hero-vh:' . intval($padding_number) . 'vh;'; ?>"></section>
        
 
 

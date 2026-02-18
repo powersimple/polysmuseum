@@ -1,14 +1,44 @@
 // =============================================================================
-// Site Header Height Variable System
+// Design System Tokens (CSS Custom Properties)
 // =============================================================================
-// --site-header-h: Total offset from top (header + admin bar if present)
-// Set via JS (header-offset.js) to handle dynamic changes
-// Fallback values provided for initial render
 :root {
-    --site-header-h: 50px;        // Base header height (megamenu)
-    --sectionbar-h: 0px;          // Sectionbar height (0 if not present)
-    --admin-bar-h: 0px;           // WP admin bar (32px desktop, 46px mobile when logged in)
-    --total-header-offset: 50px;  // Combined offset (updated by JS: header + sectionbar + admin bar)
+    // Layout offsets (set via JS for dynamic header)
+    --site-header-h: 50px;
+    --sectionbar-h: 0px;
+    --admin-bar-h: 0px;
+    --total-header-offset: 50px;
+
+    
+    // Ink (background surfaces)
+    --ink-0: #07090c;
+    --ink-1: #0b0f15;
+    --ink-2: #111826;
+    --ink-3: #172033;
+
+    // Text hierarchy
+    --text-0: #f2f6ff;
+    --text-1: #c7d2e6;
+    --text-2: #8ea0bf;
+
+    // Accents
+    --teal-0: #22f0ff;
+    --teal-1: rgba(34, 240, 255, 0.16);
+    --gold-0: #f7c04a;
+    --gold-1: rgba(247, 192, 74, 0.14);
+
+    // Borders & shadows
+    --stroke: rgba(255, 255, 255, 0.10);
+    --stroke-strong: rgba(255, 255, 255, 0.18);
+    --shadow-1: 0 0.625rem 1.875rem rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 1rem 3.125rem rgba(0, 0, 0, 0.45);
+
+    // Radii
+    --r-sm: 0.625rem;
+    --r-md: 1rem;
+    --r-lg: 1.375rem;
+
+    // Motion
+    --ease-out: 200ms ease-out;
 }
 
 // Admin bar adjustments (WP adds .admin-bar to html when logged in)
@@ -23,11 +53,14 @@ html.admin-bar {
 
 html,
 body {
-    background: #000;
-    max-width: 100%; 
-    background-color: #000;
-    color: #fff;
-    font: 500 1rem/1.8 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 100%;
+    // Layered ambient depth: cool teal top-left, warm gold bottom-right
+    background:
+        radial-gradient(ellipse at 20% 15%, rgba(34, 240, 255, 0.04), transparent 50%),
+        radial-gradient(ellipse at 85% 85%, rgba(247, 192, 74, 0.035), transparent 55%),
+        var(--ink-0);
+    color: var(--text-0);
+    font: 500 clamp(1rem, 1.2vw, 1.125rem)/1.55 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     height: 100%;
     margin: 0;
     padding: 0;
@@ -35,8 +68,17 @@ body {
 
 html {
     overflow-x: hidden;
-    // Smooth scrolling for anchor links
     scroll-behavior: smooth;
+}
+
+// Reduced motion: disable transforms & animations, keep color transitions
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 // =============================================================================
@@ -70,40 +112,67 @@ iframe {
 }
 .main {
     flex: 1 0 auto;
-    max-width: 90%;
     width: 90%;
+    max-width: 92.5rem; // 1480px content column — hero stays full-bleed
     margin: 0 auto;
-    padding-top: var(--total-header-offset);
-    padding-bottom: 40px;
-    background-color: #000;
-   
+    padding: var(--total-header-offset) 1.5rem 2.5rem;
+    background-color: var(--ink-0);
+    color: var(--text-0);
+
+    @media (min-width: 768px) {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+
     h1.title {
-        color:#fff;
+        color: var(--text-0);
         text-align: center;
         text-transform: uppercase;
-        padding:10px 0px 5px;
+        padding: 0.625rem 0 0.3125rem;
     }
+
     h2.featuring {
-        color:#fff;
-        font-size:1.2rem;
+        color: var(--text-1);
+        font-size: 1.2rem;
         text-align: center;
-        font-weight:400;
+        font-weight: 400;
     }
+
     input, textarea {
-        color:#20448c;
+        color: #20448c;
         font-weight: 600;
     }
-    
-    color:#fff;
+
+    // Global link style: subtle underline, teal on hover
     a {
-        color:cyan;
-    }
-    p {
-        margin-bottom:1em;
-        font-size:1.5rem;
-        @media (max-width: 768px) {
-            font-size:1rem;
+        color: var(--text-0);
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.15em;
+        text-decoration-color: rgba(255, 255, 255, 0.35);
+        transition: text-decoration-color var(--ease-out), color var(--ease-out);
+
+        &:hover,
+        &:focus {
+            text-decoration-color: var(--teal-0);
+            color: var(--text-0);
         }
+    }
+
+    p {
+        margin-bottom: 1em;
+        font-size: clamp(1rem, 1.2vw, 1.125rem);
+        line-height: 1.55;
+        color: var(--text-1);
+    }
+}
+
+// Focus-visible: global for ALL interactive elements
+a, button, input, select, textarea,
+[tabindex]:not([tabindex="-1"]) {
+    &:focus-visible {
+        outline: 0.125rem solid var(--teal-0);
+        outline-offset: 0.1875rem;
     }
 }
 

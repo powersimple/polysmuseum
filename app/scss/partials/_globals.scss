@@ -67,3 +67,34 @@ $border-radius-sm: 5px;
 $border-radius-md: 10px;
 $border-radius-round: 50%;
 $transition-base: 0.3s ease;
+
+// =============================================================================
+// Design System Tokens (CSS Custom Properties)
+// Applied via :root in main.scss — SCSS vars here for reference/fallback
+// =============================================================================
+
+// Ink (background surfaces)
+$ink-0: #07090c;
+$ink-1: #0b0f15;
+$ink-2: #111826;
+$ink-3: #172033;
+
+// Text hierarchy
+$text-0: #f2f6ff;
+$text-1: #c7d2e6;
+$text-2: #8ea0bf;
+
+// Accents
+$teal-0: #22f0ff;
+$teal-1: rgba(34, 240, 255, 0.16);
+$gold-0: #f7c04a;
+$gold-1: rgba(247, 192, 74, 0.14);
+
+// Borders & shadows
+$stroke: rgba(255, 255, 255, 0.10);
+$stroke-strong: rgba(255, 255, 255, 0.18);
+
+// Radii (rem)
+$r-sm: 0.625rem;   // 10px
+$r-md: 1rem;       // 16px
+$r-lg: 1.375rem;   // 22px

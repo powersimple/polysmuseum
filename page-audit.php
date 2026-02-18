@@ -664,6 +664,7 @@ if (isset($_GET['event_menu'])) {
 
         if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
             echo '</tbody></table>';
+            audit_render_keys_table($menu_items, $results['menu_items']);
             echo '</div>';
         }
     }

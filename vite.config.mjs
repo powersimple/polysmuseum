@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
+import { createServer as createHttpsServer } from 'https';
+import { WebSocketServer } from 'ws';
 import cesium from 'vite-plugin-cesium';
 
 const proxyTarget = 'https://polys';
@@ -68,28 +70,62 @@ const plugins = [
         console.log(`Watching Cesium files at: ${cesiumGlob}`);
       }
 
+      // ── Livereload WebSocket server on port 3001 ──────────────────────
+      // Separate from Vite's proxy so the browser can always reach it.
+      // Uses the same SSL certs as Vite for wss:// from the browser.
+      const lrHttps = createHttpsServer({
+        key: fs.readFileSync(path.join(themeDir, 'localhost.key')),
+        cert: fs.readFileSync(path.join(themeDir, 'localhost.crt')),
+      });
+      const lrWss = new WebSocketServer({ server: lrHttps });
+      lrWss.on('connection', () => {
+        console.log('[livereload] Browser connected on :3001');
+      });
+      lrHttps.listen(3001, '0.0.0.0', () => {
+        console.log('[livereload] WS server ready on wss://*:3001');
+      });
+
+      let reloadTimer = null;
+      function notifyBrowsers() {
+        // Debounce: SCSS compilation triggers style.css, style.min.css, .map files
+        // in quick succession. Wait 500ms for them to settle, then reload once.
+        if (reloadTimer) clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(() => {
+          const msg = JSON.stringify({ type: 'full-reload' });
+          lrWss.clients.forEach((client) => {
+            if (client.readyState === 1) client.send(msg);
+          });
+          console.log('[livereload] Reload sent to', lrWss.clients.size, 'browser(s)');
+        }, 500);
+      }
+      // ── End livereload server ─────────────────────────────────────────
+
       // Initial processing
       processLegacyJS();
 
       // Watch for changes
       const watcher = server.watcher;
-      
+
       watcher.on('change', (filePath) => {
         console.log(`Detected change in file: ${filePath}`);
 
         if (filePath.endsWith('.php')) {
           console.log('PHP file changed. Reloading browser...');
           server.ws.send({ type: 'full-reload' });
+          notifyBrowsers();
         } else if (filePath.endsWith('.css')) {
           console.log('CSS file changed. Reloading browser...');
           server.ws.send({ type: 'full-reload' });
+          notifyBrowsers();
         } else if (filePath.includes('app/js/custom/') || filePath.includes('app/js/vendor/')) {
           console.log('Legacy JavaScript file changed. Reprocessing...');
           processLegacyJS();
           server.ws.send({ type: 'full-reload' });
+          notifyBrowsers();
         } else if (ENABLE_CESIUM && filePath.includes('cesium/')) {
           console.log('Cesium file changed. Reloading...');
           server.ws.send({ type: 'full-reload' });
+          notifyBrowsers();
         }
       });
 

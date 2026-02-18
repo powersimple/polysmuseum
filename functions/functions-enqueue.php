@@ -159,3 +159,47 @@ function style_loader_src_make_relative($src, $handle) {
     return $src;
 }
 add_filter('style_loader_src', 'style_loader_src_make_relative', 10, 2);
+
+
+/**
+ * Dev-only: Inject live-reload WebSocket client
+ *
+ * Connects to Vite's WS server and listens for full-reload messages.
+ * Only runs in dev environment (obi-wan-v:3000) and NOT in wp-admin.
+ * Outputs inline script — no external file to manage or accidentally ship.
+ */
+function polys_dev_livereload() {
+    if ( ! polys_is_dev() || is_admin() ) {
+        return;
+    }
+    ?>
+    <script>
+    (function() {
+        // Livereload via dedicated WS server on port 3001
+        // Separate from Vite's port 3000 proxy which swallows WebSockets
+        var wsUrl = 'wss://' + window.location.hostname + ':3001/';
+        console.log('[livereload] Connecting to', wsUrl);
+        var ws = new WebSocket(wsUrl);
+        ws.onopen = function() {
+            console.log('[livereload] Connected.');
+        };
+        ws.onmessage = function(e) {
+            try {
+                var msg = JSON.parse(e.data);
+                if (msg.type === 'full-reload') {
+                    console.log('[livereload] Reloading...');
+                    window.location.reload();
+                }
+            } catch(err) {}
+        };
+        ws.onerror = function() {
+            console.log('[livereload] Connection failed — is Vite running?');
+        };
+        ws.onclose = function() {
+            console.log('[livereload] Disconnected.');
+        };
+    })();
+    </script>
+    <?php
+}
+add_action('wp_footer', 'polys_dev_livereload', 999);

@@ -6533,6 +6533,16 @@ function setTags(data) {
             container.id = id;
 
             const src = container.dataset.videoSrc;
+
+            // Skip containers with no data-video-src that already have a working iframe
+            // (e.g. PHP-rendered embeds in single-event.php)
+            if (!src) {
+                const existingIframe = container.querySelector('iframe');
+                if (existingIframe && existingIframe.src) {
+                    return;
+                }
+            }
+
             const autoplay = container.dataset.autoplay === 'true';
             const isNative = container.classList.contains('pf-video--native');
 

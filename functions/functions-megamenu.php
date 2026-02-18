@@ -262,16 +262,23 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
     }
     
     // Get first menu item's logo for persistent mobile header
-    // Logo always links to home (front page), not the menu item's URL
+    // Respects the menu item's own URL (custom link, page permalink, etc.)
     $first_item_logo = '';
     $first_item_url = home_url('/');
     $first_item_title = 'Home';
+    $first_item_target = '';
     if (!empty($menu_data['items'][0])) {
         $first_item = $menu_data['items'][0];
         if (!empty($first_item['media_link'])) {
             $first_item_logo = megamenu_get_relative_image_url($first_item['media_link']);
         }
         $first_item_title = $first_item['title'];
+        if (!empty($first_item['url'])) {
+            $first_item_url = $first_item['url'];
+        }
+        if (!empty($first_item['target'])) {
+            $first_item_target = $first_item['target'];
+        }
     }
     
     ob_start();
@@ -280,7 +287,7 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
     <nav class="megamenu" role="navigation" aria-label="<?php echo esc_attr($menu_data['menu']['name']); ?>">
         <?php if ($first_item_logo): ?>
         <!-- Mobile Logo (persistent, left of hamburger) -->
-        <a href="<?php echo esc_url($first_item_url); ?>" class="megamenu__mobile-logo-link" aria-label="<?php echo esc_attr($first_item_title); ?>">
+        <a href="<?php echo esc_url($first_item_url); ?>" class="megamenu__mobile-logo-link" aria-label="<?php echo esc_attr($first_item_title); ?>"<?php echo $first_item_target ? ' target="' . esc_attr($first_item_target) . '"' : ''; ?>>
             <img src="<?php echo esc_attr($first_item_logo); ?>" alt="<?php echo esc_attr($first_item_title); ?>" class="megamenu__mobile-header-logo" />
         </a>
         <?php endif; ?>
@@ -369,22 +376,15 @@ function render_megamenu_desktop_item($item, $has_children, $is_current) {
     // Convert media_link to relative URL for cross-device compatibility
     $logo_url = $has_logo ? megamenu_get_relative_image_url($item['media_link']) : '';
     
-    // First menu item (logo) links to home, others link to their page slug
-    $item_slug = $item['slug'] ?? '';
-    $item_level = $item['level'] ?? 1;
-    if ($item_level === 1 && $item['menu_order'] == 1) {
-        // First L1 item always links to home
-        $logo_link_url = home_url('/');
-    } else if (!empty($item_slug)) {
-        $logo_link_url = '/' . $item_slug . '/';
-    } else {
-        $logo_link_url = $item['url'] ?: home_url('/');
-    }
+    // Use the menu item's own URL — respects custom links, external URLs, and page permalinks
+    // Only construct a slug-based path if the item has a slug but no explicit URL
+    $logo_link_url = $item['url'] ?: home_url('/');
     
     if ($has_children) {
         if ($has_logo) {
             // Logo with children: wrap logo in link, then add button for dropdown
-            $output .= '<a href="' . esc_url($logo_link_url) . '" role="menuitem" class="megamenu__logo-link">';
+            $logo_target = $item['target'] ? ' target="' . esc_attr($item['target']) . '"' : '';
+            $output .= '<a href="' . esc_url($logo_link_url) . '"' . $logo_target . ' role="menuitem" class="megamenu__logo-link">';
             $output .= '<img class="megamenu__logo-img" src="' . esc_attr($logo_url) . '" alt="' . esc_attr($item['title']) . '" />';
             $output .= '</a>';
             $output .= '<button type="button" aria-expanded="false" aria-controls="' . esc_attr($panel_id) . '" role="menuitem" aria-haspopup="true" class="megamenu__dropdown-trigger">';

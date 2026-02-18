@@ -54,164 +54,142 @@ function getJurorCandidates(){
 function get_ballot($award_id,$children,$counter){
     if(@$_POST['juror_id']){
         $ballot = getJurorBallot($award_id,$_POST['juror_id']);
-      //  var_dump($ballot);
 
+      // ── Category status message ──
       if(@$ballot[$award_id]){
-      print "<tr><th colspan='4'>You have already voted in this category ✅. <br>You may change your vote if you wish.</th>";
-    } else{
-        print "<tr><th colspan='4'>Click on the Nominee Name or Laurel to launch link your immersive Browser. Evaluation of Experience Nominations may only be done exclusively though an immersive browser. Do not use a 2D screen.<hr></th>";
-    }
+        print "<div class='category-status category-status--voted'>You have already voted in this category ✅. <br>You may change your vote if you wish.</div>";
+      } else{
+        print "<div class='category-status'>Click on the Nominee Name or Laurel to launch link in your immersive Browser. Evaluation of Experience Nominations may only be done exclusively through an immersive browser. Do not use a 2D screen.</div>";
+      }
 
-    print "<tr><th></th><th>First Choice</th><th>Second Choice</th><th>Third Choice</th>";
+      // ── Choice legend (visible on wide screens) ──
+      print "<div class='choice-legend' aria-hidden='true'><span></span><span>1st</span><span>2nd</span><span>3rd</span></div>";
+
+      // ── Nominee list ──
+      print "<div class='nominee-list'>";
 
     foreach($children as $c =>$child){
       extract($child);
-     
-    //  print("<pre>".print_r($meta,true)."</pre>");
-     // print $counter;
+
      $thumbnail_src = getThumbnail(@$meta['_thumbnail_id'][0],"thumbnail");
      if($classes[0] == 'honor'){
         continue;
      }
       if($classes[0] == 'presenter'){
         continue;
-        print "<h4 class='presenter'>";
-        if($thumbnail_src != '' && $counter == 0){
-          print "<img src='$thumbnail_src' alt='$title' title='$title' class='nomination-thumbnail'>";
-        }
-        print "Presented by ";
-      //  print @$meta['thumbnail_id']; 
-        print "<span class='presented-by'>".$child['title'];
-        print get_nominee_meta($child['meta']);
-        print "</span></h4>";
-       
       } else{
         $item_class = 'nominee';
         if($counter>0){
           $item_class = 'nominee-credit';
-          
         }
-        print "<tr>";
-        print "<td class='$item_class'>";
         $nominee_id = $child['ID'];
-        
 
+        print "<article class='nominee-row' data-nominee-id='" . esc_attr($nominee_id) . "'>";
 
-        
+        // ── Left: thumbnail + meta ──
+        print "<div class='nominee-left'>";
+
         if($thumbnail_src != '' && $counter == 0){
-            if(@$_meta['private_resource_url'][0]!=''){
-               
-                @$meta['resource_url'][0] = @$meta['private_resource_url'][0];
+            // Resolve best link URL
+            if(@$meta['private_resource_url'][0] != NULL){
+                $meta['resource_url'][0] = $meta['private_resource_url'][0];
             }
-            
-      
-            if(@$meta['resources'][0]!=''){
-               
+            if(@$meta['resources'][0] != ''){
                 @$meta['resource_url'][0] = @$meta['resources'][0];
             }
-           if(@$meta['private_resource_url'][0] != NULL){
-            $meta['resource_url'][0] = $meta['private_resource_url'][0];
-           }
-          if(@$meta['resource_url'][0] != '' ){
-            $nominee_class= '';
-            if($counter == 0){
-                $nominee_class= 'nom';
 
+            $link_url = '';
+            if(@$meta['resource_url'][0] != ''){
+                $link_url = $meta['resource_url'][0];
+            } elseif(@$meta['app_store_url'][0] != ''){
+                $link_url = $meta['app_store_url'][0];
+            } elseif(@$meta['app_download_url'][0] != ''){
+                $link_url = $meta['app_download_url'][0];
             }
 
-            print "<a href='".$meta['resource_url'][0]."' target='_blank' class='nominee-image $item_class'>";
-            } else if (@$meta['app_store_url'][0] != '' ) {
-
-                print "<a href='".$meta['app_store_url'][0]."' target='_blank' class='nominee-image $item_class'>";
-            } else if (@$meta['app_download_url'][0] != '' ) {
-
-                print "<a href='".$meta['app_download_url'][0]."' target='_blank' class='nominee-image $item_class'>";
-           } else {
-            print "<span class='nominee-image'>";
-           }
-          print "<img src='$thumbnail_src'  class='nomination-thumbnail'>";
-          if(@$meta['resource_url'][0] != ''){
-
-            print "</a>";
-          
-           } else {
+            // .nominee-thumb > .nominee-laurel > .nominee-image > img
+            print "<span class='nominee-thumb'>";
+            print "<span class='nominee-laurel' aria-hidden='true'>";
+            if($link_url != ''){
+                print "<a href='" . esc_url($link_url) . "' target='_blank' class='nominee-image " . esc_attr($item_class) . "'>";
+                print "<img src='" . esc_attr($thumbnail_src) . "' class='nomination-thumbnail' alt=''>";
+                print "</a>";
+            } else {
+                print "<span class='nominee-image'>";
+                print "<img src='" . esc_attr($thumbnail_src) . "' class='nomination-thumbnail' alt=''>";
+                print "</span>";
+            }
             print "</span>";
-          
-           }
-           if($classes[0] == 'winner'){
-            print "<span class='winner'></span>";
-          }  
-          if(@$meta['resource_info_url'][0] != '' ){
-            print "<a href='".$meta['resource_info_url'][0]."' target='_blank' class=' $item_class'>More Info about this Nominee</a>";
-          }
-          if(@$meta['app_instructions'][0] != '' ){
-         //   print "<p>".$meta['app_instructions'][0]."</p>";
-          }
-          if(@$meta['app_requires_key'][0] != '' ){
-       //     print "<BR>REQUIRES KEYS<BR>";
-          }
+            print "</span>";
+
+            if($classes[0] == 'winner'){
+                print "<span class='winner'></span>";
+            }
         }
-       
-     // var_dump(@$ballot[$award_id]);
-      print "</td>";
 
-      $first_choice_checked = '';
-      $second_choice_checked = '';
-      $third_choice_checked = '';
-      if($nominee_id == @$ballot[$award_id]['first_choice']){
-        $first_choice_checked = ' checked';        
+        // Nominee meta: title, credits, socials
+        print "<div class='nominee-meta'>";
+        print get_nominee_info($child,$counter);
+
+        if(@$meta['resource_info_url'][0] != ''){
+            print "<a href='" . esc_url($meta['resource_info_url'][0]) . "' target='_blank' class='" . esc_attr($item_class) . "'>More Info</a>";
+        }
+
+        if(is_array(@$children)){
+          $counter++;
+          if($counter == 2 && count($children)){
+            print ",";
+          }
+          print "<ul class='nominee-credits'>";
+          get_nomination($children,$counter,2); // max_depth=2: show Level 4, suppress Level 5
+          print "</ul>";
+          $counter --;
+        }
+        print "</div>"; // .nominee-meta
+        print "</div>"; // .nominee-left
+
+        // ── Right: choice pills ──
+        $first_choice_checked = '';
+        $second_choice_checked = '';
+        $third_choice_checked = '';
+        if($nominee_id == @$ballot[$award_id]['first_choice']){
+          $first_choice_checked = ' checked';
+        }
+        if($nominee_id == @$ballot[$award_id]['second_choice']){
+          $second_choice_checked = ' checked';
+        }
+        if($nominee_id == @$ballot[$award_id]['third_choice']){
+          $third_choice_checked = ' checked';
+        }
+
+        print "<div class='nominee-choices' role='group' aria-label='Rank choices for " . esc_attr($title) . "'>";
+
+        print "<label class='choice-pill" . ($first_choice_checked ? " checked" : "") . "'>";
+        print "<span class='choice-label'>1st</span>";
+        print "<input type='radio' name='award[$award_id][first_choice]' value='$nominee_id'" . @$first_choice_checked . ">";
+        print "<span class='choice-ui' aria-hidden='true'></span>";
+        print "</label>";
+
+        print "<label class='choice-pill" . ($second_choice_checked ? " checked" : "") . "'>";
+        print "<span class='choice-label'>2nd</span>";
+        print "<input type='radio' name='award[$award_id][second_choice]' value='$nominee_id'" . @$second_choice_checked . ">";
+        print "<span class='choice-ui' aria-hidden='true'></span>";
+        print "</label>";
+
+        print "<label class='choice-pill" . ($third_choice_checked ? " checked" : "") . "'>";
+        print "<span class='choice-label'>3rd</span>";
+        print "<input type='radio' name='award[$award_id][third_choice]' value='$nominee_id'" . @$third_choice_checked . ">";
+        print "<span class='choice-ui' aria-hidden='true'></span>";
+        print "</label>";
+
+        print "</div>"; // .nominee-choices
+        print "</article>"; // .nominee-row
       }
-      if($nominee_id == @$ballot[$award_id]['second_choice']){
-        $second_choice_checked = ' checked';        
-      }
-      if($nominee_id == @$ballot[$award_id]['third_choice']){
-        $third_choice_checked = ' checked';        
-      }
-
-      
-      print  "<td class='choice $first_choice_checked'><input type='radio' name='award[$award_id][first_choice]' value='$nominee_id'". @$first_choice_checked.">
-      ";
-//print      countNomineeChoice($award_id,$nominee_id,"first");
-
-      print "
-      </td>";
-
-      print "<td class='choice $second_choice_checked'><input type='radio' name='award[$award_id][second_choice]' value='$nominee_id' ".@$second_choice_checked."> ";
-   //   print      countNomineeChoice($award_id,$nominee_id,"second");
-      
-            print "</td>";
-      
-      print "<td class='choice $third_choice_checked'><input type='radio' name='award[$award_id][third_choice]' value='$nominee_id' ".@$third_choice_checked."> ";
-     // print      countNomineeChoice($award_id,$nominee_id,"third");
-      
-            print "</td>";
-
-      print "</tr>";
-      print "<tr><td colspan='4' class='nominee-info'>";
-      print get_nominee_info($child,$counter);
-       
-      // print "|".@$child['meta']['github']."|";
-     if(is_array(@$children)){
-       $counter++;
-       if($counter == 2 && count($children)){
-         print ",";
-       }
-       get_nomination($children,$counter);
-      
-       $counter --;
-     }
-      print "</td></tr>";
-
-
-
-
-      print "<tr><td colspan='4'><hr></td></tr>";
-      }
-      
-      
 
     }
-        }//!@ juror id; 
+
+    print "</div>"; // .nominee-list
+    }//!@ juror id;
   }
 
   function countNomineeChoice($award_id,$nominee_id,$choice){
