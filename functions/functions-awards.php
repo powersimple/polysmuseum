@@ -931,14 +931,29 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
 
           }
 
+  /**
+   * Resolve the best external link URL from post meta.
+   * Cascade: resource_url → app_store_url.
+   * Returns empty string if neither is set.
+   */
+  function polys_get_nominee_url($meta) {
+    if (!empty($meta['resource_url'][0])) {
+      return $meta['resource_url'][0];
+    }
+    if (!empty($meta['app_store_url'][0])) {
+      return $meta['app_store_url'][0];
+    }
+    return '';
+  }
+
   function get_nominee_info($nominee, $counter){
     $meta = @$nominee['meta'];
     $title = @$nominee['title'];
     $item_class = ($counter == 0) ? 'nominee' : '';
-    $resource_url = @$meta['resource_url'][0];
+    $link_url = polys_get_nominee_url($meta);
 
-    if($resource_url != ''){
-      print "<a href='" . esc_url($resource_url) . "' target='_blank' class='$item_class'><span>" . esc_html($title) . "</span></a>";
+    if($link_url != ''){
+      print "<a href='" . esc_url($link_url) . "' target='_blank' class='$item_class'><span>" . esc_html($title) . "</span></a>";
     } else {
       print "<span>" . esc_html($title) . "</span>";
     }
@@ -981,7 +996,13 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
         $presenter_names = [];
         $presenter_imgs = [];
         $presenter_metas = [];
+        $presenter_excerpts = [];
         $img_index = 0;
+
+        // Determine the label text (shared across all cards)
+        $label = (@$presenters[array_key_first($presenters)]['attr_title'] != '')
+          ? esc_html($presenters[array_key_first($presenters)]['attr_title']) . " "
+          : "Presented by ";
 
         foreach ($presenters as $p) {
           $p_meta = @$p['meta'];
@@ -1000,6 +1021,9 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
 
           $presenter_names[] = esc_html($p_title);
           $presenter_metas[] = $p_meta;
+
+          // Collect post_excerpt if available
+          $presenter_excerpts[] = (!empty($p['post']->post_excerpt)) ? wp_kses_post($p['post']->post_excerpt) : '';
           $img_index++;
 
           // Track participants
@@ -1011,12 +1035,7 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
           }
         }
 
-        $label = (@$presenters[array_key_first($presenters)]['attr_title'] != '')
-          ? esc_html($presenters[array_key_first($presenters)]['attr_title']) . " "
-          : "Presented by ";
-
         print "<div class='presenter-row presenter-row--multi'>";
-        print "<div class='presenter-label'>" . $label . "</div>";
         print "<div class='presenter-pairs'>";
         foreach ($presenter_names as $i => $pname) {
           print "<div class='presenter-pair'>";
@@ -1024,7 +1043,11 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
             print "<img src='" . esc_attr($presenter_imgs[$i]) . "' alt='" . $pname . "' class='nomination-thumbnail'>";
           }
           print "<div class='presenter-name-block'>";
+          print "<div class='presenter-label'>" . $label . "</div>";
           print "<span class='presented-by'>" . $pname . "</span>";
+          if (!empty($presenter_excerpts[$i])) {
+            print "<div class='presenter-excerpt'>" . $presenter_excerpts[$i] . "</div>";
+          }
           print "<div class='presenter-socials'>";
           if (isset($presenter_metas[$i])) {
             get_nominee_meta($presenter_metas[$i]);
@@ -1070,14 +1093,14 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
         // COL 1: thumbnail
         print "<div class='nominee-thumb'>";
         if($thumbnail_src != ''){
-          $resource_url = @$meta['resource_url'][0];
-          if($resource_url != ''){
-            print "<a href='" . esc_url($resource_url) . "' target='_blank' class='nominee-image'>";
+          $link_url = polys_get_nominee_url($meta);
+          if($link_url != ''){
+            print "<a href='" . esc_url($link_url) . "' target='_blank' class='nominee-image'>";
           } else {
             print "<span class='nominee-image'>";
           }
           print "<img src='" . esc_attr($thumbnail_src) . "' class='nomination-thumbnail'>";
-          if($resource_url != ''){
+          if($link_url != ''){
             print "</a>";
           } else {
             print "</span>";
@@ -1108,10 +1131,39 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
 
       } else {
         //
-        // LEVEL 4/5 — simple credit lines, no wrapper divs
+        // LEVEL 4/5 — credit lines: [thumb] [name + socials] layout
         //
+        $credit_thumb = getThumbnail(@$meta['_thumbnail_id'][0], "thumbnail");
+        $link_url = polys_get_nominee_url($meta);
+
         print "<li class='nominee-credit'>";
-        get_nominee_info($child, $counter);
+        print "<div class='nominee-credit-row'>";
+
+        // Thumbnail (optional)
+        if ($credit_thumb != '') {
+          print "<div class='credit-thumb'><img src='" . esc_attr($credit_thumb) . "' alt='" . esc_attr($title) . "'></div>";
+        }
+
+        // Name + socials wrapper
+        // Detect <br> in title (from WP menu item title field) to allow wrapping
+        $has_br = (stripos($title, '<br') !== false);
+        $name_class = $has_br ? 'credit-name credit-name--wrap' : 'credit-name';
+        $name_html = $has_br
+          ? '<span class="credit-name-text">' . wp_kses($title, array('br' => array())) . '</span>'
+          : '<span class="credit-name-text">' . esc_html($title) . '</span>';
+
+        print "<div class='credit-meta'>";
+        if ($link_url != '') {
+          print "<a href='" . esc_url($link_url) . "' target='_blank' class='" . $name_class . "'>" . $name_html . "</a>";
+        } else {
+          print "<div class='" . $name_class . "'>" . $name_html . "</div>";
+        }
+        print "<div class='credit-socials'>";
+        get_nominee_meta($meta);
+        print "</div>";
+        print "</div>";
+
+        print "</div>"; // .nominee-credit-row
 
         if(!empty($child['children'])){
           print "<ul>";

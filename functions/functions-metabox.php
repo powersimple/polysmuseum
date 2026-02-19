@@ -993,6 +993,16 @@ function sectionProperties( $meta_boxes ) {
 					],
 				],
 				[
+					'type'       => 'taxonomy_advanced',
+					'name'       => esc_html__( 'Sidebar Menu', 'online-generator' ),
+					'id'         => 'sidbebar_menu',
+					'taxonomy'   => 'nav_menu',
+					'field_type' => 'select_advanced',
+					'query_args' => [
+						'' => '',
+					],
+				],
+				[
 					'id' => $prefix . 'section_strip_from_label',
 					'type' => 'text',
 					'name' => esc_html__( 'Strip Text from Labels', 'metabox-online-generator' ),

@@ -56,8 +56,8 @@ body {
     max-width: 100%;
     // Layered ambient depth: cool teal top-left, warm gold bottom-right
     background:
-        radial-gradient(ellipse at 20% 15%, rgba(34, 240, 255, 0.04), transparent 50%),
-        radial-gradient(ellipse at 85% 85%, rgba(247, 192, 74, 0.035), transparent 55%),
+        radial-gradient(ellipse at 20% 15%, rgba(34, 240, 255, 0.065), transparent 50%),
+        radial-gradient(ellipse at 85% 85%, rgba(247, 192, 74, 0.055), transparent 55%),
         var(--ink-0);
     color: var(--text-0);
     font: 500 clamp(1rem, 1.2vw, 1.125rem)/1.55 'Raleway', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

@@ -103,8 +103,6 @@ function get_ballot($award_id,$children,$counter){
                 $link_url = $meta['resource_url'][0];
             } elseif(@$meta['app_store_url'][0] != ''){
                 $link_url = $meta['app_store_url'][0];
-            } elseif(@$meta['app_download_url'][0] != ''){
-                $link_url = $meta['app_download_url'][0];
             }
 
             // .nominee-thumb > .nominee-laurel > .nominee-image > img

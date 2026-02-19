@@ -228,14 +228,24 @@ return ob_get_clean();
 
 	function profile_shortcode( $atts, $content = null ) {
 		//set default attributes and values
-     
+
+		// If class attribute is empty, do not render anything
+		if (empty($atts['class'])) {
+			return '';
+		}
+
         $menu = get_menu_array($atts['menu']);
-       
+
+		// Filter out items with event_type "video reel"
+		$menu = array_filter($menu, function($item) {
+			return strcasecmp(trim(@$item['event_type']), 'video reel') !== 0;
+		});
+
 		$values = shortcode_atts( array(
 			'menu'   	=>  $menu,
 			'className'	=> $atts['class'],
 		), $atts );
-		
+
 		ob_start();
        displayTeam($menu,$atts['class']);
 
@@ -246,6 +256,99 @@ return ob_get_clean();
 	
 	}
 	add_shortcode( 'profile_list', 'profile_shortcode' );
+
+	function polys_partner_list_shortcode($atts) {
+		$atts = shortcode_atts(array(
+			'menu'  => '',
+			'class' => '',
+		), $atts);
+
+		if (empty($atts['menu'])) {
+			return '';
+		}
+
+		// If class attribute is empty, do not render anything
+		if (empty($atts['class'])) {
+			return '';
+		}
+
+		$menu = get_menu_array($atts['menu']);
+		if (empty($menu)) {
+			return '';
+		}
+
+		$wrapper_class = 'partner-list';
+		if (!empty($atts['class'])) {
+			$wrapper_class .= ' ' . esc_attr($atts['class']);
+		}
+
+		ob_start();
+		echo '<div class="' . $wrapper_class . '">';
+
+		foreach ($menu as $item) {
+			// Skip items with event_type "video reel"
+			if (strcasecmp(trim(@$item['event_type']), 'video reel') === 0) {
+				continue;
+			}
+
+			$post = $item['post'];
+			if (!$post) continue;
+
+			// Resolve external URL: website meta → raw menu item URL → none
+			$link_url = get_post_meta($post->ID, 'website', true);
+			if (empty($link_url)) {
+				$link_url = get_post_meta($item['ID'], '_menu_item_url', true);
+			}
+			// Ensure protocol — fixes values like "://site.com" or "site.com"
+			if (!empty($link_url)) {
+				$link_url = preg_replace('#^:?//#', 'https://', $link_url);
+				if (!preg_match('#^https?://#i', $link_url)) {
+					$link_url = 'https://' . $link_url;
+				}
+			}
+
+			// Kicker from menu item attr_title (not linked)
+			$kicker = !empty($item['attr_title']) ? $item['attr_title'] : '';
+
+			// Menu item title (not post title)
+			$title = !empty($item['title']) ? $item['title'] : '';
+
+			// Featured image (medium) — title in alt/title attrs
+			$thumbnail_html = get_the_post_thumbnail($post->ID, 'medium', array('alt' => $title, 'title' => $title));
+
+			// Menu item description field
+			$description = !empty($item['description']) ? $item['description'] : '';
+
+			// Open link wrapper if URL exists
+			if (!empty($link_url)) {
+				echo '<a class="partner-item-link" href="' . esc_url($link_url) . '" target="_blank" rel="noopener">';
+			}
+
+			echo '<div class="partner-item">';
+
+			if (!empty($kicker)) {
+				echo '<h5 class="partner-item-kicker" style="text-align:center">' . esc_html($kicker) . '</h5>';
+			}
+
+			if (!empty($thumbnail_html)) {
+				echo '<div class="partner-item-image" style="margin-bottom:5px">' . str_replace('<img ', '<img style="width:100%;height:auto" ', $thumbnail_html) . '</div>';
+			}
+
+			echo '</div>';
+
+			if (!empty($link_url)) {
+				echo '</a>';
+			}
+
+			if (!empty($description)) {
+				echo '<p class="partner-item-content">' . esc_html($description) . '</p>';
+			}
+		}
+
+		echo '</div>';
+		return ob_get_clean();
+	}
+	add_shortcode('partner_list', 'polys_partner_list_shortcode');
 
 ?>
 

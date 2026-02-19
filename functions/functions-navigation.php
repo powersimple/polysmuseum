@@ -224,7 +224,7 @@
 				$menu[$m->ID]['point_of_contact'] = $m->_point_of_contact;
 				$menu[$m->ID]['notes'] = $m->_notes;
 				$menu[$m->ID]['guest_type'] = @$_m->guest_type;
-				$menu[$m->ID]['event_type'] = @$_m->event_type;
+				$menu[$m->ID]['event_type'] = @$m->_event_type;
 				$menu[$m->ID]['appearance_type'] = @$m->_appearance_type;
 
 				$menu[$m->ID]['post'] = $post;
