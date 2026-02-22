@@ -104,4 +104,30 @@
     } else {
         new HeroParallax().init();
     }
+
+    // ── Hero fit-auto: set --hero-aspect from actual image dimensions ──
+    function initHeroFitAuto() {
+        const hero = document.querySelector('#dynamic-hero.hero-fit-auto');
+        if (!hero) return;
+
+        // Extract URL from --hero-img custom property or computed background-image
+        const raw = getComputedStyle(hero).getPropertyValue('--hero-img').trim()
+                 || getComputedStyle(hero).backgroundImage;
+        const match = raw.match(/url\(["']?([^"')]+)["']?\)/);
+        if (!match || !match[1]) return;
+
+        const img = new Image();
+        img.onload = function() {
+            if (img.naturalWidth && img.naturalHeight) {
+                hero.style.setProperty('--hero-aspect', img.naturalWidth + ' / ' + img.naturalHeight);
+            }
+        };
+        img.src = match[1];
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHeroFitAuto);
+    } else {
+        initHeroFitAuto();
+    }
 })();

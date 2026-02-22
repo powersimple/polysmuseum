@@ -59,6 +59,7 @@ $show_summaries = ($only === '' || $only === 'summary');
 $show_narrative = ($only === '' || $only === 'narrative');
 $show_categories = ($only === '' || $only === 'categories');
 $show_awards = ($only === '' || in_array($only, array('awards','awardcards','exhibits'), true));
+$show_announcements = ($only === 'announcements');
 
 // Initialize Awards array
 $awards = array();
@@ -891,6 +892,115 @@ if (isset($_GET['event_menu'])) {
         foreach ($awards as $idx => $award) { echo exhibits_render_award_tile($award, $idx); }
         echo '</div>';
         echo '</div>';
+    }
+
+    // ── Announcements view: one 1920×1080 card per award category ──────
+    // Renders ALL nominees (Level 3) horizontally — no winner filtering.
+    if ($show_announcements && !empty($awards)) {
+        echo '<div class="ex-announce-cards">';
+        foreach ($awards as $award) {
+            if (!is_array($award)) { continue; }
+
+            // Collect all nominees (Level 3 items already parsed by menu walker)
+            $nominees = array();
+            if (!empty($award['nominees']) && is_array($award['nominees'])) {
+                foreach ($award['nominees'] as $nom) {
+                    if (!empty($nom['id']) || !empty($nom['title'])) {
+                        $nominees[] = $nom;
+                    }
+                }
+            }
+            // Skip categories with zero nominees
+            if (empty($nominees)) { continue; }
+
+            // Background image
+            $bg_url = !empty($award['tile_bg_url']) ? (string)$award['tile_bg_url'] : '';
+            $bg_style = $bg_url !== '' ? 'background-image:url(' . esc_url($bg_url) . ')' : '';
+
+            // Event logo
+            $logo_url = !empty($award['event_logo_url']) ? (string)$award['event_logo_url'] : '';
+
+            // Category title
+            $cat_title = isset($award['title']) ? (string)$award['title'] : '';
+
+            // Row split: N<=5 → 1 row; N>5 → 2 rows, row1=ceil(N/2) capped at 5
+            $n = count($nominees);
+            if ($n <= 5) {
+                $rows = array(array_slice($nominees, 0));
+            } else {
+                $row1_count = min(5, intval(ceil($n / 2)));
+                $rows = array(
+                    array_slice($nominees, 0, $row1_count),
+                    array_slice($nominees, $row1_count),
+                );
+            }
+
+            echo '<div class="ex-announce-card"' . ($bg_style !== '' ? ' style="' . $bg_style . '"' : '') . '>';
+            echo '<div class="ex-announce-safe">';
+
+            // Logo top-left (absolute positioned via CSS)
+            if ($logo_url !== '') {
+                echo '<img class="ex-announce-logo" src="' . esc_url($logo_url) . '" alt="">';
+            }
+            // Category title centered
+            echo '<div class="ex-announce-category">' . esc_html($cat_title) . '</div>';
+
+            // Nominee rows (each row centers independently)
+            echo '<div class="ex-announce-grid">';
+            foreach ($rows as $row_nominees) {
+                echo '<div class="ex-announce-row">';
+                foreach ($row_nominees as $nom) {
+                    // Featured image: Level 3 nominee post thumbnail ONLY
+                    $nom_img = '';
+                    if (!empty($nom['id'])) {
+                        $nom_img = get_the_post_thumbnail_url(intval($nom['id']), 'full') ?: '';
+                    }
+
+                    // Nominee title (Level 3)
+                    $nom_title = isset($nom['title']) ? trim((string)$nom['title']) : '';
+
+                    // Level 4 credits: company + people (no Level 5)
+                    $nom_credit = '';
+                    $company = isset($nom['company']) ? trim((string)$nom['company']) : '';
+                    $people = array();
+                    if (!empty($nom['people']) && is_array($nom['people'])) {
+                        foreach ($nom['people'] as $pn) {
+                            $pn = trim((string)$pn);
+                            if ($pn !== '') { $people[] = esc_html($pn); }
+                        }
+                    }
+                    if ($company !== '') {
+                        $nom_credit .= esc_html($company);
+                        if (!empty($people)) { $nom_credit .= ': ' . implode(', ', $people); }
+                    } elseif (!empty($people)) {
+                        $nom_credit .= implode(', ', $people);
+                    }
+
+                    echo '<div class="ex-announce-tile">';
+                    // Title ABOVE laurel (Level 3, Agency FB, yellow)
+                    if ($nom_title !== '') {
+                        echo '<div class="ex-announce-title">' . esc_html($nom_title) . '</div>';
+                    }
+                    // Single laurel wrap with glow (reuses Exhibits technique)
+                    echo '<div class="ex-announce-laurel-wrap">';
+                    if ($nom_img !== '') {
+                        echo '<img class="ex-announce-hero-img" src="' . esc_url($nom_img) . '" alt="">';
+                    }
+                    echo '</div>';
+                    // Credits BELOW laurel (Level 4, Raleway, white)
+                    if ($nom_credit !== '') {
+                        echo '<div class="ex-announce-credits">' . $nom_credit . '</div>';
+                    }
+                    echo '</div>'; // .ex-announce-tile
+                }
+                echo '</div>'; // .ex-announce-row
+            }
+            echo '</div>'; // .ex-announce-grid
+
+            echo '</div>'; // .ex-announce-safe
+            echo '</div>'; // .ex-announce-card
+        }
+        echo '</div>'; // .ex-announce-cards
     }
 
     // Display awards summary

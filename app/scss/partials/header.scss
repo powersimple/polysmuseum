@@ -180,11 +180,15 @@
 .hero-fit-cover   { background-size: cover   !important; }
 .hero-fit-contain { background-size: contain !important; }
 
+// hero-fit-auto: full-width hero that adapts height to the image ratio.
+// JS sets --hero-aspect from the actual image dimensions.
+// Falls back to 2 / 1 if JS hasn't run yet.
+// Ignores --hero-vh — height is purely image-driven, capped at 80vh.
 #dynamic-hero.hero-fit-auto {
     height: auto;
-    min-height: 0;
+    min-height: 0 !important; // override [style*=--hero-vh] min-height
     max-height: 80vh;
-    aspect-ratio: 1920 / 720;
+    aspect-ratio: var(--hero-aspect, 2 / 1);
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;

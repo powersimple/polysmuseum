@@ -28,6 +28,8 @@
    <?php
      if(@$child['classes'][0] == 'nomination' || @$child['classes'][0] == 'honor'){
        $link = get_permalink($child['ID']);
+       $is_honor_class = (@$child['classes'][0] == 'honor');
+       $heading_suffix = $is_honor_class ? '' : ' Nominees';
        ?>
        <div class="row justify-content-center">
        <h3 class="nomination-category"  id="<?=$child['slug']?>">
@@ -42,7 +44,7 @@
       }
    
    ?>
-      <a href="<?=$link?>" title="<?=$child['title']?>"></a><?=$child['title']?></h3>
+      <a href="<?=$link?>" title="<?=$child['title']?>"></a><?=$child['title'] . $heading_suffix?></h3>
 <?php
   $category_content = $child['post']->post_content ?? '';
   $stripped_content = preg_replace('/<!--\s*\/?wp:.*?-->/', '', $category_content);

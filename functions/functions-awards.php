@@ -932,16 +932,22 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
           }
 
   /**
-   * Resolve the best external link URL from post meta.
-   * Cascade: resource_url → app_store_url.
-   * Returns empty string if neither is set.
+   * Resolve the best link URL for a nominee.
+   * Cascade: resource_url → app_store_url → permalink (if $fallback).
+   * @param array  $meta     Post meta array.
+   * @param int    $post_id  Optional post ID for permalink fallback.
+   * @param bool   $fallback If true, fall back to permalink when no external URL.
+   * @return string URL (never empty when $fallback is true and $post_id is valid).
    */
-  function polys_get_nominee_url($meta) {
+  function polys_get_nominee_url($meta, $post_id = 0, $fallback = true) {
     if (!empty($meta['resource_url'][0])) {
       return $meta['resource_url'][0];
     }
     if (!empty($meta['app_store_url'][0])) {
       return $meta['app_store_url'][0];
+    }
+    if ($fallback && $post_id > 0) {
+      return get_permalink($post_id);
     }
     return '';
   }
@@ -950,7 +956,8 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
     $meta = @$nominee['meta'];
     $title = @$nominee['title'];
     $item_class = ($counter == 0) ? 'nominee' : '';
-    $link_url = polys_get_nominee_url($meta);
+    $post_id = isset($nominee['post']) ? $nominee['post']->ID : 0;
+    $link_url = polys_get_nominee_url($meta, $post_id);
 
     if($link_url != ''){
       print "<a href='" . esc_url($link_url) . "' target='_blank' class='$item_class'><span>" . esc_html($title) . "</span></a>";
@@ -979,7 +986,8 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
       $presenter_image_override = !empty($presenter_image_override) ? array($presenter_image_override) : array();
     }
 
-    // Sort presenters first at Level 3, then collect and render as one combined row
+    // Extract presenters from Level 3 items — render AFTER nominees
+    $presenter_data = null;
     if($counter == 0){
       $presenters = [];
       $rest = [];
@@ -991,7 +999,7 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
         }
       }
 
-      // Render combined presenter row if any presenters exist
+      // Collect presenter data for deferred rendering (after nominees)
       if (!empty($presenters)) {
         $presenter_names = [];
         $presenter_imgs = [];
@@ -1035,30 +1043,7 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
           }
         }
 
-        print "<div class='presenter-row presenter-row--multi'>";
-        print "<div class='presenter-pairs'>";
-        foreach ($presenter_names as $i => $pname) {
-          print "<div class='presenter-pair'>";
-          if (isset($presenter_imgs[$i])) {
-            print "<img src='" . esc_attr($presenter_imgs[$i]) . "' alt='" . $pname . "' class='nomination-thumbnail'>";
-          }
-          print "<div class='presenter-name-block'>";
-          print "<div class='presenter-label'>" . $label . "</div>";
-          print "<span class='presented-by'>" . $pname . "</span>";
-          if (!empty($presenter_excerpts[$i])) {
-            print "<div class='presenter-excerpt'>" . $presenter_excerpts[$i] . "</div>";
-          }
-          print "<div class='presenter-socials'>";
-          if (isset($presenter_metas[$i])) {
-            get_nominee_meta($presenter_metas[$i]);
-          }
-          print "</div>";
-          print "</div>";
-          print "</div>";
-        }
-        print "</div>";
-        print "</div>";
-        print "<hr>";
+        $presenter_data = compact('presenter_names', 'presenter_imgs', 'presenter_metas', 'presenter_excerpts', 'label');
       }
 
       $items = $rest;
@@ -1093,7 +1078,8 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
         // COL 1: thumbnail
         print "<div class='nominee-thumb'>";
         if($thumbnail_src != ''){
-          $link_url = polys_get_nominee_url($meta);
+          $nom_pid = isset($child['post']) ? $child['post']->ID : 0;
+          $link_url = polys_get_nominee_url($meta, $nom_pid);
           if($link_url != ''){
             print "<a href='" . esc_url($link_url) . "' target='_blank' class='nominee-image'>";
           } else {
@@ -1134,7 +1120,8 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
         // LEVEL 4/5 — credit lines: [thumb] [name + socials] layout
         //
         $credit_thumb = getThumbnail(@$meta['_thumbnail_id'][0], "thumbnail");
-        $link_url = polys_get_nominee_url($meta);
+        $credit_pid = isset($child['post']) ? $child['post']->ID : 0;
+        $link_url = polys_get_nominee_url($meta, $credit_pid);
 
         print "<li class='nominee-credit'>";
         print "<div class='nominee-credit-row'>";
@@ -1174,6 +1161,35 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
         print "</li>";
       }
     }
+
+    // Render presenter block AFTER all nominees (with separator line above)
+    if ($presenter_data !== null) {
+      extract($presenter_data);
+      print "<hr class='presenter-separator'>";
+      print "<div class='presenter-row presenter-row--multi'>";
+      print "<div class='presenter-pairs'>";
+      foreach ($presenter_names as $i => $pname) {
+        print "<div class='presenter-pair'>";
+        if (isset($presenter_imgs[$i])) {
+          print "<img src='" . esc_attr($presenter_imgs[$i]) . "' alt='" . $pname . "' class='nomination-thumbnail'>";
+        }
+        print "<div class='presenter-name-block'>";
+        print "<div class='presenter-label'>" . $label . "</div>";
+        print "<span class='presented-by'>" . $pname . "</span>";
+        if (!empty($presenter_excerpts[$i])) {
+          print "<div class='presenter-excerpt'>" . $presenter_excerpts[$i] . "</div>";
+        }
+        print "<div class='presenter-socials'>";
+        if (isset($presenter_metas[$i])) {
+          get_nominee_meta($presenter_metas[$i]);
+        }
+        print "</div>";
+        print "</div>";
+        print "</div>";
+      }
+      print "</div>";
+      print "</div>";
+    }
   }
 
 
@@ -1210,22 +1226,20 @@ function getNomineeCredits($nominee,$nominations,$current_award,$current_nominat
              
                 
                 if($thumbnail_src != '' && $counter == 0){
-                  if(@$meta['resource_url'][0] != ''){
+                  $nom_post_id = isset($child['post']) ? $child['post']->ID : 0;
+                  $thumb_url = polys_get_nominee_url($meta, $nom_post_id);
 
-                    print "<a href='".$meta['resource_url'][0]."' target='_blank' class='nominee-image'>";
-                  
-                   } else {
+                  if($thumb_url != ''){
+                    print "<a href='" . esc_url($thumb_url) . "' target='_blank' class='nominee-image'>";
+                  } else {
                     print "<span class='nominee-image'>";
-                   }
+                  }
                   print "<img src='$thumbnail_src'  class='nomination-thumbnail'>";
-                  if(@$meta['resource_url'][0] != ''){
-
+                  if($thumb_url != ''){
                     print "</a>";
-                  
-                   } else {
+                  } else {
                     print "</span>";
-                  
-                   }
+                  }
                    if($classes[0] == 'winner'){
                     print "<span class='winner'></span>";
                   }  

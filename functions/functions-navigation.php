@@ -193,7 +193,8 @@
 	function get_menu_array($current_menu='Main Menu') {
 
 		$menu_array = wp_get_nav_menu_items($current_menu);
-	
+		if (!is_array($menu_array)) { return array(); }
+
 		$menu = array();
 
 		foreach ($menu_array as $m) {

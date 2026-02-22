@@ -299,12 +299,11 @@ return ob_get_clean();
 			if (empty($link_url)) {
 				$link_url = get_post_meta($item['ID'], '_menu_item_url', true);
 			}
-			// Ensure protocol — fixes values like "://site.com" or "site.com"
+			// Sanitize URL: strip duplicate schemes, ensure single https://
 			if (!empty($link_url)) {
-				$link_url = preg_replace('#^:?//#', 'https://', $link_url);
-				if (!preg_match('#^https?://#i', $link_url)) {
-					$link_url = 'https://' . $link_url;
-				}
+				// Remove any leading scheme(s) — handles "https://https://", "://", etc.
+				$link_url = preg_replace('#^(?:https?:)?(?://)+(?:https?:(?://)+)*#i', '', $link_url);
+				$link_url = 'https://' . $link_url;
 			}
 
 			// Kicker from menu item attr_title (not linked)
@@ -313,11 +312,21 @@ return ob_get_clean();
 			// Menu item title (not post title)
 			$title = !empty($item['title']) ? $item['title'] : '';
 
-			// Featured image (medium) — title in alt/title attrs
-			$thumbnail_html = get_the_post_thumbnail($post->ID, 'medium', array('alt' => $title, 'title' => $title));
+			// Featured image — use small 'partner-logo' size, strip srcset bloat
+			$thumbnail_html = get_the_post_thumbnail($post->ID, 'partner-logo', array(
+				'alt'    => $title,
+				'title'  => $title,
+				'srcset' => '',
+				'sizes'  => '',
+			));
 
-			// Menu item description field
-			$description = !empty($item['description']) ? $item['description'] : '';
+			// Content: menu item description, or post_content via do_blocks
+			$content_html = '';
+			if (!empty($item['description'])) {
+				$content_html = wp_kses_post($item['description']);
+			} elseif (!empty($post->post_content)) {
+				$content_html = do_blocks(do_shortcode($post->post_content));
+			}
 
 			// Open link wrapper if URL exists
 			if (!empty($link_url)) {
@@ -327,21 +336,21 @@ return ob_get_clean();
 			echo '<div class="partner-item">';
 
 			if (!empty($kicker)) {
-				echo '<h5 class="partner-item-kicker" style="text-align:center">' . esc_html($kicker) . '</h5>';
+				echo '<h5 class="partner-item-kicker">' . esc_html($kicker) . '</h5>';
 			}
 
 			if (!empty($thumbnail_html)) {
-				echo '<div class="partner-item-image" style="margin-bottom:5px">' . str_replace('<img ', '<img style="width:100%;height:auto" ', $thumbnail_html) . '</div>';
+				echo '<div class="partner-item-image">' . $thumbnail_html . '</div>';
+			}
+
+			if (!empty($content_html)) {
+				echo '<div class="partner-item-content">' . $content_html . '</div>';
 			}
 
 			echo '</div>';
 
 			if (!empty($link_url)) {
 				echo '</a>';
-			}
-
-			if (!empty($description)) {
-				echo '<p class="partner-item-content">' . esc_html($description) . '</p>';
 			}
 		}
 

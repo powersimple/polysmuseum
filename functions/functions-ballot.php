@@ -103,6 +103,8 @@ function get_ballot($award_id,$children,$counter){
                 $link_url = $meta['resource_url'][0];
             } elseif(@$meta['app_store_url'][0] != ''){
                 $link_url = $meta['app_store_url'][0];
+            } elseif(!empty($child['post']) && $child['post']->ID > 0){
+                $link_url = get_permalink($child['post']->ID);
             }
 
             // .nominee-thumb > .nominee-laurel > .nominee-image > img

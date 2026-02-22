@@ -77,6 +77,9 @@ function featured_image_support(){
         'sponsor',
         'event'
     ));
+
+    // Partner logo: capped at 400px wide, proportional height, no crop
+    add_image_size('partner-logo', 400, 9999, false);
 }
 add_action('after_setup_theme', 'featured_image_support');
 
