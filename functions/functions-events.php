@@ -1882,7 +1882,7 @@ ICS
              <input type="hidden" name="location" value="Restream <?=$green_room_url?>">
              <textarea style="visibility:hidden;" name="description"><?=addslashes($session_script)?></textarea>
              <input type="hidden" name="summary" value="WebXR Design Summit - Green Room">
-             <input type="hidden" name="url" value="<?=$link?>">
+             <input type="hidden" name="url" value="<?=$link ?? ''?>">
              <input type="submit" value="Download ICS">
              
          </form>-->

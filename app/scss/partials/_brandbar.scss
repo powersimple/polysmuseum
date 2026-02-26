@@ -206,6 +206,59 @@ $sectionbar-text-hover: #ffffff;
 }
 
 // =============================================================================
+// Red Carpet — scoped to body.event--red-carpet + menu items with .red-carpet class
+// Red gradient only applies to sectionbar items explicitly marked red-carpet
+// in the WP menu item CSS Classes field.
+// =============================================================================
+$brand-red-carpet: #b30000; // deep red, not brownish
+$gradient-red-carpet: linear-gradient(
+    135deg,
+    rgba(color.adjust($brand-red-carpet, $lightness: 12%), 0.9) 0%,
+    rgba($brand-red-carpet, 0.95) 40%,
+    rgba(color.adjust($brand-red-carpet, $lightness: -18%), 1) 100%
+);
+
+body.event--red-carpet .sectionbar__item.red-carpet {
+    background: $gradient-red-carpet;
+    border-radius: 2px;
+
+    .sectionbar__link {
+        &:hover,
+        &:focus {
+            text-shadow: 0 0 8px rgba(255, 120, 120, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        &.is-current,
+        &[aria-current="page"] {
+            text-decoration-color: #fff;
+        }
+    }
+}
+
+// =============================================================================
+// Trophy Icon — scoped to .the-polys slug class on sectionbar__inner
+// =============================================================================
+.sectionbar__inner.the-polys {
+    .sectionbar__item {
+        position: relative;
+        padding-left: 24px;
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            background: url('/wp-content/themes/polysmuseum/images/icons/Trophy.png') no-repeat center / contain;
+            opacity: 0.9;
+            pointer-events: none;
+        }
+    }
+}
+
+// =============================================================================
 // Reduced Motion
 // =============================================================================
 @media (prefers-reduced-motion: reduce) {

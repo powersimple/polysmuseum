@@ -189,40 +189,105 @@ return ob_get_clean();
     }
 
     function displayTeam($team,$className){
-       
-        print "<div class='row'>";
+        $is_partners = strpos($className, 'partners-page') !== false;
 
-        foreach($team as $key => $member){
-            
-          print "<div class='$className'>";
-            displayTeamMember($member);
-          print "</div>";  
-          
+        if (!$is_partners) {
+            print "<div class='row'>";
+            foreach($team as $key => $member){
+              print "<div class='$className'>";
+                displayTeamMember($member, $className);
+              print "</div>";
+            }
+            print "</div>";
+            return $team;
         }
 
-        print "</div>";
+        // Partners-page path — supports tier headings and new-row breaks
+        $tier_colors = ['blue-tier','red-tier','gold-tier','platinum-tier','silver-tier','green-tier','orange-tier','purple-tier'];
+        $row_open = false;
+
+        foreach($team as $key => $member){
+            $classes = is_array($member['classes'] ?? null) ? $member['classes'] : [];
+            $is_tier = in_array('tier', $classes);
+            $is_new_row = in_array('new-row', $classes);
+
+            if ($is_tier) {
+                if ($row_open) { print "</div></div>"; $row_open = false; }
+
+                $color = 'blue-tier';
+                foreach ($tier_colors as $tc) {
+                    if (in_array($tc, $classes)) { $color = $tc; break; }
+                }
+                $raw_url = get_post_meta($member['ID'], '_menu_item_url', true);
+                $tier_id = sanitize_title(ltrim($raw_url, '#'));
+                $tier_title = esc_html($member['title']);
+                print "<h3 id='$tier_id' class='tier $color'>$tier_title</h3>";
+            } else {
+                // new-row: close current grid, will reopen below
+                if ($is_new_row && $row_open) {
+                    print "</div></div>";
+                    $row_open = false;
+                }
+                if (!$row_open) {
+                    print "<div class='partners-grid-wrap'><div class='partners-grid'>";
+                    $row_open = true;
+                }
+                print "<div class='$className'>";
+                  displayTeamMember($member, $className);
+                print "</div>";
+            }
+        }
+
+        if ($row_open) { print "</div></div>"; }
         return $team;
     }
-    function displayTeamMember($member){
+    function displayTeamMember($member, $className = ''){
         extract((array)$member);
-      
+        $is_partners = strpos($className, 'partners-page') !== false;
+
         $link = get_permalink($post->ID);
+        $link_target = '';
+        $link_rel = '';
+        if ($is_partners) {
+            // Match home page partner_list: website meta → menu item URL → permalink
+            $partner_url = get_post_meta($post->ID, 'website', true);
+            if (empty($partner_url)) {
+                $partner_url = get_post_meta($ID, '_menu_item_url', true);
+            }
+            if (!empty($partner_url)) {
+                $partner_url = preg_replace('#^(?:https?:)?(?://)+(?:https?:(?://)+)*#i', '', $partner_url);
+                $link = 'https://' . $partner_url;
+                $link_target = " target='_blank'";
+                $link_rel = " rel='noopener'";
+            }
+        }
        $thumbnail_id = @$meta['_thumbnail_id'][0];
         $thumbnail = getThumbnail($thumbnail_id);
         $custom_class= @$classes[0];
+        $link_title = ($is_partners) ? $attr_title : $title;
        ?>
-    
-       <a href='<?=$link?>' title='<?=$title?>'>
-        <img class="<?=$custom_class?>" src="<?=$thumbnail?>" alt="<?=$title?>" title="<?=$title?>"> 
+
+       <a href='<?=esc_url($link)?>'<?php if (!$is_partners) echo " title='" . esc_attr($link_title) . "'"; ?><?=$link_target?><?=$link_rel?>>
+        <?php if ($is_partners) : ?>
+        <?php if (!empty($attr_title)) : ?><h6 class="partner-meta"><?=esc_html($attr_title)?></h6><?php endif; ?>
+        <h3 class="partner-title"><?=esc_html($title)?></h3>
+        <?php else : ?>
         <h5><?=$attr_title?></h5>
-        <h4><?=$title?><h4></a>
-        
+        <h4><?=$title?></h4>
+        <?php endif; ?>
+        <img class="<?=$custom_class?>" src="<?=$thumbnail?>" alt="<?=$title?>" title="<?=$title?>">
+        </a>
+
+        <?php if (!$is_partners) : ?>
         <h6><div class="social-icons profile-meta"><?=displayProfileMeta($post->ID)?></div></h6>
-        <p><?=nl2br($member['post']->post_excerpt)?><p>
-    
+        <?php endif; ?>
+        <?php if (!empty($description)) : ?><p><?=wp_kses_post($description)?></p><?php endif; ?>
+        <?php if ($is_partners && is_user_logged_in() && current_user_can('edit_post', $post->ID)) : ?>
+            <a href="<?=esc_url(admin_url('post.php?post=' . $post->ID . '&action=edit'))?>" class="partner-edit-link" target="_blank" title="Edit this partner">&#9998;&#65039;</a>
+        <?php endif; ?>
 
         <?php
-     
+
     }
 
 

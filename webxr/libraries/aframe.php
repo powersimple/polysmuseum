@@ -42,10 +42,34 @@ if (!empty($_GET['aframe-version'])) {
 
 <script src="https://aframe.io/releases/<?=$aframe_version?>/aframe.min.js"></script>
 <script>
-// Polyfill: Three.js r125+ removed PlaneBufferGeometry alias
-if (typeof THREE !== 'undefined' && !THREE.PlaneBufferGeometry) {
-    THREE.PlaneBufferGeometry = THREE.PlaneGeometry;
-}
+// Polyfill: Three.js r125+ removed *BufferGeometry aliases
+(function() {
+    if (typeof THREE === 'undefined') return;
+    var map = {
+        PlaneBufferGeometry: 'PlaneGeometry',
+        BoxBufferGeometry: 'BoxGeometry',
+        SphereBufferGeometry: 'SphereGeometry',
+        CylinderBufferGeometry: 'CylinderGeometry',
+        ConeBufferGeometry: 'ConeGeometry',
+        CircleBufferGeometry: 'CircleGeometry',
+        RingBufferGeometry: 'RingGeometry',
+        TorusBufferGeometry: 'TorusGeometry',
+        TorusKnotBufferGeometry: 'TorusKnotGeometry',
+        ExtrudeBufferGeometry: 'ExtrudeGeometry',
+        ShapeBufferGeometry: 'ShapeGeometry',
+        LatheBufferGeometry: 'LatheGeometry',
+        TubeBufferGeometry: 'TubeGeometry',
+        IcosahedronBufferGeometry: 'IcosahedronGeometry',
+        OctahedronBufferGeometry: 'OctahedronGeometry',
+        TetrahedronBufferGeometry: 'TetrahedronGeometry',
+        DodecahedronBufferGeometry: 'DodecahedronGeometry'
+    };
+    for (var old in map) {
+        if (!THREE[old] && THREE[map[old]]) {
+            THREE[old] = THREE[map[old]];
+        }
+    }
+})();
 </script>
 <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.0/dist/aframe-extras.controls.min.js"></script>
 <script>

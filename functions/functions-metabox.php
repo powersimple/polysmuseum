@@ -197,7 +197,7 @@ function profile_info( $meta_boxes ) {
 
 	return $meta_boxes;
 }
-add_filter( 'rwmb_meta_boxes', 'profile_info' );
+//add_filter( 'rwmb_meta_boxes', 'profile_info' );
 function setProfileURL( $meta_boxes ) { // this shows the box were 
 	$prefix = '';
 

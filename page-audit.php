@@ -201,6 +201,204 @@ if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
     echo render_available_menus($all_menus);
 }
 
+// =============================================================================
+// EMAIL EXPORT MODE: ?event_menu=<slug>&emails=1  (optionally &winners=1)
+// Extracts emails from level 3/4/5 nominees, outputs Gmail-ready recipient list.
+// When winners=1 is also set, adds a separate Winners/Honorees block filtered
+// by menu-item CSS class containing "winner" or "honoree".
+// =============================================================================
+if (isset($_GET['event_menu']) && isset($_GET['emails']) && $_GET['emails'] === '1') {
+    $menu_slug = $_GET['event_menu'];
+    $menu_slugs = resolve_menu_slugs($menu_slug);
+    $want_winners = isset($_GET['winners']) && $_GET['winners'] === '1';
+
+    if (empty($menu_slugs)) {
+        echo '<div class="notice notice-error"><p>No menus found matching: ' . esc_html($menu_slug) . '</p></div>';
+        get_footer();
+        return;
+    }
+
+    // Shared helper: resolve name + email for a menu item
+    // Returns ['name'=>string, 'email'=>string|'', 'id'=>int|0]
+    $_resolve_item = function($item) {
+        if (empty($item->object_id)) { return null; }
+        $oid  = (int)$item->object_id;
+        $post = get_post($oid);
+        if (!$post) { return null; }
+        $name = trim($post->post_title);
+        if ($name === '') { $name = trim($item->post_title); }
+        if ($name === '') { return null; }
+        $email = '';
+        foreach (['email', 'profile_email', 'contact_email'] as $key) {
+            $val = get_post_meta($oid, $key, true);
+            if (!empty($val) && is_email($val)) {
+                $email = $val;
+                break;
+            }
+        }
+        return ['name' => $name, 'email' => $email, 'id' => $oid];
+    };
+
+    $recipients = [];   // "Name <email>" strings  (all nominees)
+    $missing    = [];   // ['name'=>..., 'id'=>...] (nominees without email)
+    $seen_ids   = [];   // dedupe by object_id
+
+    $winners       = []; // ['name'=>..., 'email'=>..., 'id'=>...] ordered list
+    $winners_seen  = []; // dedupe by object_id
+
+    foreach ($menu_slugs as $slug) {
+        $results = get_menu_items_for_slug($slug);
+        if (is_string($results)) { continue; }
+
+        // Build lookup for level detection + parent chain
+        $menu_items = [];
+        foreach ($results['menu_items'] as $item) {
+            $menu_items[$item->ID] = $item;
+        }
+        // Ordered flat list for index-based forward scan
+        $mi_list = $results['menu_items'];
+
+        // Helper: check if a menu item has winner/honoree class
+        $_is_winner_class = function($item) {
+            $classes = get_post_meta($item->ID, '_menu_item_classes', true);
+            if (!is_array($classes)) { return false; }
+            foreach ($classes as $cls) {
+                if (stripos($cls, 'winner') !== false || stripos($cls, 'honoree') !== false) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        // Helper: is $nodeId a descendant of $ancestorId via parent_map?
+        $_is_descendant = function($nodeId, $ancestorId) use ($menu_items) {
+            $guard = 0;
+            $cur = $nodeId;
+            while ($cur && $guard < 20) {
+                if ((int)$cur === (int)$ancestorId) { return true; }
+                $cur = isset($menu_items[$cur]) ? (int)$menu_items[$cur]->menu_item_parent : 0;
+                $guard++;
+            }
+            return false;
+        };
+
+        foreach ($mi_list as $idx => $item) {
+            $level = get_nesting_level($menu_items, $item->ID);
+            if ($level < 2 || $level > 4) { continue; } // 0-indexed: 2=L3, 3=L4, 4=L5
+
+            // --- All-nominees collection (existing behaviour) ---
+            $resolved = $_resolve_item($item);
+            if ($resolved && !isset($seen_ids[$resolved['id']])) {
+                $seen_ids[$resolved['id']] = true;
+                if ($resolved['email']) {
+                    $recipients[] = $resolved['name'] . ' <' . $resolved['email'] . '>';
+                } else {
+                    $missing[] = ['name' => $resolved['name'], 'id' => $resolved['id']];
+                }
+            }
+
+            // --- Winners subtree crawl (when &winners=1) ---
+            if ($want_winners && $_is_winner_class($item)) {
+                $seed_id    = $item->ID;
+                $seed_level = $level;
+
+                // Collect seed itself
+                if ($resolved && !isset($winners_seen[$resolved['id']])) {
+                    $winners_seen[$resolved['id']] = true;
+                    $winners[] = $resolved;
+                }
+
+                // Forward-scan for descendants of this seed
+                for ($j = $idx + 1; $j < count($mi_list); $j++) {
+                    $desc      = $mi_list[$j];
+                    $desc_level = get_nesting_level($menu_items, $desc->ID);
+
+                    // Stop once we return to same or shallower level than seed
+                    if ($desc_level <= $seed_level) { break; }
+
+                    // Only include levels within L3-L5 range (0-indexed 2-4)
+                    if ($desc_level < 2 || $desc_level > 4) { continue; }
+
+                    // Confirm actual descendant (not just sequential)
+                    if (!$_is_descendant($desc->ID, $seed_id)) { break; }
+
+                    $desc_resolved = $_resolve_item($desc);
+                    if ($desc_resolved && !isset($winners_seen[$desc_resolved['id']])) {
+                        $winners_seen[$desc_resolved['id']] = true;
+                        $winners[] = $desc_resolved;
+                    }
+                }
+            }
+        }
+    }
+
+    // --- Render output ---
+    $menu_label = esc_html($menu_slug);
+    $r_count = count($recipients);
+    $m_count = count($missing);
+    $w_count = count($winners);
+
+    echo '<div class="wrap audit-page">';
+    echo '<p><a href="' . esc_url(remove_query_arg(['emails', 'winners'])) . '">&larr; Back to Menu Audit</a></p>';
+    echo '<h1>Email Export: ' . $menu_label . '</h1>';
+    echo '<p>' . $r_count . ' recipients found, ' . $m_count . ' missing emails.';
+    if ($want_winners) { echo ' ' . $w_count . ' winners/honorees.'; }
+    echo '</p>';
+
+    // ---- Winners/Honorees block (when requested) ----
+    if ($want_winners && $w_count > 0) {
+        echo '<h2>Winners &amp; Honorees (' . $w_count . ')</h2>';
+        echo '<p><em>One per line. Click the box to select all.</em></p>';
+        $w_lines = [];
+        foreach ($winners as $w) {
+            $w_lines[] = $w['email'] ? ($w['name'] . ' <' . $w['email'] . '>') : $w['name'];
+        }
+        echo '<textarea rows="' . min(max($w_count, 4), 20) . '" style="width:100%;font-family:monospace;font-size:13px;" onclick="this.select()" readonly>';
+        echo esc_textarea(implode("\n", $w_lines));
+        echo '</textarea>';
+
+        // Winners missing emails — linked to WP admin
+        $w_missing = array_filter($winners, function($w) { return $w['email'] === ''; });
+        if (!empty($w_missing)) {
+            echo '<h3>Winners Missing Emails (' . count($w_missing) . ')</h3>';
+            echo '<ul>';
+            foreach ($w_missing as $w) {
+                if ($w['id']) {
+                    $edit_url = admin_url('post.php?post=' . $w['id'] . '&action=edit');
+                    echo '<li><a href="' . esc_url($edit_url) . '" target="_blank">' . esc_html($w['name']) . '</a></li>';
+                } else {
+                    echo '<li>' . esc_html($w['name']) . '</li>';
+                }
+            }
+            echo '</ul>';
+        }
+    }
+
+    // ---- All nominees (existing output) ----
+    if ($r_count > 0) {
+        echo '<h2>Gmail Recipients (All Nominees)</h2>';
+        echo '<p><em>Click the box to select all, then paste into Gmail "To:" field.</em></p>';
+        $gmail_str = implode(', ', $recipients);
+        echo '<textarea rows="8" style="width:100%;font-family:monospace;font-size:13px;" onclick="this.select()" readonly>';
+        echo esc_textarea($gmail_str);
+        echo '</textarea>';
+    }
+
+    if ($m_count > 0) {
+        echo '<h2>Missing Emails (' . $m_count . ')</h2>';
+        echo '<ul>';
+        foreach ($missing as $m) {
+            $edit_url = admin_url('post.php?post=' . $m['id'] . '&action=edit');
+            echo '<li><a href="' . esc_url($edit_url) . '" target="_blank">' . esc_html($m['name']) . '</a></li>';
+        }
+        echo '</ul>';
+    }
+
+    echo '</div>';
+    get_footer();
+    return;
+}
+
 // Only run menu analysis if event_menu parameter is present
 if (isset($_GET['event_menu'])) {
     // Get all menu slugs

@@ -318,7 +318,7 @@
     </script>
 
 </a-scene>
-<main role="main" class="main <?=$section_class?>">
+<main role="main" class="main <?=$section_class ?? ''?>">
 
 
   </main>

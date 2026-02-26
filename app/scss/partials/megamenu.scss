@@ -402,6 +402,7 @@ body.megamenu-open {
 .megamenu__panel-inner {
     display: flex;
     flex-wrap: nowrap;
+    align-items: flex-start;
     gap: 0;
     padding: 0;
     width: 100%;
@@ -427,7 +428,7 @@ body.megamenu-open {
 .megamenu__group {
     flex: 1 1 0;
     min-width: 0;
-    padding: 1.25rem 1.5rem;
+    padding: 0.35rem 1.5rem 0.25rem;
     border-right: 1px solid $mm-color-border;
     transition: background $mm-transition-speed ease;
     
@@ -441,18 +442,20 @@ body.megamenu-open {
 }
 
 .megamenu__group-title {
-    margin: 0 0 0.75rem;
-    padding-bottom: 0.5rem;
+    margin: 0 0 0.25rem;
+    padding-top: 2px;
+    padding-bottom: 2px;
     font-size: 0.7rem;
     font-weight: 700;
+    line-height: 1.15;
     color: $mm-color-accent;
     letter-spacing: 0.1em;
     border-bottom: 1px solid rgba($mm-color-accent, 0.3);
-    
+
     a {
         color: inherit;
         transition: color $mm-transition-fast ease, text-shadow $mm-transition-fast ease;
-        
+
         &:hover {
             color: $mm-color-text-hover;
             text-shadow: 0 0 10px $mm-color-accent-glow;
@@ -471,45 +474,40 @@ body.megamenu-open {
 // -----------------------------------------------------------------------------
 .megamenu__link {
     position: relative;
-    display: block;
-    padding: 0.4rem 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 0.6rem;
     font-size: 0.8125rem;
+    line-height: 1.1;
     color: $mm-color-text;
     border-radius: 4px;
-    transition: all $mm-transition-fast ease;
-    
+    transform: translateZ(0);
+    transition: transform 180ms ease-out, opacity 180ms ease-out, filter 180ms ease-out, color 180ms ease-out;
+    will-change: transform;
+
+    // No dash / no indent — remove the ::before accent line
     &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 50%;
-        width: 0;
-        height: 1px;
-        background: $mm-color-accent;
-        transform: translateY(-50%);
-        transition: width $mm-transition-fast ease;
+        content: none;
     }
-    
+
     &:hover,
+    &:focus-visible {
+        color: $mm-color-text-hover;
+        transform: scale(1.05);
+        opacity: 1;
+        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.12));
+    }
+
+    // Plain focus (non-keyboard) — no layout shift, just color
     &:focus {
         color: $mm-color-text-hover;
-        background: rgba(255, 255, 255, 0.06);
-        padding-left: 1rem;
-        
-        &::before {
-            width: 6px;
-        }
     }
-    
+
     // Nested L4 links
     &.is-nested {
         padding-left: 1rem;
         font-size: 0.75rem;
         color: rgba($mm-color-text, 0.7);
-        
-        &:hover {
-            padding-left: 1.4rem;
-        }
     }
 }
 
@@ -997,10 +995,89 @@ body {
     &._guest {
         > a, a {
             color: $light_blue;
-            
+
             &:hover {
                 color: #fff;
             }
         }
+    }
+}
+
+// =============================================================================
+// Level 2 / Level 3 Font Size Swap
+// =============================================================================
+// Level 2 (group title) should be LARGER than Level 3 (child links)
+.megamenu__group-title {
+    font-size: 0.8125rem; // was 0.7rem — now larger than L3
+}
+
+.megamenu__group-list .megamenu__link {
+    font-size: 0.75rem; // was 0.8125rem — now smaller than L2
+}
+
+// =============================================================================
+// Trophy Icon — scoped to .the-polys slug class
+// =============================================================================
+// Applied to megamenu panels that have the "the-polys" slug class.
+// Uses ::before pseudo-elements so no extra DOM nodes are added.
+
+.the-polys {
+    // Trophy on megamenu groups (base padding-left is 1.5rem; extend it)
+    .megamenu__group {
+        position: relative;
+        padding-left: calc(1.5rem + 22px);
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            background: url('/wp-content/themes/polysmuseum/images/icons/Trophy.png') no-repeat center / contain;
+            opacity: 0.95;
+            pointer-events: none;
+        }
+    }
+
+    // Trophy on list items inside groups
+    .megamenu__group-list > li {
+        position: relative;
+        padding-left: 22px;
+
+        &::before {
+            content: '';
+            position: absolute;
+            left: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            background: url('/wp-content/themes/polysmuseum/images/icons/Trophy.png') no-repeat center / contain;
+            opacity: 0.9;
+            pointer-events: none;
+        }
+    }
+}
+
+// =============================================================================
+// Red Carpet — megamenu accent scoped to event--red-carpet + .red-carpet items
+// Only applies when body has event--red-carpet AND the megamenu item has red-carpet class
+// =============================================================================
+body.event--red-carpet .megamenu__item.red-carpet {
+    .megamenu__group-title {
+        color: #e60000;
+        border-bottom-color: rgba(#e60000, 0.35);
+
+        a:hover {
+            color: #ff3333;
+            text-shadow: 0 0 10px rgba(#cc0000, 0.4);
+        }
+    }
+
+    .megamenu__link:hover,
+    .megamenu__link:focus-visible {
+        filter: drop-shadow(0 0 10px rgba(#cc0000, 0.25));
     }
 }

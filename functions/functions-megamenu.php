@@ -325,8 +325,24 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
 }
 
 /**
+ * Compute a short slug from a menu item for use as CSS class / data attribute.
+ * Uses the linked post slug if available, otherwise sanitizes the title.
+ *
+ * @param array $item Processed menu item
+ * @return string Sanitized slug (e.g. "the-polys")
+ */
+function _megamenu_item_slug($item) {
+    // Prefer the linked post slug (already URL-safe)
+    if (!empty($item['slug'])) {
+        return sanitize_html_class($item['slug']);
+    }
+    // Fallback: sanitize title
+    return sanitize_title($item['title']);
+}
+
+/**
  * Render menu items recursively
- * 
+ *
  * @param array $items Menu items
  * @param string $mode 'desktop' or 'mobile'
  * @return string HTML output
@@ -397,8 +413,14 @@ function render_megamenu_desktop_item($item, $has_children, $is_current) {
             $output .= '</button>';
         }
         
-        // Panel with children
-        $output .= '<div class="megamenu__panel" id="' . esc_attr($panel_id) . '" data-state="closed" role="menu">';
+        // Panel with children — add slug class + data-mm for CSS/JS targeting
+        $item_slug = _megamenu_item_slug($item);
+        $panel_classes = 'megamenu__panel';
+        if ($item_slug) {
+            $panel_classes .= ' ' . $item_slug;
+        }
+        $data_mm = $item_slug ? ' data-mm="mm_' . esc_attr($item_slug) . '"' : '';
+        $output .= '<div class="' . esc_attr($panel_classes) . '" id="' . esc_attr($panel_id) . '" data-state="closed" role="menu"' . $data_mm . '>';
         $output .= '<div class="megamenu__panel-inner cols-auto">';
         $output .= render_megamenu_panel_content($item['children']);
         $output .= '</div>';
@@ -711,11 +733,87 @@ function get_sectionbar_data($menu_slug = 'megamenu') {
         }
     }
     
+    // Fallback: if no URL match, try matching via the current post's parent hierarchy or section_class.
+    // This handles event child pages (red-carpet, ceremony, etc.) whose URLs are nested
+    // under a parent event that IS in the megamenu but the child page itself isn't an L2 item.
+    if (!$best_match && $post) {
+        // Walk up the post parent chain to find an ancestor whose URL matches an L2 item
+        $ancestor_id = $post->post_parent;
+        $max_depth = 5; // safety limit
+        while ($ancestor_id && $max_depth-- > 0) {
+            $ancestor_path = rtrim(parse_url(get_permalink($ancestor_id), PHP_URL_PATH), '/');
+            foreach ($menu_data['items'] as $l1_item) {
+                if (empty($l1_item['children'])) continue;
+                $l1_path = rtrim(parse_url($l1_item['url'], PHP_URL_PATH), '/');
+                // Check if ancestor matches L1
+                if (!empty($l1_path) && $l1_path !== '/' && $l1_path !== '#' && $ancestor_path === $l1_path) {
+                    return [
+                        'parent' => $l1_item,
+                        'children' => $l1_item['children'],
+                        'brand' => _sectionbar_detect_brand($l1_path)
+                    ];
+                }
+                // Check if ancestor matches any L2
+                foreach ($l1_item['children'] as $l2_item) {
+                    $l2_path = rtrim(parse_url($l2_item['url'], PHP_URL_PATH), '/');
+                    if ($ancestor_path === $l2_path) {
+                        return [
+                            'parent' => $l1_item,
+                            'children' => $l1_item['children'],
+                            'brand' => _sectionbar_detect_brand($l1_path)
+                        ];
+                    }
+                }
+            }
+            $ancestor = get_post($ancestor_id);
+            $ancestor_id = $ancestor ? $ancestor->post_parent : 0;
+        }
+
+        // Last resort: check section_class meta for brand hint and match to megamenu L1
+        $section_class = get_post_meta($post->ID, 'section_class', true);
+        if ($section_class && in_array($section_class, ['ceremony', 'red-carpet'], true)) {
+            // These are Polys events — find the Polys L1 item by slug, class, or URL
+            foreach ($menu_data['items'] as $l1_item) {
+                if (empty($l1_item['children'])) continue;
+                $l1_slug = !empty($l1_item['slug']) ? $l1_item['slug'] : '';
+                $l1_path = rtrim(parse_url($l1_item['url'], PHP_URL_PATH), '/');
+                $l1_classes = isset($l1_item['classes_array']) ? $l1_item['classes_array'] : [];
+                $is_polys = ($l1_slug === 'the-polys')
+                    || _sectionbar_detect_brand($l1_path) === 'polys'
+                    || in_array('polys', $l1_classes, true)
+                    || in_array('polys2', $l1_classes, true)
+                    || (stripos($l1_item['title'], 'polys') !== false);
+                if ($is_polys) {
+                    return [
+                        'parent' => $l1_item,
+                        'children' => $l1_item['children'],
+                        'brand' => 'polys'
+                    ];
+                }
+            }
+        }
+    }
+
+    // Before falling back to Academy, check if the current post has a section_menu meta.
+    // If it does, skip the Academy fallback — render_sectionbar will handle it via
+    // _sectionbar_from_section_menu() which builds the bar from that menu directly.
+    if (!$best_match && $post) {
+        $post_section_menu = get_post_meta($post->ID, 'section_menu', true);
+        // Also check parent
+        if (empty($post_section_menu) && $post->post_parent) {
+            $post_section_menu = get_post_meta($post->post_parent, 'section_menu', true);
+        }
+        if (!empty($post_section_menu)) {
+            // Return null so render_sectionbar's section_menu fallback kicks in
+            return null;
+        }
+    }
+
     // If no URL match found but we're in Academy context, use Academy L1 as fallback
     if (!$best_match && $current_brand === 'academy' && $academy_fallback) {
         return $academy_fallback;
     }
-    
+
     return $best_match;
 }
 
@@ -769,32 +867,161 @@ function is_sectionbar_current($url) {
 }
 
 /**
+ * Build sectionbar data from a section_menu (separate WP nav menu, not the megamenu).
+ * Used as fallback when URL-based megamenu matching fails (e.g. red-carpet events).
+ *
+ * @param string $section_menu_slug  The nav menu slug from post meta (e.g. 'virtual-red-carpet-1')
+ * @param string $section_class      The section_class meta value (e.g. 'red-carpet', 'ceremony')
+ * @return array|null  Sectionbar data array or null
+ */
+function _sectionbar_from_section_menu($section_menu_slug, $section_class = '') {
+    $menu_items = wp_get_nav_menu_items($section_menu_slug);
+    if (empty($menu_items)) {
+        return null;
+    }
+
+    // Find top-level items (parent == 0) — these are the L1 events
+    $top_items = [];
+    foreach ($menu_items as $item) {
+        if (empty($item->menu_item_parent) || $item->menu_item_parent == 0) {
+            $top_items[] = $item;
+        }
+    }
+
+    if (empty($top_items)) {
+        return null;
+    }
+
+    // Build children array in the same format get_sectionbar_data returns
+    $children = [];
+    foreach ($top_items as $item) {
+        $children[] = [
+            'id'       => $item->ID,
+            'title'    => $item->title,
+            'url'      => $item->url ?: '#',
+            'slug'     => '',
+            'classes'  => implode(' ', (array)$item->classes),
+            'children' => [],
+        ];
+    }
+
+    // Detect brand from section_class or menu slug
+    $brand = 'polys'; // default for ceremony/red-carpet
+    if (stripos($section_menu_slug, 'metatraversal') !== false) {
+        $brand = 'metatraversal';
+    } elseif (stripos($section_menu_slug, 'rpg') !== false || stripos($section_menu_slug, 'ready-player') !== false) {
+        $brand = 'rpg';
+    } elseif (stripos($section_menu_slug, 'academy') !== false) {
+        $brand = 'academy';
+    }
+
+    // Use the first top-level item as the "parent" label, or synthesize one from menu name
+    $menu_obj = wp_get_nav_menu_object($section_menu_slug);
+    $parent_title = $menu_obj ? $menu_obj->name : ucwords(str_replace('-', ' ', $section_menu_slug));
+
+    return [
+        'parent'   => [
+            'id'       => 0,
+            'title'    => $parent_title,
+            'url'      => '#',
+            'slug'     => sanitize_title($parent_title),
+            'classes'  => $section_class,
+            'children' => $children,
+        ],
+        'children' => $children,
+        'brand'    => $brand,
+    ];
+}
+
+/**
  * Render the Section bar HTML
- * 
+ *
  * @param string $menu_slug The menu slug (default: 'megamenu')
  * @return string HTML output
  */
 function render_sectionbar($menu_slug = 'megamenu') {
     $data = get_sectionbar_data($menu_slug);
-    
+
+    // Fallback: if megamenu matching failed, try building sectionbar from section_menu meta.
+    // Walks up the post_parent chain since child pages (red-carpet, etc.) may not have
+    // section_menu set directly — it may live on the parent event.
+    if (!$data) {
+        global $post;
+        if ($post) {
+            $section_menu = get_post_meta($post->ID, 'section_menu', true);
+            $section_class = get_post_meta($post->ID, 'section_class', true);
+
+            // Walk up parents to find section_menu if not on current post
+            if (empty($section_menu) && $post->post_parent) {
+                $ancestor_id = $post->post_parent;
+                $depth = 5;
+                while ($ancestor_id && $depth-- > 0) {
+                    $sm = get_post_meta($ancestor_id, 'section_menu', true);
+                    if (!empty($sm)) {
+                        $section_menu = $sm;
+                        // Also grab section_class from ancestor if we don't have one
+                        if (empty($section_class)) {
+                            $section_class = get_post_meta($ancestor_id, 'section_class', true);
+                        }
+                        break;
+                    }
+                    $anc = get_post($ancestor_id);
+                    $ancestor_id = $anc ? $anc->post_parent : 0;
+                }
+            }
+
+            if (!empty($section_menu)) {
+                $data = _sectionbar_from_section_menu($section_menu, $section_class);
+            }
+        }
+    }
+
     // No active L1 with children - don't render
     if (!$data) {
+        // DEBUG: temporary — remove after confirming red-carpet fix
+        if (polys_is_dev()) {
+            global $post;
+            $dbg = 'sectionbar: no match';
+            if ($post) {
+                $sc = get_post_meta($post->ID, 'section_class', true) ?: '(empty)';
+                $sm = get_post_meta($post->ID, 'section_menu', true) ?: '(empty)';
+                $pt = $post->post_type;
+                $pp = $post->post_parent;
+                $uri = $_SERVER['REQUEST_URI'] ?? '';
+                // Check parent too
+                $psm = $pp ? (get_post_meta($pp, 'section_menu', true) ?: '(empty)') : 'N/A';
+                $psc = $pp ? (get_post_meta($pp, 'section_class', true) ?: '(empty)') : 'N/A';
+                $dbg .= " | sc=$sc | sm=$sm | pt=$pt | parent=$pp | parent_sm=$psm | parent_sc=$psc | uri=$uri";
+                // Test wp_get_nav_menu_items on the found menu
+                if (!empty($sm) || (!empty($psm) && $psm !== '(empty)')) {
+                    $test_slug = !empty($sm) ? $sm : $psm;
+                    $test_items = wp_get_nav_menu_items($test_slug);
+                    $dbg .= " | menu_items_count=" . ($test_items ? count($test_items) : 'FALSE');
+                    $test_obj = wp_get_nav_menu_object($test_slug);
+                    $dbg .= " | menu_obj=" . ($test_obj ? $test_obj->slug : 'FALSE');
+                }
+            } else {
+                $dbg .= ' | no $post';
+            }
+            return "<!-- $dbg -->";
+        }
         return '';
     }
     
     $brand = $data['brand'];
     $parent = $data['parent'];
     $children = $data['children'];
-    
+    $section_slug = _megamenu_item_slug($parent);
+
     ob_start();
     ?>
     <nav class="sectionbar" data-brand="<?php echo esc_attr($brand); ?>" aria-label="<?php echo esc_attr($parent['title']); ?> section navigation">
-        <div class="sectionbar__inner">
+        <div class="sectionbar__inner <?php echo esc_attr($section_slug); ?>"<?php echo $section_slug ? ' data-mm="mm_' . esc_attr($section_slug) . '"' : ''; ?>>
             <ul class="sectionbar__list">
                 <?php foreach ($children as $item): 
                     $is_current = is_sectionbar_current($item['url']);
                 ?>
-                <li class="sectionbar__item">
+                <li class="sectionbar__item<?php echo !empty($item['classes']) ? ' ' . esc_attr($item['classes']) : ''; ?>">
                     <a href="<?php echo esc_url($item['url']); ?>" 
                        class="sectionbar__link<?php echo $is_current ? ' is-current' : ''; ?>"
                        <?php echo $is_current ? 'aria-current="page"' : ''; ?>>

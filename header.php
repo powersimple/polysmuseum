@@ -118,6 +118,11 @@ if($bg=get_post_meta($post->ID,'page-background',true)){
 $section_class = @get_post_meta($post->ID,'section_class',true);
 $class_bg = $section_class;
 
+// Add scoped body class for red-carpet event pages (used by SCSS to avoid style leakage)
+if ($section_class === 'red-carpet' && @$post->post_type === 'event') {
+    $class_bg .= ' event--red-carpet';
+}
+
 // Centralized URL-based brand detection (defined in functions.php)
 // Default is "academy" if no URL pattern matches
 $body_brand = polys_get_current_brand();

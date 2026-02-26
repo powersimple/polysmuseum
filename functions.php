@@ -1,4 +1,6 @@
 <?php
+// DEPLOY CHECK: if this line is missing on prod, file is stale/cached
+define('POLYSMUSEUM_DEPLOY_CHECK', '2026-02-24');
 /**
  * Polys Museum Theme - Functions
  * 
@@ -80,8 +82,30 @@ function featured_image_support(){
 
     // Partner logo: capped at 400px wide, proportional height, no crop
     add_image_size('partner-logo', 400, 9999, false);
+
+    // Register navigation menus
+    register_nav_menus(array(
+        'primary' => __('Primary Menu', 'polysmuseum'),
+        'top'     => __('Top Menu', 'polysmuseum'),
+        'social'  => __('Social Menu', 'polysmuseum'),
+    ));
 }
 add_action('after_setup_theme', 'featured_image_support');
+
+// TEMP DEBUG — remove after verifying menus
+add_action('wp_footer', function() {
+    if (!isset($_GET['polys_menu_debug']) || !current_user_can('manage_options')) return;
+    $menus = get_registered_nav_menus();
+    $locations = get_nav_menu_locations();
+    $theme = wp_get_theme();
+    echo '<!-- POLYS MENU DEBUG
+Theme: ' . $theme->get('Name') . ' (' . $theme->get_stylesheet() . ')
+functions.php: ' . (function_exists('featured_image_support') ? 'loaded' : 'NOT LOADED') . '
+registered_nav_menus: ' . print_r($menus, true) . '
+nav_menu_locations: ' . print_r($locations, true) . '
+current_theme_supports(menus): ' . (current_theme_supports('menus') ? 'yes' : 'no') . '
+-->';
+});
 
 /**
  * =============================================================================
