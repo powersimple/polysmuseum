@@ -24,10 +24,7 @@ createCalendarEvent(event);
   <div class="d-flex container-flex">
     <div class="col-md-7 left">
       <div class="widget-container">
-        <h2>Join Our Event!</h2>
-        <p>Don't miss out on this exciting opportunity.</p>
-        <button class="widget-button" onclick="addToGoogleCalendar(eventConfig)">Add to Google Calendar</button>
-        <button class="widget-button" onclick="downloadICS(eventConfig)">Download ICS</button>
+       
         <?php
         print do_blocks(do_shortcode($post->post_content));
         if(@$section_class == 'ceremony'){
