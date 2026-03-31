@@ -93,7 +93,7 @@ if (menus_loaded == false) {
     // getStaticJSON('menus', loadMenus) // returns all content
 }
 if (data_loaded == false) {
-    getStaticJSON('content', setData) // returns all content
+    // getStaticJSON('content', setData) // returns all content
 }
 function loadMenus(data){
    // console.log('loadMenus received data:', data);

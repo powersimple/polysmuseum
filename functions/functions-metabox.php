@@ -150,7 +150,8 @@ function profile_info( $meta_boxes ) {
                 'name'    => esc_html__( 'Media Release On File', 'online-generator' ),
                 'id'      => $prefix . 'media_release_on_file',
                 'options' => [
-                    'Perpetual Polys Release' => esc_html__( 'Perpetual Polys Release', 'online-generator' ),
+					'Unsigned' => esc_html__( 'Unsigned', 'online-generator' ),
+					'Perpetual Polys Release' => esc_html__( 'Perpetual Polys Release', 'online-generator' ),
                     '5th Polys Release'       => esc_html__( '5th Polys Release', 'online-generator' ),
                     'WebXR Summits Release'   => esc_html__( 'WebXR Summits Release', 'online-generator' ),
                 ],

@@ -854,6 +854,13 @@ li.nominee:has(.winner) {
         margin-top: 0.125rem;
     }
 
+    .nominee-description {
+        font-weight: 400;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        color: var(--text-2);
+    }
+
     // ── Right: choice pills ──
     .nominee-choices {
         display: grid;

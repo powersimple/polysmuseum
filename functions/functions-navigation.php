@@ -274,7 +274,8 @@
 
 					$children[$m->ID]['notes'] = $m->_notes;
 
-					$children[$m->ID]['classes'] = $m->classes;
+					$children[$m->ID]['description'] = $m->description;
+				$children[$m->ID]['classes'] = $m->classes;
 					//$children[$m->ID]['embed_video_url'] = get_post_meta($m->ID,"embed_video_url",true);
 				
 					

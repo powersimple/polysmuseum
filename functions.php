@@ -601,4 +601,14 @@ add_action( 'manage_media_custom_column', 'add_model_viewer_content', 10, 2 );
  */
 require_once get_template_directory() . '/admin/arrivalspace-admin.php';
 
+/**
+ * Add body class for press-release posts
+ */
+add_filter('body_class', function ($classes) {
+    if (is_singular('post') && has_category('press-release')) {
+        $classes[] = 'press-release-page';
+    }
+    return $classes;
+});
+
 ?>

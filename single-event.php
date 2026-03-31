@@ -35,7 +35,7 @@ if (!function_exists('event_format_video_url')) {
     }
 }
 
-get_header(); 
+get_header();
 
 // Get event metadata
 $default_video_url = get_post_meta($post->ID, "embed_video_url", true);
@@ -271,16 +271,16 @@ if (!function_exists('display_LookingGlass')) {
                 <div class="video-position">
                     <div id="video-wrap-header"></div>
                     <div class="video-wrap">
-                        <iframe id="video-player" 
-                                src="<?php echo esc_url($first_video_url); ?>" 
-                                frameborder="0" 
+                        <iframe id="video-player"
+                                src="<?php echo esc_url($first_video_url); ?>"
+                                frameborder="0"
                                 allow="autoplay; encrypted-media"
                                 allowfullscreen></iframe>
                     </div>
                     <div id="video-wrap-footer"></div>
                 </div>
                 <?php endif; ?>
-                
+
                 <?php if (!empty($sponsor_board)): ?>
                 <div class="sponsor-board">
                     <img src="<?php echo esc_url(getThumbnail($sponsor_board, 'medium_large')); ?>" alt="Sponsors" />

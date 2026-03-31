@@ -26,9 +26,15 @@
 
    
 
+<?php
+    // ?antialias=0 disables AA for Quest perf testing; ?stats=1 shows A-Frame stats panel
+    $aa_enabled = !(isset($_GET['antialias']) && $_GET['antialias'] === '0');
+    $show_stats = isset($_GET['stats']) && $_GET['stats'] === '1';
+?>
 <a-scene grab-panels item-grab device-set nomination-link anti-drop device-orientation-permission-ui
     physics="iterations: 30"
-    renderer="antialias: true;
+    <?php if ($show_stats) { echo 'stats '; } ?>
+    renderer="antialias: <?= $aa_enabled ? 'true' : 'false' ?>;
              colorManagement: true;
              sortTransparentObjects: true;
              maxCanvasWidth: 5600;
@@ -68,9 +74,10 @@
 
 
 ?>
+<!--
 <a-entity id="golden-gizmo-wrapper" position="-2 -7 -3" rotation="0 45 0" scale="1 1 1" visible="true">
        <a-entity id="golden-gizmo-ring-x" class="center-obj-zone collision"
-                gltf-model="#golden-gizmo-ring" visible="true"
+                gltf-model="#golden-gizmo-ring" gold-ring-tune visible="true"
                 scale="1 1 1"
                 rotation="0 15 0"
                 position="0 0 0"
@@ -78,25 +85,51 @@
                 ></a-entity>
 
                 <a-entity id="golden-gizmo-ring-y" class="center-obj-zone collision"
-                gltf-model="#golden-gizmo-ring" visible="true"
+                gltf-model="#golden-gizmo-ring" gold-ring-tune visible="true"
                 scale="1 1 1"
                 rotation="0 90 90"
                 position="0 0 0"
                 animation="property: object3D.rotation.x; to: 360; easing: linear; dur: 24000; loop: true;"
                 ></a-entity>
-             
-            
+
+
                 <a-entity id="golden-gizmo-ring-z" class="center-obj-zone collision"
-                gltf-model="#golden-gizmo-ring" visible="true"
+                gltf-model="#golden-gizmo-ring" gold-ring-tune visible="true"
                 scale="1 1 1"
                 rotation="0 0 90"
                 position="0 0 0"
                 animation="property: object3D.rotation.x; to: 360; easing: linear; dur: 24000; loop: true;"
                 ></a-entity>
+
+  
+
+
 </a-entity><!-- golden gizmo ring -->
 
-
+ <a-entity id="trophy-wrapper" class="center-obj-zone" 
+                gltf-model="#trophy"  visible="true"
+                scale="0 0 0"
+                position="0 0 0"
+                rotation="0 0 0" 
+           >
+        <?php
+  include "webxr/polys6/trophy-spin.php";
+  //  
+?>
+        </a-entity><!-- closes trophy-rotation from trophy-spin.php -->
+        </a-entity><!-- closes trophy-wrapper -->
 <a-entity id="awards-2022" position="-1.264 -8 -6.661" rotation="0 0 0" scale="1 1 1" visible="true">
+    
+
+       <a-entity id="polys6-logo-model" class="center-obj-zone" static-body="sphereRadius: NaN" gltf-model="/assets/models/polys/6th/6thPolysLogoGoldTextOnly.glb" scale="4 4 4" position="0 31.95397 0" velocity=""></a-entity>
+
+        <a-entity id="trophy-model" class="center-obj-zone" 
+                gltf-model="#trophy"  visible="true"
+                scale="10 10 10"
+                position="0 0 0"
+                rotation="0 0 0" 
+           ></a-entity>
+
     <a-entity id="platform-wrap"  scale="2 2 2" position="0 0 0" rotation="0 25 0" visible="<?=$showplatform?>">
       
 
@@ -129,6 +162,7 @@
              include "webxr/polys6/lights.php"; 
              if($showplatform == "true"){
             ?>
+            
         <a-entity id="trophy-rotation-inner" class="center-obj-zone" 
                 visible="true"
                 scale="1 1 1"
@@ -149,12 +183,7 @@
          
 </a-entity>
 
-            <a-entity id="polys6-logo-model" class="center-obj-zone"
-                        gltf-model="#The6thPolysLogo"  visible="true"
-                        scale="8 8 8" position="0 36 0" rotation="0 0
-                         0"
-                        ></a-entity>
-   
+         
   
 
                         <a-entity id="ring-wrapper" class="center-obj-zone"

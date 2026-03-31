@@ -6845,6 +6845,12 @@ li.nominee:has(.winner) {
 #ballot .nominee-socials {
   margin-top: 0.125rem;
 }
+#ballot .nominee-description {
+  font-weight: 400;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  color: var(--text-2);
+}
 #ballot .nominee-choices {
   display: grid;
   grid-auto-flow: column;
@@ -8169,6 +8175,144 @@ model-viewer#reveal {
   font-size: 1rem;
 }
 
+body.press-release-page {
+  background: #ffffff;
+  color: #111111;
+}
+
+body.press-release-page .main {
+  background: #ffffff;
+  color: #111111;
+}
+
+body.press-release-page .event-post,
+body.press-release-page .col-md-7.left.event-post,
+body.press-release-page .col-md-7.left,
+body.press-release-page .press-release-content,
+body.press-release-page .press-release-content .post {
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+  color: #222222;
+  font-size: 18px;
+  line-height: 1.72;
+}
+
+body.press-release-page .col-md-7.left,
+body.press-release-page .col-md-7.left.event-post,
+body.press-release-page .press-release-content {
+  float: none;
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
+body.press-release-page .title-bar {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 0;
+}
+
+body.press-release-page .title-bar .title {
+  color: #111111;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 2.5rem;
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+body.press-release-page h1,
+body.press-release-page h2,
+body.press-release-page h3,
+body.press-release-page h4,
+body.press-release-page h5,
+body.press-release-page h6 {
+  color: #111111;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+body.press-release-page h1 {
+  font-size: 2.5rem;
+  line-height: 1.15;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+body.press-release-page p {
+  color: #222222;
+  margin-bottom: 1.2rem;
+}
+
+body.press-release-page a {
+  color: #0a66c2;
+  text-decoration: underline;
+}
+
+body.press-release-page strong,
+body.press-release-page b {
+  color: #111111;
+}
+
+body.press-release-page blockquote {
+  color: #222222;
+  border-left: 4px solid #d0d0d0;
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  font-style: italic;
+}
+
+body.press-release-page hr {
+  border: 0;
+  border-top: 1px solid #d9d9d9;
+  margin: 2rem 0;
+}
+
+body.press-release-page ul,
+body.press-release-page ol {
+  margin: 0 0 1.2rem 1.5rem;
+  color: #222222;
+}
+
+body.press-release-page img {
+  max-width: 100%;
+  height: auto;
+  margin: 1.5rem 0;
+}
+
+body.press-release-page .col-md-5.right,
+body.press-release-page .right,
+body.press-release-page .event-sidebar,
+body.press-release-page .video-sidebar {
+  display: none;
+}
+
+body.press-release-page .container,
+body.press-release-page .container-fluid,
+body.press-release-page .row {
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  body.press-release-page .event-post,
+  body.press-release-page .col-md-7.left.event-post,
+  body.press-release-page .col-md-7.left,
+  body.press-release-page .press-release-content .post {
+    padding: 2rem 1rem 3rem;
+    font-size: 17px;
+    line-height: 1.68;
+  }
+  body.press-release-page h1,
+  body.press-release-page .title-bar .title {
+    font-size: 2rem;
+  }
+  body.press-release-page .title-bar {
+    padding: 1.5rem 1rem 0;
+  }
+}
 main .business-summit a,
 #dynamic-hero.business-summit a {
   background: rgb(255, 255, 4);

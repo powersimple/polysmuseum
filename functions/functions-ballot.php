@@ -59,7 +59,11 @@ function get_ballot($award_id,$children,$counter){
       if(@$ballot[$award_id]){
         print "<div class='category-status category-status--voted'>You have already voted in this category ✅. <br>You may change your vote if you wish.</div>";
       } else{
-        print "<div class='category-status'>Click on the Nominee Name or Laurel to launch link in your immersive Browser. Evaluation of Experience Nominations may only be done exclusively through an immersive browser. Do not use a 2D screen.</div>";
+        if(isset($_GET['DOTY']) && $_GET['DOTY'] === '1'){
+          print "<div class='category-status'>Please use this ranked choice ballot to choose your top three.</div>";
+        } else {
+          print "<div class='category-status'>Click on the Nominee Name or Laurel to launch link in your immersive Browser. Evaluation of Experience Nominations may only be done exclusively through an immersive browser. Do not use a 2D screen.</div>";
+        }
       }
 
       // ── Choice legend (visible on wide screens) ──
@@ -144,6 +148,9 @@ function get_ballot($award_id,$children,$counter){
           get_nomination($children,$counter,2); // max_depth=2: show Level 4, suppress Level 5
           print "</ul>";
           $counter --;
+        }
+        if(!empty($child['description'])){
+          print "<div class='nominee-description'>" . esc_html($child['description']) . "</div>";
         }
         print "</div>"; // .nominee-meta
         print "</div>"; // .nominee-left

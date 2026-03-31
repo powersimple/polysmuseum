@@ -5,18 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="profile" href="https://gmpg.org/xfn/11">
     <link rel="shortcut icon" href="<?php echo get_stylesheet_directory_uri();?>/images/icons/favicon.ico" />
-<?php 
+<?php
 $post_title = modify_post_title();
 add_filter('wp_title', 'modify_post_title', 10, 2);
 $url = wp_upload_dir();
 // All CSS is enqueued via functions-enqueue.php - do not add hardcoded links here
 wp_head();
 
+// Null-safe post references for custom tool pages where $post may not exist
+global $post;
+$_has_post = isset($post) && is_object($post);
+$current_post_id = $_has_post && isset($post->ID) ? (int) $post->ID : 0;
+$current_post_name = $_has_post && isset($post->post_name) ? $post->post_name : '';
+$current_post_type = $_has_post && isset($post->post_type) ? $post->post_type : '';
+$current_post_title = $_has_post && isset($post->post_title) ? $post->post_title : '';
 
 if(is_front_page()){
   $page_title= '';
 } else {
-  $page_title = $post->post_title . " | ";
+  $page_title = $current_post_title . " | ";
 }
 
   if(strpos($_SERVER['HTTP_HOST'],'obi-wan-v:3000')){
@@ -27,7 +34,7 @@ if(is_front_page()){
   // INCLUDES AFRAME JS TAGES ONLY IF IT IS ENABLED.
 
   //
- $aframe =    get_post_meta($post->ID,"use_aframe",true);
+ $aframe = $current_post_id ? get_post_meta($current_post_id, "use_aframe", true) : '';
 
 
 
@@ -46,9 +53,9 @@ if(is_front_page()){
 
 $rel_path= str_replace(url_root(),"",get_stylesheet_directory_uri());
 // section vars used below in JS Default Var declarations
-$section_class = @get_post_meta($post->ID,"section_class",true);
-$section_menu = @get_post_meta($post->ID,"section_menu",true);
-$section_menu_slug = @get_term($section_menu,"nav_menu")->slug;
+$section_class = $current_post_id ? get_post_meta($current_post_id, "section_class", true) : '';
+$section_menu = $current_post_id ? get_post_meta($current_post_id, "section_menu", true) : '';
+$section_menu_slug = $section_menu ? @get_term($section_menu, "nav_menu")->slug : '';
 
 global $default_embed_video_url;
 $default_embed_video_url = "https://www.youtube.com/embed/AWFgm65j4n8?autoplay=1&rel=0";
@@ -64,8 +71,8 @@ if (location.protocol !== 'https:') {
     location.replace(`https:${location.href.substring(location.protocol.length)}`);
 }
       // Wordpress PHP variables to render into JS at outset.
-      var active_id = <?=$post->ID?>,
-      active_object = "<?=$post->post_type?>",
+      var active_id = <?=$current_post_id?>,
+      active_object = "<?=$current_post_type?>",
       home_page = <?=get_option( 'page_on_front' )?>,
       site_title = "<?=get_bloginfo('name')?>",
       xr_path = "<?=get_stylesheet_directory_uri()?>/xr/",
@@ -76,7 +83,7 @@ if (location.protocol !== 'https:') {
       
       section_menu = "<?=$section_menu?>",
       section_menu_slug = "<?=$section_menu_slug?>",
-      slug = "<?=$post->post_name;?>",
+      slug = "<?=$current_post_name;?>",
       
 
 
@@ -99,7 +106,7 @@ if (location.protocol !== 'https:') {
    
   
 
-    $thumbnail =getThumbnail(get_post_thumbnail_id($post->ID),"Full");
+    $thumbnail = $current_post_id ? getThumbnail(get_post_thumbnail_id($current_post_id), "Full") : '';
           }
 
          
@@ -108,18 +115,18 @@ if (location.protocol !== 'https:') {
 
 <?php
 $page_style = '';
-if($bg=get_post_meta($post->ID,'page-background',true)){
+if($current_post_id && $bg=get_post_meta($current_post_id,'page-background',true)){
    $bg_src = getThumbnail($bg);
   if($bg_src != ''){
     $style_background="background:url($bg_src);background-size:cover";
   }
   $page_style = "style='$style_background'";
 }
-$section_class = @get_post_meta($post->ID,'section_class',true);
+$section_class = $current_post_id ? get_post_meta($current_post_id, 'section_class', true) : '';
 $class_bg = $section_class;
 
 // Add scoped body class for red-carpet event pages (used by SCSS to avoid style leakage)
-if ($section_class === 'red-carpet' && @$post->post_type === 'event') {
+if ($section_class === 'red-carpet' && $current_post_type === 'event') {
     $class_bg .= ' event--red-carpet';
 }
 
@@ -174,8 +181,8 @@ function extract_number($class) {
 }
 
 
-      $section_class = @get_post_meta($post->ID,"section_class",true);
-    $section_hero_class = @get_post_meta($post->ID,"section_hero_class",true);
+      $section_class = $current_post_id ? get_post_meta($current_post_id, "section_class", true) : '';
+    $section_hero_class = $current_post_id ? get_post_meta($current_post_id, "section_hero_class", true) : '';
 
       if($section_hero_class == ''){
         $section_hero_class = 'hero-cover-25';
@@ -188,11 +195,11 @@ function extract_number($class) {
         $padding_bottom = '';
       }
 
-      $hero=get_post_meta($post->ID,'hero',true);
-   $hero_image = getThumbnail($hero);
-        
-      $slides = get_slides($post->ID);
-      if($post->post_name != 'nominees'){
+      $hero = $current_post_id ? get_post_meta($current_post_id, 'hero', true) : '';
+   $hero_image = $hero ? getThumbnail($hero) : '';
+
+      $slides = $current_post_id ? get_slides($current_post_id) : [];
+      if($current_post_name != 'nominees'){
 
       
       ?>
@@ -276,7 +283,7 @@ function extract_number($class) {
           <?php
         
 
-        $slick =    get_post_meta($post->ID,"use_slick",true);  
+        $slick = $current_post_id ? get_post_meta($current_post_id, "use_slick", true) : '';  
         if(@$slick == 1){
           require_once("functions/slick.php");
         }

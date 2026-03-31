@@ -246,6 +246,7 @@ if (isset($_GET['event_menu']) && isset($_GET['emails']) && $_GET['emails'] === 
     $winners       = []; // ['name'=>..., 'email'=>..., 'id'=>...] ordered list
     $winners_seen  = []; // dedupe by object_id
 
+
     foreach ($menu_slugs as $slug) {
         $results = get_menu_items_for_slug($slug);
         if (is_string($results)) { continue; }
@@ -395,9 +396,10 @@ if (isset($_GET['event_menu']) && isset($_GET['emails']) && $_GET['emails'] === 
     }
 
     echo '</div>';
-    get_footer();
-    return;
 }
+
+// Profile details mode: ?profile_details=1 swaps Email/Release columns for profile fields
+$profile_mode = isset($_GET['profile_details']) && $_GET['profile_details'] === '1';
 
 // Only run menu analysis if event_menu parameter is present
 if (isset($_GET['event_menu'])) {
@@ -452,6 +454,13 @@ if (isset($_GET['event_menu'])) {
             echo '<th>Parent ID</th>';
             echo '<th>Type</th>';
             echo '<th>Post Title</th>';
+            echo '<th>Email</th>';
+            echo '<th>Release</th>';
+            if ($profile_mode) {
+                echo '<th>Company</th>';
+                echo '<th>Title</th>';
+                echo '<th>Instagram</th>';
+            }
             echo '<th>Menu Title</th>';
             echo '<th>Winner</th>';
             echo '</tr></thead><tbody>';
@@ -711,6 +720,72 @@ if (isset($_GET['event_menu'])) {
                          $arrows . esc_html($post_title) . '</span>';
                 }
                 echo '</td>';
+                // Email column: resolve from object meta
+                echo '<td>';
+                if ($item->object_id) {
+                    $oid = (int)$item->object_id;
+                    foreach (['email', 'profile_email', 'contact_email'] as $_ekey) {
+                        $_eval = get_post_meta($oid, $_ekey, true);
+                        if (!empty($_eval) && is_email($_eval)) {
+                            echo esc_html($_eval);
+                            break;
+                        }
+                    }
+                }
+                echo '</td>';
+                // Release column
+                echo '<td>';
+                if ($item->object_id) {
+                    $release = get_post_meta((int)$item->object_id, 'media_release_on_file', true);
+                    echo ($release === 'Perpetual Polys Release')
+                        ? '<span class="audit-check" style="color:#2ecc71;font-weight:bold;">✔</span>'
+                        : '<span class="audit-x" style="color:#e74c3c;font-weight:bold;">✖</span>';
+                }
+                echo '</td>';
+                /* BEGIN RESTORE POINT: profile_details additive columns */
+                if ($profile_mode) {
+                    // Company column
+                    echo '<td>';
+                    if ($item->object_id) {
+                        $company = get_post_meta((int)$item->object_id, 'company', true);
+                        echo esc_html($company);
+                    }
+                    echo '</td>';
+                    // Title column (profile_title)
+                    echo '<td>';
+                    if ($item->object_id) {
+                        $profile_title = get_post_meta((int)$item->object_id, 'profile_title', true);
+                        echo esc_html($profile_title);
+                    }
+                    echo '</td>';
+                    // Instagram column (normalized @handle)
+                    echo '<td>';
+                    if ($item->object_id) {
+                        $ig_handle = '';
+                        $oid = (int)$item->object_id;
+                        foreach (['instagram', 'profile_instagram', 'instagram_url'] as $_igkey) {
+                            $_igval = trim(get_post_meta($oid, $_igkey, true));
+                            if (!empty($_igval)) {
+                                $ig_handle = $_igval;
+                                break;
+                            }
+                        }
+                        if ($ig_handle !== '') {
+                            $ig_handle = preg_replace('#^https?://#i', '', $ig_handle);
+                            $ig_handle = preg_replace('#^(www\.)?instagram\.com/#i', '', $ig_handle);
+                            $ig_handle = strtok($ig_handle, '?');
+                            $ig_handle = strtok($ig_handle, '#');
+                            $ig_handle = rtrim($ig_handle, '/');
+                            $ig_handle = trim($ig_handle);
+                            if ($ig_handle !== '' && $ig_handle[0] !== '@') {
+                                $ig_handle = '@' . $ig_handle;
+                            }
+                            if ($ig_handle !== '') { echo esc_html($ig_handle); }
+                        }
+                    }
+                    echo '</td>';
+                }
+                /* END RESTORE POINT: profile_details additive columns */
                 echo '<td>';
                 if ($item->post_title !== $post_title) {
                     echo esc_html($item->post_title);
@@ -863,6 +938,46 @@ if (isset($_GET['event_menu'])) {
         if (!isset($_GET['view']) || $_GET['view'] !== 'summary') {
             echo '</tbody></table>';
             audit_render_keys_table($menu_items, $results['menu_items']);
+            echo '</div>';
+        }
+
+        // --- Missing Media Release Email List ---
+        $missing_release_emails = array();
+        foreach ($results['menu_items'] as $item) {
+            if (!$item->object_id) continue;
+            $oid = (int)$item->object_id;
+            $release = get_post_meta($oid, 'media_release_on_file', true);
+            if ($release === 'Perpetual Polys Release') continue;
+
+            $resolved_email = '';
+            foreach (['email', 'profile_email', 'contact_email'] as $_ekey) {
+                $_eval = get_post_meta($oid, $_ekey, true);
+                if (!empty($_eval) && is_email($_eval)) {
+                    $resolved_email = $_eval;
+                    break;
+                }
+            }
+            if (empty($resolved_email)) continue;
+
+            $dedup_key = strtolower($resolved_email);
+            if (isset($missing_release_emails[$dedup_key])) continue;
+
+            $display_name = get_the_title($oid);
+            if (empty($display_name)) {
+                $display_name = $item->post_title;
+            }
+            if (!empty($display_name)) {
+                $missing_release_emails[$dedup_key] = $display_name . ' <' . $resolved_email . '>';
+            } else {
+                $missing_release_emails[$dedup_key] = $resolved_email;
+            }
+        }
+
+        if (!empty($missing_release_emails)) {
+            $gmail_string = implode(', ', $missing_release_emails);
+            echo '<div class="card" style="margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ccd0d4;">';
+            echo '<h2>Missing Media Release Email List (' . count($missing_release_emails) . ')</h2>';
+            echo '<textarea readonly style="width:100%;min-height:120px;font-family:monospace;font-size:13px;padding:10px;">' . esc_textarea($gmail_string) . '</textarea>';
             echo '</div>';
         }
     }

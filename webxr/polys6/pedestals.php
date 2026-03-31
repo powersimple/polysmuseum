@@ -79,10 +79,11 @@
 
 
    <!--TROPHY-->
-   <a-entity id="<?=$pedestal['slug']?>-grab" class="clickable grabbable center-obj-zone" dynamic-body="shape: box; mass: 2" position="0.007 1.928 0.00835" mixin="obj" rotation="0 30 0" scale=".5 .5 .5" gltf-model="#trophy">
+   <a-entity id="<?=$pedestal['slug']?>-grab" class="clickable grabbable center-obj-zone" dynamic-body="shape: box; mass: 2" position="0.007 1.928 0.00835" mixin="obj" rotation="0 30 0" scale=".5 .5 .5" gltf-model="#trophy" trophy-material-tune>
    <?php
     if($counter==0){}
-        ?> 
+
+        ?>
 <a-light id="light-<?=$pedestal['slug']?>-1" color="white" position="-2.63319 0.97826 2.92914" rotation="4.99 -41.95 -17.04" light="color: #ffc800; angle: 19.82; type: spot; intensity: 100; decay: 1; distance: 15" visible="">
 </a-light>
     <!-- Left Angle Light (45 degrees) -->
@@ -279,10 +280,48 @@ $pedestal_z = ($pedestal_z-$z_offset);
 
 
 <script>
+/* trophy-material-tune: runs once on model load.
+   Normalizes metalness/roughness on trophy meshes so shared lighting
+   produces strong specular highlights without per-trophy spots.
+   Targets only nodes inside .grabbable trophy entities. */
+/* gold-ring-tune: runs once on model load.
+   Forces high metalness, low roughness, and a warm gold emissive tint
+   so the gizmo rings read as polished gold instead of flat mustard. */
+AFRAME.registerComponent('gold-ring-tune', {
+    init: function () {
+        this.el.addEventListener('model-loaded', function () {
+            this.object3D.traverse(function (node) {
+                if (!node.isMesh || !node.material) return;
+                var mat = node.material;
+                mat.color.setHex(0xe6b422);
+                mat.metalness = 0.9;
+                mat.roughness = 0.18;
+                mat.emissive.setHex(0x996600);
+                mat.emissiveIntensity = 0.9;
+                mat.needsUpdate = true;
+            });
+        });
+    }
+});
 
-
-
-
+AFRAME.registerComponent('trophy-material-tune', {
+    init: function () {
+        this.el.addEventListener('model-loaded', function () {
+            this.object3D.traverse(function (node) {
+                if (!node.isMesh || !node.material) return;
+                var mat = node.material;
+                // Ensure strong gold specular response under shared rig
+                if (mat.metalness !== undefined) {
+                    mat.metalness = Math.max(mat.metalness, 0.85);
+                }
+                if (mat.roughness !== undefined) {
+                    mat.roughness = Math.min(mat.roughness, 0.25);
+                }
+                mat.needsUpdate = true;
+            });
+        });
+    }
+});
 
 AFRAME.registerComponent("item-grab", {
 init: function () {

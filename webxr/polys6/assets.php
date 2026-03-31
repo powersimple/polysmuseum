@@ -13,7 +13,7 @@
 
 
 
-<a-asset-item id="The6thPolysLogo" response-type="arraybuffer" src="/assets/models/polys/6th/6thPolysLogo-Trophy.glb"></a-asset-item>
+<a-asset-item id="logo" response-type="arraybuffer" src="/assets/models/polys/6th/6thPolysLogoGoldTextOnly.glb"></a-asset-item>
 
 <a-asset-item id="ring" response-type="arraybuffer" position="0 0 -5" src="/assets/models/polys/6th/RedRing.glb">
 
@@ -92,7 +92,18 @@ if(@$asset_list){// this var is created in panels.php
  $trophy = '2025-Hosts';//default
  if(@$_GET['trophy']){
      $trophy = @$_GET['trophy'];
+
+
+    if(@$_GET['mode'] == 'base'){
+        $trophy = "bases/".@$_GET['trophy'];
+?>
+<a-asset-item id="decahedron" response-type="arraybuffer" src="/assets/models/polys/6th/bases/2025-Decahedron.glb"></a-asset-item>
+<?php
+
+    }
  }
+?>
+
 ?>
 
 

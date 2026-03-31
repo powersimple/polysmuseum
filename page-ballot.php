@@ -1,5 +1,7 @@
 <?php
-get_header(); 
+get_header();
+$doty_mode = isset($_GET['DOTY']) && $_GET['DOTY'] === '1';
+$ballot_action = $doty_mode ? '?DOTY=1' : '?late=1';
 $section_class = get_post_meta($post->ID,'section_class',true);
 print $default_video_url = get_post_meta($post->ID,"embed_video_url",true);
 
@@ -30,7 +32,7 @@ if($post->post_parent==0){
  
   <div class="col-xs-12 col-sm-8 col-sm-offset-2 col-md-6 col-md-offset-3 ballot-page">
 
-   <h1><?=$post->post_title?></h1>
+   <h1><?php echo $doty_mode ? 'Developer of the Year' : $post->post_title; ?></h1>
 <?php
 
   print "<pre>";
@@ -54,16 +56,21 @@ if($post->post_parent==0){
 
 <?php
  }
+  if($doty_mode){
+?>
+<p>Voting for Developer of the Year has concluded. Thank you.</p>
+<?php
+  } elseif(@$_GET['late'] == 1){
   if(!@$_POST['email'] && !@$_POST['juror_id']){
 ?>
 
-<form method="post" action="?">
+<form method="post" action="<?php echo $ballot_action; ?>">
     <p>Please Enter the Email Address where you received your Jury Invitation<br>
-  Your votes will be anonomyized on the ballot. 
+  Your votes will be anonomyized on the ballot.
   </p>
       <input type="email" name="email" value="" placeholder="Email">
-      <input type="submit" value="Enter to Vote for The Polys">
-    
+      <input type="submit" value="<?php echo $doty_mode ? 'Enter to Vote for Developer of the Year' : 'Enter to Vote for The Polys'; ?>">
+
 
 
 
@@ -88,13 +95,13 @@ if($post->post_parent==0){
         print "Sorry we could not find your email address<br>
         please try again.";
         ?>
-      <form method="post" action="?">
+      <form method="post" action="<?php echo $ballot_action; ?>">
           <p>Please Enter the Email Address where you received your Jury Invitation<br>
-        Your votes will be anonomyized on the ballot. 
+        Your votes will be anonomyized on the ballot.
         </p>
             <input type="email" name="email" value="" placeholder="Email">
-            <input type="submit" value="Enter to Vote for The Polys">
-          
+            <input type="submit" value="<?php echo $doty_mode ? 'Enter to Vote for Developer of the Year' : 'Enter to Vote for The Polys'; ?>">
+
         </form>
           <p>If you cannot access your ballot, please report it to <a href="mailto:webxrawards@gmail.com">webxrawards@gmail.com</a>
         
@@ -139,16 +146,20 @@ $awards = get_menu_array('polys6');
 
 
     foreach($awards as $key => $award){// outer menu loop
-        print "<p class='ballot-reminder'>Please remember to save after voting in each category before voting in the next</p>";
         foreach($award['children'] as $c =>$child){// EVENTS loop
           if($child['classes'][0] == 'honor'){
             continue;
           }
 
-          if($child['classes'][0] == 'nomination' ){
+          // In DOTY mode, match by title regardless of class; otherwise require 'nomination' class
+          $is_doty_match = $doty_mode && stripos($child['title'], 'Developer of the Year') !== false;
+          if($child['classes'][0] == 'nomination' || $is_doty_match){
+            if($doty_mode && !$is_doty_match){
+              continue;
+            }
             print "<section class='ballot-category' data-award-id='" . esc_attr($child['ID']) . "'>";
             ?>
-            <form method="post" action="?">
+            <form method="post" action="<?php echo $ballot_action; ?>">
             <input type="hidden" name="juror_id" value="<?=$juror_id?>">
             <input type="hidden" name="award_id" value="<?=$child['ID']?>">
             
@@ -177,6 +188,15 @@ $awards = get_menu_array('polys6');
 
   }
 
+}
+} else {
+?>
+<p>Jury voting for the 2025 Poly Awards has concluded.<br>
+Thank you to all the jurors who voted.<br>
+Winners will be announced live from SVA Theatre in NYC on Sunday, March 22nd.<br>
+Visit <a href="https://thepolys.com/watch">https://thepolys.com/watch</a> for info on how to watch.<br>
+Tickets are available to attend the show in person at <a href="https://lu.ma/polys6">https://lu.ma/polys6</a></p>
+<?php
 }
 ?>
 

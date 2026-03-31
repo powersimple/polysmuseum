@@ -83,40 +83,33 @@ if(@$_GET['z_offset']){
        -->
        
 
-       
-
-
-
-<a-entity id="trophy-rotation" class="center-obj-zone" 
-                visible="true"
-                scale="1 1 1"
-                position="0 -14.855 0"
-                rotation="0 0 0" 
-               >
+<?php
+  include "webxr/polys6/trophy-spin.php";
+  //  
+?>
 <?php
   include "webxr/polys6/lights.php";
-  //  animation="property: object3D.rotation.y; to: -360; easing: linear; dur:64000; loop: true;"
 ?>
-        <a-entity id="trophy-model" class="center-obj-zone" 
-                gltf-model="#trophy"  visible="true"
-                scale="40 40 40"
-                position="0 0 50"
-                rotation="0 60 0" 
-               
-           > </a-entity>
-           <a-light id="light-p5c-3" color="white" position="-2.79319 0.97826 2.92914" rotation="0.390 -45.03 0.42000000000000004" light="color: #ffc800; angle: 20; type: spot; intensity: 60.14; distance: 3.39" visible="">
-</a-light>
-
-    <!-- Left Angle Light (45 degrees) -->
-    <a-light id="light-p5c-2" color="white" position="1.88137 1.75 3.51503" rotation="0 45 0" light="color: #ffc800; angle: 20; type: spot; intensity: 8; distance: 2.5">
-    </a-light>
 
     <!-- Right Angle Light (-45 degrees) -->
-    <a-light id="light-p5c-3" color="white" position="4.4343 0.29826 3.72449" rotation="0.67 45 0" light="color: #ffc800; angle: 20; type: spot; intensity: 60.14; distance: 3.39" visible="">
+<a-light id="light-p6c-3" color="#ffc800;" position="-20.35664 0 23.01157" rotation="0.67 45 0" light="intensity: 60">
     </a-light>
+ 
+    <!--
+     <a-light id="light-p6c-1" color="white" position="5.71453 1.27885 -12.33844" rotation="0.3901842584840906 46.77340960550475 0.4199780638308934" light="angle: 20; color: #ffc800; distance: 3.39; intensity: 60">
+</a-light>
+
+   
+<a-light id="light-p6c-2" color="white" position="7.89394 4.43214 7.49816" rotation="0 45 0" light="angle: 20; color: #ffc800; distance: 2.5; intensity: 60">
+    </a-light>
+
+    <a-light id="light-p6c-4" color="#ffc800;" position="25 0 -6" rotation="0.67 45 0" light="intensity: 60">
+    </a-light>
+ <a-light id="light-p6c-5" color="#ffc800;" position="25.39257 -14.38285 -4.11565" rotation="0.67 45 0" light="intensity: 60; type: point">
+    </a-light>
+  <a-light id="light-p6c-6" color="#ffc800;" position="0.94408 19.43879 -10.5703" rotation="0.67 45 0" light="intensity: 60; type: point">
+    </a-light>-->
         </a-entity>
-
-
 
 
 

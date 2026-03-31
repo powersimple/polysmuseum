@@ -1,7 +1,8 @@
 <?php
 
-get_header(); 
+get_header();
 $section_class = get_post_meta($post->ID,'section_class',true);
+$is_press_release = is_singular('post') && has_category('press-release', $post);
 print $default_video_url = get_post_meta($post->ID,"embed_video_url",true);
 
 if($hero=get_post_meta($post->ID,'hero',true)){
@@ -41,13 +42,13 @@ if($post->post_parent==0){
 </div>
 
 
-<main role="main" class="main <?=$section_class?>">
+<main role="main" class="main <?=$section_class?><?= $is_press_release ? ' press-release-page' : '' ?>">
 
   <section class="module" id="<?php echo @$slug?>" role="region">
 <div class="row">
 <div class="container">
  
-  <div class="col-xs-12 col-sm-offset-1 col-sm-10">
+  <div class="col-xs-12 col-sm-offset-1 col-sm-10<?= $is_press_release ? ' press-release-content' : '' ?>">
     <div class="post">
 
 <?php

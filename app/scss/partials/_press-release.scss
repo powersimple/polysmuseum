@@ -1,0 +1,162 @@
+// =============================================================================
+// Press Release — readable article override
+// Scoped to body.press-release-page so no other templates are affected.
+// body class added via body_class filter in functions.php
+// =============================================================================
+
+body.press-release-page {
+    background: #ffffff;
+    color: #111111;
+}
+
+body.press-release-page .main {
+    background: #ffffff;
+    color: #111111;
+}
+
+// Article column — full-width, readable measure, centered
+// Targets both single-event.php (.event-post / .col-md-7.left)
+// and single.php (.press-release-content / .post)
+body.press-release-page .event-post,
+body.press-release-page .col-md-7.left.event-post,
+body.press-release-page .col-md-7.left,
+body.press-release-page .press-release-content,
+body.press-release-page .press-release-content .post {
+    max-width: 860px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+    color: #222222;
+    font-size: 18px;
+    line-height: 1.72;
+}
+
+// Make the content column take full width
+body.press-release-page .col-md-7.left,
+body.press-release-page .col-md-7.left.event-post,
+body.press-release-page .press-release-content {
+    float: none;
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+// Title bar override for single.php
+body.press-release-page .title-bar {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 0;
+}
+
+body.press-release-page .title-bar .title {
+    color: #111111;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 2.5rem;
+    line-height: 1.15;
+    font-weight: 700;
+}
+
+// Headings — dark, left-aligned, no forced uppercase
+body.press-release-page h1,
+body.press-release-page h2,
+body.press-release-page h3,
+body.press-release-page h4,
+body.press-release-page h5,
+body.press-release-page h6 {
+    color: #111111;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+body.press-release-page h1 {
+    font-size: 2.5rem;
+    line-height: 1.15;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+// Body copy
+body.press-release-page p {
+    color: #222222;
+    margin-bottom: 1.2rem;
+}
+
+// Links — dark blue, clearly underlined
+body.press-release-page a {
+    color: #0a66c2;
+    text-decoration: underline;
+}
+
+// Bold text
+body.press-release-page strong,
+body.press-release-page b {
+    color: #111111;
+}
+
+// Blockquotes — elegant, restrained
+body.press-release-page blockquote {
+    color: #222222;
+    border-left: 4px solid #d0d0d0;
+    padding-left: 1rem;
+    margin: 1.5rem 0;
+    font-style: italic;
+}
+
+// Horizontal rules
+body.press-release-page hr {
+    border: 0;
+    border-top: 1px solid #d9d9d9;
+    margin: 2rem 0;
+}
+
+// Lists
+body.press-release-page ul,
+body.press-release-page ol {
+    margin: 0 0 1.2rem 1.5rem;
+    color: #222222;
+}
+
+// Images
+body.press-release-page img {
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+}
+
+// Hide sidebar / video rail in press-release mode
+body.press-release-page .col-md-5.right,
+body.press-release-page .right,
+body.press-release-page .event-sidebar,
+body.press-release-page .video-sidebar {
+    display: none;
+}
+
+// Transparent backgrounds on layout containers
+body.press-release-page .container,
+body.press-release-page .container-fluid,
+body.press-release-page .row {
+    background: transparent;
+}
+
+// Mobile refinements
+@media (max-width: 767px) {
+    body.press-release-page .event-post,
+    body.press-release-page .col-md-7.left.event-post,
+    body.press-release-page .col-md-7.left,
+    body.press-release-page .press-release-content .post {
+        padding: 2rem 1rem 3rem;
+        font-size: 17px;
+        line-height: 1.68;
+    }
+
+    body.press-release-page h1,
+    body.press-release-page .title-bar .title {
+        font-size: 2rem;
+    }
+
+    body.press-release-page .title-bar {
+        padding: 1.5rem 1rem 0;
+    }
+}

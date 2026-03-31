@@ -8,7 +8,7 @@ $cam_x =0;
 $cam_y =1.6;
 $cam_z =-3.5;
 
-$fov = 50; // default FOV
+$fov = 30; // default FOV
 if(@$_GET['fov']){
     $fov = 50;
 
