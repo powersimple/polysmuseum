@@ -7423,6 +7423,12 @@ model-viewer#reveal {
   font-family: "AgencyFB-Regular", sans-serif;
   font-size: 24px;
 }
+.ex-nominees-list .creators {
+  font-size: 68%;
+}
+.ex-nominees-list .presenter {
+  display: none;
+}
 
 .ex-nominees {
   margin-left: 256px;

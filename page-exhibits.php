@@ -773,11 +773,11 @@ if (isset($_GET['event_menu'])) {
                     $lvl = $get_level($itm->ID);
                     // Stop when we return to level 1
                     if ($lvl === 1) { break; }
-                    if ($lvl < 2 || $lvl > 4) { continue; }
+                    if ($lvl < 2 || $lvl > 5) { continue; }
 
                     // Build a readable piece for this item
                     $post = !empty($itm->object_id) ? get_post($itm->object_id) : null;
-                    $title = $post ? $post->post_title : (isset($itm->post_title) ? $itm->post_title : '');
+                    $title = !empty($itm->title) ? $itm->title : ($post ? $post->post_title : (isset($itm->post_title) ? $itm->post_title : ''));
                     $piece = '';
 
                     if ($lvl === 2) {
@@ -823,6 +823,14 @@ if (isset($_GET['event_menu'])) {
                             $piece = esc_html(trim($m[1])) . ' by ' . esc_html(trim($m[2]));
                         } else {
                             $piece = esc_html(trim($title));
+                        }
+                    }
+
+                    // Wrap presenter items in a span
+                    if ($piece !== '') {
+                        $mc = get_post_meta($itm->ID, '_menu_item_classes', true);
+                        if ((is_array($mc) && in_array('presenter', $mc)) || (is_string($mc) && strpos($mc, 'presenter') !== false)) {
+                            $piece = '<span class="presenter">' . $piece . '</span>';
                         }
                     }
 

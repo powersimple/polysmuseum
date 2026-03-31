@@ -394,9 +394,9 @@ function exhibits_render_award_tile(array $award, int $index) {
             $items = isset($g['items']) && is_array($g['items']) ? $g['items'] : array();
             if (!empty($items)) { $nominees_count += count($items); }
             $line = '';
-            if ($label !== '') { $line .= esc_html($label); }
+            if ($label !== '') { $line .= $label; }
             if (!empty($items)) {
-                $line .= ($label !== '' ? ': ' : '') . esc_html(implode(', ', $items));
+                $line .= ($label !== '' ? ': ' : '') . implode(', ', $items);
             }
             if ($line !== '') { $group_lines[] = $line; }
         }
@@ -513,6 +513,35 @@ function exhibits_render_award_tile(array $award, int $index) {
     }
     if (!$is_honoree) {
         $html .= '<div class="ex-line ex-nominees"><h6>Nominees</h6></div>';
+        if (!empty($nominees_html) && !empty($award['presenters']) && is_array($award['presenters'])) {
+            $pnames = array_map('trim', $award['presenters']);
+            $lines = explode('<br>', $nominees_html);
+            foreach ($lines as &$ln) {
+                $stripped = strip_tags(trim($ln));
+                foreach ($pnames as $pn) {
+                    if ($pn !== '' && strpos($stripped, $pn) !== false) {
+                        $ln = '<span class="presenter">' . $ln . '</span>';
+                        break;
+                    }
+                }
+            }
+            unset($ln);
+            $nominees_html = implode('<br>', $lines);
+        }
+        // Wrap everything after the first colon in each line in span.creators
+        if (!empty($nominees_html)) {
+            $lines = explode('<br>', $nominees_html);
+            foreach ($lines as &$ln) {
+                $colonPos = strpos($ln, ':');
+                if ($colonPos !== false) {
+                    $before = substr($ln, 0, $colonPos);
+                    $after = substr($ln, $colonPos);
+                    $ln = $before . '<span class="creators">' . $after . '</span>';
+                }
+            }
+            unset($ln);
+            $nominees_html = implode('<br>', $lines);
+        }
         if (!empty($nominees_html)) { $html .= '<div class="ex-line ex-nominees-list">' . $nominees_html . '</div>'; }
     } else {
         // Honorees: show Level 2 event post content where nominees would be
