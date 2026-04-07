@@ -7225,11 +7225,19 @@ model-viewer#reveal {
   transform: translateZ(10px);
 }
 .ex-winners-list h5.ex-winner-company {
-  width: 570px;
+  width: 550px;
   margin: 0 auto;
   text-align: center;
   font-size: 1.75rem;
   line-height: 120%;
+}
+.ex-winners-list h5.ex-winner-company .ex-winner-person {
+  font-size: 68%;
+  font-weight: 400;
+  text-transform: none !important;
+}
+.ex-winners-list h5.ex-winner-company .ex-winner-person::after {
+  content: " ";
 }
 .ex-winners-list .ex-winner-people-wrap {
   position: relative;
@@ -7416,15 +7424,18 @@ model-viewer#reveal {
 }
 
 .ex-nominees-list {
-  width: 512px;
+  width: 500px;
   margin-left: 256px;
   padding-right: 0;
   line-height: 120%;
-  font-family: "AgencyFB-Regular", sans-serif;
-  font-size: 24px;
+  font-family: "AgencyFB", sans-serif;
+  font-weight: 700;
+  font-size: 1.75rem;
 }
 .ex-nominees-list .creators {
   font-size: 68%;
+  font-weight: 400;
+  text-transform: none;
 }
 .ex-nominees-list .presenter {
   display: none;
@@ -7440,11 +7451,12 @@ model-viewer#reveal {
   margin-left: 256px;
   padding-right: 0;
   line-height: 120%;
-  font-family: "AgencyFB-Regular", sans-serif;
+  font-family: "AgencyFB", sans-serif;
   margin-top: 0;
 }
 .ex-honors-content p {
   line-height: 120%;
+  font-size: 1.5rem;
 }
 
 .many-nominees h4.ex-winner-base {

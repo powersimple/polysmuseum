@@ -343,25 +343,19 @@ function exhibits_render_award_tile(array $award, int $index) {
     }
 
     if (!empty($award['winners']) && is_array($award['winners'])) {
+        $company_parts = array();
         foreach ($award['winners'] as $wi => $winner) {
             $company = isset($winner['company']) ? trim((string)$winner['company']) : '';
             $people = isset($winner['people']) && is_array($winner['people']) ? $winner['people'] : array();
-            $group = '';
-            // Build a single h5 that nests level-5 people as inline spans to avoid extra rows
-            $people_spans = array();
             $people_names = array();
             if (!empty($people)) {
                 foreach ($people as $pn_raw) {
                     $pn = trim((string)$pn_raw);
                     if ($pn === '') { continue; }
-                    $people_spans[] = '<span class="ex-winner-person">' . esc_html($pn) . '</span>';
                     $people_names[] = $pn;
                 }
             }
-            if ($company !== '' || !empty($people_spans)) {
-                // Winner h5 rules (single tag):
-                // - People separated by commas INSIDE each span, with trailing space
-                // - Last person has no trailing comma
+            if ($company !== '' || !empty($people_names)) {
                 $people_html = '';
                 if (!empty($people_names)) {
                     $prefix = ($company !== '' ? ': ' : '');
@@ -373,12 +367,13 @@ function exhibits_render_award_tile(array $award, int $index) {
                     }
                     $people_html = $prefix . $buf;
                 }
-                $group .= '<h5 class="ex-winner-company">'
-                       . ($company !== '' ? 'by ' . esc_html($company) : '')
-                       . $people_html
-                       . '</h5>';
+                $by_prefix = (empty($company_parts) && $company !== '') ? 'by ' : '';
+                $part = ($company !== '' ? $by_prefix . esc_html($company) : '') . $people_html;
+                if ($part !== '') { $company_parts[] = $part; }
             }
-            if ($group !== '') { $winner_lines[] = $group; }
+        }
+        if (!empty($company_parts)) {
+            $winner_lines[] = '<h5 class="ex-winner-company">' . implode('', $company_parts) . '</h5>';
         }
     }
 

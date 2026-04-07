@@ -167,11 +167,12 @@
   }
 
   h5.ex-winner-company {
-    width: 570px;
+    width: 550px;
     margin: 0 auto;
     text-align: center;
     font-size: 1.75rem;
     line-height: 120%;
+    .ex-winner-person { font-size: 68%; font-weight: 400; text-transform: none !important; &::after { content: ' '; } }
   }
 
   // Winner people & acceptance side images
@@ -348,13 +349,14 @@
 .ex-nominee-thumb { width: 75px; height: 75px; object-fit: cover; border-radius: 8px; }
 
 .ex-nominees-list {
-  width: 512px;
+  width: 500px;
   margin-left: 256px;
   padding-right: 0;
   line-height: 120%;
-  font-family: 'AgencyFB-Regular', sans-serif;
-  font-size: 24px;
-  .creators { font-size: 68%; }
+  font-family: 'AgencyFB', sans-serif;
+  font-weight: 700;
+  font-size: 1.75rem;
+  .creators { font-size: 68%; font-weight: 400; text-transform: none; }
   .presenter { display: none; }
 }
 
@@ -370,10 +372,10 @@
   margin-left: 256px;
   padding-right: 0;
   line-height: 120%;
-  font-family: 'AgencyFB-Regular', sans-serif;
+  font-family: 'AgencyFB', sans-serif;
   margin-top: 0;
 
-  p { line-height: 120%; }
+  p { line-height: 120%; font-size: 1.5rem; }
 }
 
 // ── Layout modifiers ─────────────────────────────────────────────────

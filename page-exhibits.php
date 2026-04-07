@@ -499,45 +499,27 @@ if (isset($_GET['event_menu'])) {
 
                 $winners_for_node = array();
 
-                // Walk direct children (level 3) in menu order
-                foreach ($results['menu_items'] as $child_item) {
-                    if ($child_item->menu_item_parent == $item->ID) {
-                        $child_post = get_post($child_item->object_id);
-                        if (!$child_post) { continue; }
-
-                        // Detect if this level-3 child has its own children (treat as company group)
-                        $child_has_children = false;
-                        foreach ($results['menu_items'] as $probe_item) {
-                            if ($probe_item->menu_item_parent == $child_item->ID) { $child_has_children = true; break; }
+                // Walk hierarchy: level 3 → level 4 (companies) → level 5 (people)
+                // Purely hierarchy-driven, no post_type checks
+                foreach ($results['menu_items'] as $lvl3) {
+                    if ($lvl3->menu_item_parent != $item->ID) { continue; }
+                    // Level 3: walk its level-4 children (companies)
+                    foreach ($results['menu_items'] as $lvl4) {
+                        if ($lvl4->menu_item_parent != $lvl3->ID) { continue; }
+                        $lvl4_post = get_post($lvl4->object_id);
+                        if (!$lvl4_post) { continue; }
+                        $wi = array(
+                            'title' => $base_title,
+                            'company' => $lvl4_post->post_title,
+                            'people' => array()
+                        );
+                        // Level 5: people under this company
+                        foreach ($results['menu_items'] as $lvl5) {
+                            if ($lvl5->menu_item_parent != $lvl4->ID) { continue; }
+                            $lvl5_post = get_post($lvl5->object_id);
+                            if ($lvl5_post) { $wi['people'][] = $lvl5_post->post_title; }
                         }
-
-                        // Case 1: Company node at level 3 (resource or any item that has children)
-                        if ($child_item->actual_post_type === 'resource' || $child_has_children) {
-                            $wi = array(
-                                'title' => $base_title,
-                                'company' => $child_post->post_title ?: $base_company,
-                                'people' => array()
-                            );
-                            // Gather level 4 people under this company
-                            foreach ($results['menu_items'] as $grandchild_item) {
-                                if ($grandchild_item->menu_item_parent == $child_item->ID) {
-                                    $grandchild_post = get_post($grandchild_item->object_id);
-                                    if ($grandchild_post && $grandchild_item->actual_post_type === 'profile') {
-                                        $wi['people'][] = $grandchild_post->post_title;
-                                    }
-                                }
-                            }
-                            $winners_for_node[] = $wi;
-                        }
-                        // Case 2: Person directly under the winner at level 3
-                        elseif ($child_item->actual_post_type === 'profile') {
-                            $wi = array(
-                                'title' => $base_title,
-                                'company' => $base_company,
-                                'people' => array($child_post->post_title)
-                            );
-                            $winners_for_node[] = $wi;
-                        }
+                        $winners_for_node[] = $wi;
                     }
                 }
 
