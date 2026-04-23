@@ -172,6 +172,8 @@
     text-align: center;
     font-size: 1.75rem;
     line-height: 120%;
+    text-transform: none;
+    .creators { font-size: 60%; font-weight: 400; }
     .ex-winner-person { font-size: 68%; font-weight: 400; text-transform: none !important; &::after { content: ' '; } }
   }
 

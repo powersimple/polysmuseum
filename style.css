@@ -7230,6 +7230,11 @@ model-viewer#reveal {
   text-align: center;
   font-size: 1.75rem;
   line-height: 120%;
+  text-transform: none;
+}
+.ex-winners-list h5.ex-winner-company .creators {
+  font-size: 60%;
+  font-weight: 400;
 }
 .ex-winners-list h5.ex-winner-company .ex-winner-person {
   font-size: 68%;

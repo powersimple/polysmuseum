@@ -499,28 +499,24 @@ if (isset($_GET['event_menu'])) {
 
                 $winners_for_node = array();
 
-                // Walk hierarchy: level 3 → level 4 (companies) → level 5 (people)
+                // Walk hierarchy: level 3 (company/person) → level 4 (people under company)
                 // Purely hierarchy-driven, no post_type checks
                 foreach ($results['menu_items'] as $lvl3) {
                     if ($lvl3->menu_item_parent != $item->ID) { continue; }
-                    // Level 3: walk its level-4 children (companies)
+                    $lvl3_post = get_post($lvl3->object_id);
+                    if (!$lvl3_post) { continue; }
+                    $wi = array(
+                        'title' => $base_title,
+                        'company' => $lvl3_post->post_title,
+                        'people' => array()
+                    );
+                    // Level 4: people under this level 3 company/person
                     foreach ($results['menu_items'] as $lvl4) {
                         if ($lvl4->menu_item_parent != $lvl3->ID) { continue; }
                         $lvl4_post = get_post($lvl4->object_id);
-                        if (!$lvl4_post) { continue; }
-                        $wi = array(
-                            'title' => $base_title,
-                            'company' => $lvl4_post->post_title,
-                            'people' => array()
-                        );
-                        // Level 5: people under this company
-                        foreach ($results['menu_items'] as $lvl5) {
-                            if ($lvl5->menu_item_parent != $lvl4->ID) { continue; }
-                            $lvl5_post = get_post($lvl5->object_id);
-                            if ($lvl5_post) { $wi['people'][] = $lvl5_post->post_title; }
-                        }
-                        $winners_for_node[] = $wi;
+                        if ($lvl4_post) { $wi['people'][] = $lvl4_post->post_title; }
                     }
+                    $winners_for_node[] = $wi;
                 }
 
                 // If no level-3 children, fallback to a single entry using parsed base title/company
@@ -1568,7 +1564,7 @@ if (isset($_GET['event_menu'])) {
                    . '.cat-hero-wrap .ex-winner-hero-img{width:61.8%;}'
                    . '.cat-cap{margin:0;text-align:center;min-height:84px;width:100%}'
                    . '.cat-cap h4.ex-winner-base{margin:0;font-size:2.2rem;font-weight:700;line-height:1.06;color:#fee813;-webkit-text-stroke:1px #7a5f00;width:auto;max-width:95%;margin-left:auto;margin-right:auto}'
-                   . '.cat-cap h5.ex-winner-company{margin:0;font-size:1.4rem;line-height:1.1;width:100%}'
+                   . '.cat-cap h5.ex-winner-company{margin:0;font-size:1.4rem;line-height:1.1;width:100%;text-transform:none}.cat-cap h5 .creators{font-size:60%;font-weight:400}'
                    . '</style>';
                 echo '<div class="cat-tile">';
                 echo '<div class="ex-corner-brand"><img src="https://obi-wan-v:3000/wp-content/uploads/2025/11/PolysImmersiveAwardsLogoWithTrophy-3-1Aspect-NoYear.png" alt="Polys Immersive Awards" /></div>';
@@ -1633,7 +1629,7 @@ if (isset($_GET['event_menu'])) {
                     // Winners line (company/people)
                     $line = '';
                     if ($wcompany !== '') { $line .= 'by ' . esc_html($wcompany); }
-                    if (!empty($wpeople)) { $line .= ($wcompany !== '' ? ': ' : ' ') . esc_html(implode(', ', $wpeople)); }
+                    if (!empty($wpeople)) { $line .= '<span class="creators">: ' . esc_html(implode(', ', $wpeople)) . '</span>'; }
                     if ($line !== '') { echo '<h5 class="ex-winner-company">' . $line . '</h5>'; }
                     echo '</div>';
                     // Accepted by grid (up to 4), same layout as grouped categories
@@ -1839,7 +1835,7 @@ if (isset($_GET['event_menu'])) {
                    . '.cat-hero-wrap .ex-winner-hero-img{width:61.8%;}'
                    . '.cat-cap{margin:0;text-align:center;min-height:84px;width:100%}'
                    . '.cat-cap h4.ex-winner-base{margin:0;font-size:2.2rem;font-weight:700;line-height:1.06;color:#fee813;-webkit-text-stroke:1px #7a5f00;width:auto;max-width:95%;margin-left:auto;margin-right:auto}'
-                   . '.cat-cap h5.ex-winner-company{margin:0;font-size:1.4rem;line-height:1.1;width:100%}'
+                   . '.cat-cap h5.ex-winner-company{margin:0;font-size:1.4rem;line-height:1.1;width:100%;text-transform:none}.cat-cap h5 .creators{font-size:60%;font-weight:400}'
                    . '</style>';
                 echo '<div class="cat-tile">';
                 echo '<div class="ex-corner-brand"><img src="https://obi-wan-v:3000/wp-content/uploads/2025/11/PolysImmersiveAwardsLogoWithTrophy-3-1Aspect-NoYear.png" alt="Polys Immersive Awards" /></div>';
@@ -1946,7 +1942,7 @@ if (isset($_GET['event_menu'])) {
                     }
                     $line = '';
                     if ($wcompany !== '') { $line .= 'by ' . esc_html($wcompany); }
-                    if (!empty($wpeople)) { $line .= ($wcompany !== '' ? ': ' : ' ') . esc_html(implode(', ', $wpeople)); }
+                    if (!empty($wpeople)) { $line .= '<span class="creators">: ' . esc_html(implode(', ', $wpeople)) . '</span>'; }
                     if ($line !== '') { echo '<h5 class="ex-winner-company">' . $line . '</h5>'; }
                     echo '</div>';
                     // Omit acceptance grid for Community Honors bespoke card
@@ -1975,7 +1971,7 @@ if (isset($_GET['event_menu'])) {
                     .cat-hero-wrap .ex-winner-hero-img{width:61.8%;}
                     .cat-cap{margin:0;text-align:center;min-height:100px;width:100%}
                     .cat-cap h4.ex-winner-base{margin:0;font-size:2.5rem;font-weight:700;line-height:1.1;color:#fee813;-webkit-text-stroke:1px #7a5f00;width:auto;max-width:95%;margin-left:auto;margin-right:auto}
-                    .cat-cap h5.ex-winner-company{margin:0;font-size:1.4rem;line-height:1.1;width:100%}
+                    .cat-cap h5.ex-winner-company{margin:0;font-size:1.4rem;line-height:1.1;width:100%;text-transform:none}.cat-cap h5 .creators{font-size:60%;font-weight:400}
                     .cat-year{font-size:3.5rem;color:#fff;margin:0 0 2px;text-align:center}
                     .cat-presented{font-size:1.25rem;line-height:1.1;color:#e6f0ff;margin:0 0 4px;text-align:center}
                     .cat-acceptance{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;margin-top:2px}
@@ -2087,7 +2083,7 @@ if (isset($_GET['event_menu'])) {
                         }
                         if ($company !== '' || !empty($ppl)) {
                             if ($company !== '') { $line .= 'by ' . esc_html($company); }
-                            if (!empty($ppl)) { $line .= ($company !== '' ? ': ' : ' ') . esc_html(implode(', ', $ppl)); }
+                            if (!empty($ppl)) { $line .= '<span class="creators">: ' . esc_html(implode(', ', $ppl)) . '</span>'; }
                             echo '<h5 class="ex-winner-company">' . $line . '</h5>';
                         }
                         echo '</div>';

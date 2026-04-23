@@ -356,24 +356,19 @@ function exhibits_render_award_tile(array $award, int $index) {
                 }
             }
             if ($company !== '' || !empty($people_names)) {
-                $people_html = '';
-                if (!empty($people_names)) {
-                    $prefix = ($company !== '' ? ': ' : '');
-                    $buf = '';
-                    $last_i = count($people_names) - 1;
-                    foreach ($people_names as $i => $nm) {
-                        $label = esc_html($nm) . ($i !== $last_i ? ', ' : '');
-                        $buf .= '<span class="ex-winner-person">' . $label . '</span>';
-                    }
-                    $people_html = $prefix . $buf;
+                $part = '';
+                if ($company !== '') {
+                    $by_prefix = empty($company_parts) ? 'by ' : '';
+                    $part .= $by_prefix . esc_html($company);
                 }
-                $by_prefix = (empty($company_parts) && $company !== '') ? 'by ' : '';
-                $part = ($company !== '' ? $by_prefix . esc_html($company) : '') . $people_html;
+                if (!empty($people_names)) {
+                    $part .= '<span class="creators">: ' . esc_html(implode(', ', $people_names)) . '</span>';
+                }
                 if ($part !== '') { $company_parts[] = $part; }
             }
         }
         if (!empty($company_parts)) {
-            $winner_lines[] = '<h5 class="ex-winner-company">' . implode('', $company_parts) . '</h5>';
+            $winner_lines[] = '<h5 class="ex-winner-company">' . implode(', ', $company_parts) . '</h5>';
         }
     }
 
