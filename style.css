@@ -2761,7 +2761,6 @@ ul li {
 }
 
 .partner-ticker {
-  display: none;
   height: 75px;
   width: 100%;
   margin-top: -150px;
@@ -2775,6 +2774,7 @@ ul li {
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  display: none;
 }
 @media (min-width: 768px) {
   .partner-ticker {

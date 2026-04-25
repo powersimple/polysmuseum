@@ -111,20 +111,16 @@ const plugins = [
 
         if (filePath.endsWith('.php')) {
           console.log('PHP file changed. Reloading browser...');
-          server.ws.send({ type: 'full-reload' });
           notifyBrowsers();
         } else if (filePath.endsWith('.css')) {
           console.log('CSS file changed. Reloading browser...');
-          server.ws.send({ type: 'full-reload' });
           notifyBrowsers();
         } else if (filePath.includes('app/js/custom/') || filePath.includes('app/js/vendor/')) {
           console.log('Legacy JavaScript file changed. Reprocessing...');
           processLegacyJS();
-          server.ws.send({ type: 'full-reload' });
           notifyBrowsers();
         } else if (ENABLE_CESIUM && filePath.includes('cesium/')) {
           console.log('Cesium file changed. Reloading...');
-          server.ws.send({ type: 'full-reload' });
           notifyBrowsers();
         }
       });
@@ -165,24 +161,19 @@ export default defineConfig({
       key: fs.readFileSync('./localhost.key'),
       cert: fs.readFileSync('./localhost.crt'),
     },
-    proxy: {
-      '/': {
-        target: proxyTarget,
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(`/${serverName}`, ''),
-         headers: {
-      'X-Forwarded-Proto': 'https',
-      'X-Forwarded-Host':  serverName+':3000',
-    }
+   proxy: {
+  '/': {
+    target: proxyTarget,
+    changeOrigin: true,
+    secure: false,
+    rewrite: (path) => path.replace(`/${serverName}`, ''),
+        headers: {
+          'X-Forwarded-Proto': 'https',
+          'X-Forwarded-Host': `${serverName}:3000`,
+        }
       },
     },
-    hmr: {
-      protocol: 'wss',
-      host: 'localhost',
-      overlay: true,
-      clientPort: 3000,
-    },
+    hmr: false,
     watch: {
       include: [
         'style.css',
