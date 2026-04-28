@@ -722,7 +722,7 @@ function get2DLaurels($laurels,$label){
 function get_juror_id($email){
   global $wpdb; 
 //  var_dump($_POST);
-  $q = $wpdb->get_row("SELECT id, name FROM `award_jurors` WHERE email = '$email'");
+  $q = $wpdb->get_row($wpdb->prepare("SELECT id, name FROM `award_jurors` WHERE email = %s", $email));
   //var_dump($q);
 
   return $q;

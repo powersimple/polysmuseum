@@ -5,3 +5,9 @@ node_modules/
 # Dev SSL certs — keep local, never commit
 localhost.crt
 localhost.key
+
+# Local tooling — not part of the theme
+.claude/
+.planning/
+.windsurf/
+.claudeignore

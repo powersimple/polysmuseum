@@ -700,12 +700,12 @@ function match_profilesFromTable($table){
         extract((array) $value);
       
  //  $i = insertProfile($name,$bio,$parent);
-     $ID= $wpdb->get_var("select ID from wp_posts where post_title LIKE '$value->name'");
-     $content= $wpdb->get_var("select post_content from wp_posts where post_title LIKE '$value->name'");
+     $ID= $wpdb->get_var($wpdb->prepare("select ID from wp_posts where post_title LIKE %s", $value->name));
+     $content= $wpdb->get_var($wpdb->prepare("select post_content from wp_posts where post_title LIKE %s", $value->name));
      
      if($ID != NULL){
         
-        $wpdb->query("update _profile_import set bio = '$content' where id = $id");
+        $wpdb->query($wpdb->prepare("update _profile_import set bio = %s where id = %d", $content, $id));
         /*
         var_dump($ID);
         print "$value->name<br>";
@@ -1034,7 +1034,9 @@ function insertEvent($post_title,$post_content,$post_excerpt,$post_parent){
 
     function getChildList($parent,$post_type,$sort='menu_order'){
         global $wpdb;
-        $q= $wpdb->get_results("select ID, post_title, post_name, post_content, post_excerpt from wp_posts where post_status='publish' and post_parent = '$parent' and post_type='$post_type' order by $sort");
+        $allowed_sort = ['menu_order', 'post_title', 'post_date', 'post_modified', 'ID'];
+        $sort = in_array($sort, $allowed_sort, true) ? $sort : 'menu_order';
+        $q= $wpdb->get_results($wpdb->prepare("select ID, post_title, post_name, post_content, post_excerpt from wp_posts where post_status='publish' and post_parent = %d and post_type=%s order by {$sort}", $parent, $post_type));
         $children=[];
         foreach($q as $key=>$value){
             extract((array) $value);
@@ -1057,7 +1059,7 @@ function insertEvent($post_title,$post_content,$post_excerpt,$post_parent){
     }
     function getEventID($id){
         global $wpdb;
-        $parent = $wpdb->get_row("select ID, post_parent from wp_posts where ID = $id");
+        $parent = $wpdb->get_row($wpdb->prepare("select ID, post_parent from wp_posts where ID = %d", $id));
     
         if($parent->post_parent == 0){
             return $parent->ID;
@@ -1328,7 +1330,7 @@ function getMetaLink($data,$field,$wrap='span'){
 }
 function getPostMeta($meta_key){
     global $wpdb;
-    $q= $wpdb->get_results("select distinct meta_value, post_id from wp_postmeta where meta_key = '$meta_key'");
+    $q= $wpdb->get_results($wpdb->prepare("select distinct meta_value, post_id from wp_postmeta where meta_key = %s", $meta_key));
     $children=[];
 
     foreach($q as $key=>$value){

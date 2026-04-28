@@ -1,14 +1,14 @@
 <?php
   function getProfileEvents($id){
     global $wpdb;
-    $sql = "select post_id from wp_postmeta where meta_value = $id and meta_key like 'event_%'";
+    $sql = $wpdb->prepare("select post_id from wp_postmeta where meta_value = %d and meta_key like 'event_%'", $id);
     return $wpdb->get_results($sql);
     
 
   }
   function getProfileSession($id){
     global $wpdb;
-    $sql = "select ID, post_title, post_excerpt, post_content, post_parent from wp_posts where ID = $id";
+    $sql = $wpdb->prepare("select ID, post_title, post_excerpt, post_content, post_parent from wp_posts where ID = %d", $id);
     return $wpdb->get_results($sql);
     
 
@@ -180,7 +180,7 @@ return ob_get_clean();
     }
     function getProfileChildrenIDs($id){
         global $wpdb;
-        $q = $wpdb->get_results("select ID from wp_posts where post_status = 'publish' and post_type='profile' and post_parent = $id order by menu_order");
+        $q = $wpdb->get_results($wpdb->prepare("select ID from wp_posts where post_status = 'publish' and post_type='profile' and post_parent = %d order by menu_order", $id));
         $profile_children = array();
         foreach($q as $key=>$value){
             array_push($profile_children,$value->ID);
