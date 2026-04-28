@@ -2,3 +2,6 @@ node_modules/
 *.log
 .DS_Store
 *.zip
+# Dev SSL certs — keep local, never commit
+localhost.crt
+localhost.key
