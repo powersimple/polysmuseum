@@ -106,11 +106,12 @@ body.megamenu-open {
     right: 0 !important;
     z-index: $mm-z-index-nav;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     width: 100% !important;
     max-width: 100% !important;
-    height: $mm-header-height;
+    min-height: $mm-header-height;
+    height: auto;
     padding: 0 1rem;
     margin: 0 !important;
     background: linear-gradient(180deg, rgba(8, 8, 12, 0.98) 0%, rgba(15, 15, 20, 0.95) 100%);
@@ -174,7 +175,9 @@ body.megamenu-open {
     height: 38px;
     width: auto;
     max-height: 38px;
+    max-width: none; // never squash the logo
     object-fit: contain;
+    flex-shrink: 0;
     transition: filter $mm-transition-speed ease, transform $mm-transition-speed ease;
     filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
     
@@ -190,7 +193,8 @@ body.megamenu-open {
     align-items: center;
     height: $mm-header-height;
     padding: 0 0.5rem;
-    
+    flex-shrink: 0;
+
     &::after {
         display: none; // No underline for logo links
     }
@@ -237,13 +241,13 @@ body.megamenu-open {
 // -----------------------------------------------------------------------------
 .megamenu__bar {
     display: none;
-    
+
     @media (min-width: $mm-breakpoint-md) {
         display: flex;
-        align-items: stretch;
+        align-items: flex-start;
         justify-content: flex-start;
         flex: 1;
-        height: $mm-header-height;
+        min-height: $mm-header-height;
         margin: 0;
         padding: 0;
     }
@@ -253,14 +257,19 @@ body.megamenu-open {
     display: flex;
     align-items: stretch;
     justify-content: flex-start;
+    flex-wrap: wrap;         // allow nav row to wrap beneath logos when narrow
+    align-content: flex-start;
     width: 100%;
-    height: $mm-header-height;
+    min-height: $mm-header-height;
     gap: 0;
     margin: 0;
     padding: 0;
-    
-    // First item with logo pushes rest to the right
-    > .megamenu__item.has-logo:first-child {
+
+    // Logo li: non-shrinkable; margin-right: auto pushes nav items right
+    // and causes overflow items to wrap to the next row cleanly
+    > .megamenu__item.has-logo:first-child,
+    > .megamenu__item.megamenu__item--dual-logo:first-child {
+        flex-shrink: 0;
         margin-right: auto;
     }
 }
@@ -367,7 +376,7 @@ body.megamenu-open {
 // -----------------------------------------------------------------------------
 .megamenu__panel {
     position: fixed;
-    top: 50px; // Exactly at bottom of header
+    top: var(--mm-header-h, #{$mm-header-height}); // updated by JS ResizeObserver when header wraps
     left: 0;
     right: 0;
     z-index: $mm-z-index-panel;
@@ -376,6 +385,11 @@ body.megamenu-open {
     max-height: $mm-panel-max-height;
     overflow-y: auto;
     overflow-x: clip;
+    // Hide the panel's own scrollbar — it sits at the viewport right edge and
+    // looks like a page scrollbar; the panel content scrolls via trackpad/touch.
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar { display: none; }
     background: linear-gradient(180deg, $mm-color-bg-panel 0%, rgba(10, 10, 15, 0.98) 100%);
     backdrop-filter: blur(16px);
     border: none;
@@ -401,12 +415,13 @@ body.megamenu-open {
 
 .megamenu__panel-inner {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: flex-start;
     gap: 0;
     padding: 0;
     width: 100%;
-    justify-content: stretch;
+    justify-content: flex-start;
+    position: relative;
     
     &::-webkit-scrollbar {
         height: 4px;
@@ -426,8 +441,8 @@ body.megamenu-open {
 // L2/L3 - Groups (cells) within Panel - span full width responsively
 // -----------------------------------------------------------------------------
 .megamenu__group {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 1 1 180px;
+    min-width: 160px;
     padding: 0.35rem 1.5rem 0.25rem;
     border-right: 1px solid $mm-color-border;
     transition: background $mm-transition-speed ease;
@@ -945,10 +960,10 @@ body.megamenu-open {
 }
 
 // -----------------------------------------------------------------------------
-// Body offset for fixed header
+// Body offset for fixed header — uses CSS var kept in sync by JS ResizeObserver
 // -----------------------------------------------------------------------------
 body {
-    padding-top: $mm-header-height;
+    padding-top: var(--mm-header-h, #{$mm-header-height});
 }
 
 // -----------------------------------------------------------------------------
@@ -1080,4 +1095,401 @@ body.event--red-carpet .megamenu__item.red-carpet {
     .megamenu__link:focus-visible {
         filter: drop-shadow(0 0 10px rgba(#cc0000, 0.25));
     }
+}
+
+// =============================================================================
+// Panel logo image — smaller than header megamenu__logo-img (38px)
+// =============================================================================
+.megamenu__panel-logo-img {
+    display: block;
+    height: auto;
+    width: auto;
+    max-height: 32px;
+    max-width: 220px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.4));
+}
+
+// Groups whose title is a logo image — center the image within the column
+.megamenu__group:has(.megamenu__panel-logo-img) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+
+    .megamenu__group-title {
+        display: flex;
+        justify-content: center;
+        border-bottom: none;
+    }
+}
+
+// =============================================================================
+// Progressive panel depth — nested child lists hidden by default, revealed
+// on hover/focus-within of their parent group.
+// This hides only the GROUP's children, not the top-level panel itself.
+// =============================================================================
+.megamenu__group--has-sub {
+    > .megamenu__group-list {
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        padding-top: 0;
+        transition: opacity 180ms ease, max-height 180ms ease, padding-top 180ms ease;
+    }
+
+    &:hover > .megamenu__group-list,
+    &:focus-within > .megamenu__group-list {
+        max-height: 80vh;
+        overflow: visible;
+        opacity: 1;
+        padding-top: 0.25rem;
+    }
+}
+
+// --cols sub-grid: in-flow flex row (no absolute positioning).
+// Keeps the revealed sub-content within the parent group column.
+.megamenu__group-list--cols {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+
+    > .megamenu__group {
+        flex: 1 1 160px;
+        min-width: 140px;
+        padding: 0.3rem 1.25rem 0.25rem;
+        border-right: 1px solid $mm-color-border;
+
+        &:last-child {
+            border-right: none;
+        }
+    }
+}
+
+// --cols variant inherits the progressive-reveal from .megamenu__group--has-sub
+// above (max-height:0 hidden / revealed on hover).
+// Override only the structural properties — no absolute escape, no opacity lock.
+.megamenu__group--has-sub > .megamenu__group-list.megamenu__group-list--cols {
+    position: static;
+    background: transparent;
+    box-shadow: none;
+    border-top: none;
+}
+
+// =============================================================================
+// Programs panel
+//
+// Markup structure (confirmed from render_megamenu_panel_content()):
+//   .megamenu__panel.programs
+//     .megamenu__panel-inner
+//       div.megamenu__group.megamenu__group--has-sub          ← L2 brand group
+//         h3.megamenu__group-title                            ← always visible
+//         div.megamenu__group-list.megamenu__group-list--cols ← L3 container (--cols when L3 has sub-children)
+//           div.megamenu__group[.megamenu__group--has-sub]    ← L3 items
+//             h3.megamenu__group-title
+//             ul.megamenu__group-list                         ← L4 container (leaves)
+//               li > a.megamenu__link                         ← L4 items
+//
+// Behavior:
+//   L1 hover → panel opens (handled by global panel rules + JS).
+//   L2 hover → reveal L3 container as horizontal grid.
+//   L4+      → immediately visible under L3. No further hover required.
+// =============================================================================
+
+// Programs panel: L2 tabs as a horizontal row, L3 as full-width absolute dropdown.
+//
+// Problem: .megamenu__panel-inner is a CSS grid; L3 is nested inside an L2 grid column
+// (~220px wide). A grid inside a 220px cell can only fit one column → renders vertical.
+// Fix: set position:static on panel-inner so .megamenu__panel (position:fixed) becomes
+// the absolute containing block for L3. L3 is then positioned full-width below the L2 tab row.
+
+// Allow L3 absolute overlay to extend beyond the panel's padding box
+.megamenu__panel.programs {
+    overflow: visible;
+}
+
+// L2 tab row: horizontal flex strip, fixed height, no gap (tabs are butted together)
+.megamenu__panel.programs > .megamenu__panel-inner {
+    position: static; // override global position:relative — panel is now the containing block
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+}
+
+// L2 brand tab
+.megamenu__panel.programs > .megamenu__panel-inner > .megamenu__group {
+    flex: 1 1 0;
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    border-right: 1px solid $mm-color-border;
+    transition: background 150ms ease;
+
+    &:last-child { border-right: none; }
+    &:hover { background: rgba(255, 255, 255, 0.05); }
+
+    > .megamenu__group-title {
+        margin: 0;
+        border-bottom: none;
+        text-align: center;
+    }
+}
+
+// L3 container: hidden by default, absolute so it escapes the L2 column constraint.
+// top:3rem aligns to bottom of the L2 tab row (min-height: 3rem).
+.megamenu__panel.programs > .megamenu__panel-inner > .megamenu__group--has-sub > .megamenu__group-list {
+    position: absolute;
+    top: 3rem;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    background: linear-gradient(180deg, rgba(12, 12, 18, 0.99) 0%, rgba(10, 10, 15, 0.98) 100%);
+    backdrop-filter: blur(16px) saturate(180%);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
+    transition: max-height 250ms ease, opacity 200ms ease, padding 200ms ease;
+}
+
+// L3 revealed on L2 hover/focus — full-width horizontal grid
+.megamenu__panel.programs > .megamenu__panel-inner > .megamenu__group--has-sub:hover > .megamenu__group-list,
+.megamenu__panel.programs > .megamenu__panel-inner > .megamenu__group--has-sub:focus-within > .megamenu__group-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.25rem;
+    padding: 1.25rem 1.5rem 1.5rem;
+    max-height: 60vh;
+    opacity: 1;
+    overflow: visible;
+}
+
+// L4+ containers: always visible — not constrained by the L3 reveal rule above
+// (this selector matches list-inside-list, which starts at L4)
+.megamenu__panel.programs .megamenu__group-list .megamenu__group-list {
+    position: static;
+    display: block;
+    max-height: none;
+    opacity: 1;
+    overflow: visible;
+    padding-top: 0.35rem;
+    background: none;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+.megamenu__panel.programs .megamenu__group-list > .megamenu__group,
+.megamenu__panel.programs .megamenu__group-list > li {
+    min-width: 0;
+}
+
+.megamenu__panel.programs .megamenu__panel-logo-img {
+    max-height: 34px;
+    width: auto;
+    max-width: 240px;
+}
+
+// =============================================================================
+// Logo non-shrink guard — prevents any logo-bearing container from being squashed
+// =============================================================================
+.megamenu__item.has-logo,
+.megamenu__item--dual-logo {
+    flex-shrink: 0;
+}
+
+// =============================================================================
+// Dual logo — root (Academy) + active brand logos inside one <li>
+// =============================================================================
+.megamenu__item--dual-logo {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+}
+
+.megamenu__logo-link--brand {
+    border-left: 1px solid $mm-color-border;
+    padding-left: 0.5rem;
+}
+
+// Text-only brand label (fallback when brand has no logo image)
+.megamenu__brand-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: $mm-color-accent;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+
+// =============================================================================
+// Active section subnav bar
+// Appears at top: $mm-header-height when current page is inside a nav section.
+// body:has() adjusts body padding so content is not obscured.
+// =============================================================================
+$mm-subnav-height: 36px;
+
+.megamenu__subnav {
+    position: fixed;
+    top: var(--mm-header-h, #{$mm-header-height});
+    left: 0;
+    right: 0;
+    z-index: $mm-z-index-nav - 1; // below panel (1001), above content
+    height: $mm-subnav-height;
+    background: rgba(5, 5, 10, 0.96);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid $mm-color-border;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.megamenu__subnav-inner {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+    padding: 0 1rem;
+    overflow-x: auto;
+
+    // Hide scrollbar; swipe to scroll on touch
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar { display: none; }
+}
+
+.megamenu__subnav-link {
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: $mm-color-text;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color $mm-transition-fast ease,
+                border-color $mm-transition-fast ease;
+
+    &:hover {
+        color: $mm-color-text-hover;
+    }
+
+    &.is-current {
+        color: $mm-color-accent;
+        border-bottom-color: $mm-color-accent;
+    }
+
+    &.has-logo {
+        padding: 0 0.75rem;
+    }
+}
+
+.megamenu__subnav-logo {
+    display: block;
+    height: 22px;
+    width: auto;
+    max-height: 22px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+}
+
+// Increase body top padding when subnav bar is present.
+// CSS :has() is supported in all modern browsers (Chrome 105+, Firefox 121+, Safari 15.4+).
+body:has(.megamenu__subnav) {
+    padding-top: calc(var(--mm-header-h, #{$mm-header-height}) + #{$mm-subnav-height});
+
+    // Subnav is hidden on mobile — body padding reverts to header-only
+    @media (max-width: #{$mm-breakpoint-md - 1px}) {
+        padding-top: var(--mm-header-h, #{$mm-header-height});
+    }
+}
+
+// =============================================================================
+// Issue 5 — Hide desktop subnav bar below 768px breakpoint
+// =============================================================================
+.megamenu__subnav {
+    @media (max-width: #{$mm-breakpoint-md - 1px}) {
+        display: none;
+    }
+}
+
+// =============================================================================
+// Issue 3 — Active ancestor highlight (yellow) on top-level nav items
+// Applied when current page is a descendant of the nav item.
+// =============================================================================
+.megamenu__item.is-ancestor {
+    > a,
+    > button:not(.megamenu__dropdown-trigger) {
+        color: $hot_yellow;
+
+        &::after {
+            width: 60%;
+            background: $hot_yellow;
+        }
+    }
+
+    // Keep dropdown trigger neutral — only the text link/button gets yellow
+    > .megamenu__dropdown-trigger {
+        color: $hot_yellow;
+    }
+
+    &.is-open > a,
+    &.is-open > button:not(.megamenu__dropdown-trigger) {
+        color: $hot_yellow;
+        text-shadow: 0 0 15px rgba($hot_yellow, 0.4);
+    }
+}
+
+// =============================================================================
+// Issue 6 — Tablet / intermediate responsive (768px–1023px)
+// Compress nav item padding and logo size to prevent crushing.
+// =============================================================================
+@media (min-width: $mm-breakpoint-md) and (max-width: #{$mm-breakpoint-lg - 1px}) {
+    .megamenu__item > a,
+    .megamenu__item > button:not(.megamenu__dropdown-trigger) {
+        padding: 0 0.625rem;
+        font-size: 0.82rem;
+        letter-spacing: 0.01em;
+    }
+
+    .megamenu__dropdown-trigger {
+        width: 20px;
+    }
+
+    .megamenu__logo-img {
+        height: 30px;
+        max-height: 30px;
+    }
+
+    .megamenu__logo-link {
+        padding: 0 0.25rem;
+    }
+
+    .megamenu__logo-link--brand {
+        padding-left: 0.25rem;
+    }
+}
+
+// =============================================================================
+// Issue 7 — Mobile submenu: allow tall content to show (not clipped at 80vh)
+// The outer .megamenu__mobile drawer handles scrolling for long content.
+// =============================================================================
+.megamenu__mobile-submenu.is-open {
+    // Use a generous fixed-pixel cap so the transition still animates (0 → cap)
+    // but virtually all real menus fit within 2400px.
+    max-height: 2400px;
+}
+
+// =============================================================================
+// Mobile drawer — visual fixes
+// =============================================================================
+.megamenu__mobile a {
+    text-decoration: none;
+}
+
+.megamenu__mobile {
+    background: linear-gradient(180deg, rgba(8, 8, 12, 0.98) 0%, rgba(15, 15, 20, 0.95) 100%);
+    backdrop-filter: blur(16px) saturate(180%);
 }

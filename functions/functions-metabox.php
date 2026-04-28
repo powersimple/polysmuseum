@@ -982,6 +982,13 @@ function sectionProperties( $meta_boxes ) {
 			'priority' => 'high',
 			'autosave' => 'false',
 			'fields' => [
+				
+				[
+					'id' => $prefix . 'brand_key',
+					'type' => 'text',
+					'name' => esc_html__( 'Section Class', 'ps-social' ),
+					'desc' => esc_html__( 'governs the style of this and sub-posts' ),
+				],
 
 				[
 					'type'       => 'taxonomy_advanced',

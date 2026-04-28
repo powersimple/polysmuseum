@@ -48,7 +48,7 @@
 
             this.desktopNav = this.container.querySelector('.megamenu__bar');
             this.mobileToggle = this.container.querySelector('.megamenu__toggle');
-            
+
             // Mobile elements are now outside the nav container
             this.mobileNav = document.querySelector('.megamenu__mobile');
             this.overlay = document.querySelector('.megamenu__overlay');
@@ -57,6 +57,24 @@
             this._bindMobileEvents();
             this._bindGlobalEvents();
             this._setupAriaAttributes();
+            this._syncHeaderHeight(); // set initial --mm-header-h
+        }
+
+        /**
+         * Keep --mm-header-h in sync with the actual nav height so the panel
+         * top and body padding follow when the header wraps at narrow widths.
+         */
+        _syncHeaderHeight() {
+            const update = () => {
+                const h = this.container.offsetHeight;
+                document.documentElement.style.setProperty('--mm-header-h', h + 'px');
+            };
+            update();
+            if (window.ResizeObserver) {
+                new ResizeObserver(update).observe(this.container);
+            } else {
+                window.addEventListener('resize', update);
+            }
         }
 
         /**

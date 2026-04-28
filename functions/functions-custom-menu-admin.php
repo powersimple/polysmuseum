@@ -517,9 +517,9 @@ CUSTOM MENU META: Edit link
 function kia_custom_fields_edit_link( $item_id, $item,$label ) {
 	if($item->object != 'custom'){
 ?>
-<!--
+<!---->
 <hr>
-        <a target="_new" style="font-size:125%;font-weight:bold;" href="/wp-admin/post.php?action=edit&post=<?=$item->object_id?>">Edit <?=$item->type_label?> <?=$item->title?></a>-->
+        <a target="_new" style="font-size:125%;font-weight:bold;" href="/wp-admin/post.php?action=edit&post=<?=$item->object_id?>">Edit <?=$item->type_label?> <?=$item->title?></a>
 <?php
 	}
 }

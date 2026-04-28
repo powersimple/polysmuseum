@@ -74,7 +74,8 @@ function get_megamenu_data($menu_slug = 'megamenu') {
             pm_description.meta_value AS description,
             linked_post.post_title AS linked_title,
             linked_post.post_name AS linked_slug,
-            linked_post.post_type AS linked_post_type
+            linked_post.post_type AS linked_post_type,
+            (CHAR_LENGTH(TRIM(COALESCE(linked_post.post_content, ''))) > 20) AS has_content
         FROM {$wpdb->posts} p
         JOIN {$wpdb->term_relationships} tr ON p.ID = tr.object_id
         LEFT JOIN {$wpdb->postmeta} pm_object_id ON p.ID = pm_object_id.post_id AND pm_object_id.meta_key = '_menu_item_object_id'
@@ -158,9 +159,10 @@ function get_megamenu_data($menu_slug = 'megamenu') {
             'menu_order' => $item->menu_order,
             'children' => [],
             'level' => 0,
-            'media_link' => $media_link
+            'media_link' => $media_link,
+            'has_content' => !empty($item->has_content),
         ];
-        
+
         $items_by_id[$item->ID] = $processed_item;
     }
     
@@ -248,67 +250,262 @@ function render_megamenu($menu_slug = 'megamenu') {
 }
 
 /**
+ * Decide whether to render the megamenu__subnav bar for the given candidates.
+ *
+ * Returns false when:
+ *   - branded context is active (nav bar is already the scoped section nav)
+ *   - candidate list is empty
+ *   - any candidate item carries a media_link (brand logo links — these belong
+ *     in the megamenu panel, not in a secondary bar below the header)
+ *
+ * @param  array|null $snav_items        Output of megamenu_get_active_subnav_items().
+ * @param  bool       $is_branded_context True when the header is brand-scoped.
+ * @return bool
+ */
+function megamenu_should_render_active_subnav( $snav_items, $is_branded_context ) {
+    if ( $is_branded_context ) return false;
+    if ( empty( $snav_items ) ) return false;
+    foreach ( $snav_items as $item ) {
+        if ( ! empty( $item['media_link'] ) ) return false;
+    }
+    return true;
+}
+
+/**
+ * Detect the active subnav for the current page.
+ *
+ * Walks the rendered nav items (top bar items) and finds the first one whose
+ * subtree contains the current page.  Returns that item's direct children to
+ * be shown as an auto-expanded subnav row below the main header.
+ *
+ * Skips the nav-bar item when the current page IS that item (already shown in
+ * bar), so the subnav only appears when the visitor is inside the section, not
+ * on its root page.
+ *
+ * @param  array  $nav_items  Processed top-bar menu items (direct children of root).
+ * @return array|null  Direct children of the matching nav item, or null.
+ */
+function megamenu_get_active_subnav_items( array $nav_items ) {
+    global $post;
+    if ( ! $post || empty( $nav_items ) ) {
+        return null;
+    }
+
+    $current_post_id = (int) $post->ID;
+    $current_url     = $current_post_id ? trailingslashit( get_permalink( $current_post_id ) ) : '';
+
+    foreach ( $nav_items as $nav_item ) {
+        if ( empty( $nav_item['children'] ) ) {
+            continue;
+        }
+
+        // Skip when current page IS this nav-bar item itself (already in the bar)
+        if ( (int) $nav_item['object_id'] === $current_post_id ) {
+            continue;
+        }
+        if ( $current_url && trailingslashit( $nav_item['url'] ) === $current_url ) {
+            continue;
+        }
+
+        // Check if current page lives anywhere in this item's subtree
+        $flat = [];
+        _polys_megamenu_flatten_tree( $nav_item['children'], $flat );
+
+        foreach ( $flat as $desc ) {
+            if ( ( $current_post_id && (int) $desc['object_id'] === $current_post_id )
+                 || ( $current_url && trailingslashit( $desc['url'] ) === $current_url ) ) {
+                return $nav_item['children'];
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
  * Render the megamenu with logo included
  * Logo now comes from menu items with media-link metadata
- * 
+ *
  * @param string $menu_slug The menu slug to render
  * @return string HTML output
  */
 function render_megamenu_with_logo($menu_slug = 'megamenu') {
     $menu_data = get_megamenu_data($menu_slug);
-    
+
     if (!$menu_data) {
         return '<!-- Megamenu: Menu not found -->';
     }
-    
-    // Get first menu item's logo for persistent mobile header
-    // Respects the menu item's own URL (custom link, page permalink, etc.)
-    $first_item_logo = '';
-    $first_item_url = home_url('/');
-    $first_item_title = 'Home';
-    $first_item_target = '';
-    if (!empty($menu_data['items'][0])) {
-        $first_item = $menu_data['items'][0];
-        if (!empty($first_item['media_link'])) {
-            $first_item_logo = megamenu_get_relative_image_url($first_item['media_link']);
-        }
-        $first_item_title = $first_item['title'];
-        if (!empty($first_item['url'])) {
-            $first_item_url = $first_item['url'];
-        }
-        if (!empty($first_item['target'])) {
-            $first_item_target = $first_item['target'];
+
+    // ── Single-root detection ────────────────────────────────────────────────
+    // If the menu has exactly one root item and that root has children, treat
+    // the root as the persistent logo and promote its children to the visible
+    // nav bar.  This handles the new single-root hierarchy where Academy (or
+    // any other brand) is the sole level-0 item.
+    // When multiple root items exist the original behaviour is preserved.
+    $root_items  = $menu_data['items'];
+    $single_root = count($root_items) === 1 && !empty($root_items[0]['children']);
+    $root_item   = $root_items[0] ?? null;
+
+    // Items that will be passed to render_megamenu_items() for both desktop
+    // bar and mobile drawer.  In single-root mode this is the root's children;
+    // in multi-root mode it is the full root items array.
+    $nav_items = $single_root ? $root_item['children'] : $root_items;
+
+    // ── Active subnav detection ──────────────────────────────────────────────
+    // Computed BEFORE brand override because nav_items may be replaced below.
+    // After the brand override $nav_items will reflect the scoped brand children,
+    // so we detect the subnav against the pre-override (full section) nav items
+    // first, then re-run against the brand-scoped items if the brand was swapped.
+    // We store this after the brand override block below (see $active_subnav_items).
+
+    // ── Active brand override (single-root mode only) ────────────────────────
+    // When the resolved brand ≠ menu root brand, swap nav_items to the active
+    // brand's children.  The root (Academy) logo is ALWAYS kept visible as a
+    // persistent home link; the brand logo is added alongside it.
+    $effective_logo_item = $root_item; // default: menu root (usually Academy)
+    $is_branded_context  = false;
+    if ($single_root && $root_item) {
+        $active_brand_node = polys_megamenu_get_active_brand_root_node($menu_slug);
+        if ($active_brand_node) {
+            $root_brand_key = polys_megamenu_extract_brand_key($root_item['classes_array']);
+            if ($active_brand_node['brand_key'] !== $root_brand_key
+                && !empty($active_brand_node['menu_item']['children'])) {
+                $effective_logo_item = $active_brand_node['menu_item'];
+                $nav_items           = $effective_logo_item['children'];
+                $is_branded_context  = true;
+            }
         }
     }
-    
+
+    // ── Root logo vars (always the menu root — Academy or whatever is L0) ───
+    $root_logo_url    = '';
+    $root_logo_href   = home_url('/');
+    $root_logo_title  = 'Home';
+    $root_logo_target = '';
+    if ($root_item) {
+        if (!empty($root_item['media_link'])) {
+            $root_logo_url = megamenu_get_relative_image_url($root_item['media_link']);
+        }
+        $root_logo_title  = $root_item['title'];
+        $root_logo_href   = $root_item['url'] ?: home_url('/');
+        $root_logo_target = $root_item['target'] ?? '';
+    }
+
+    // ── Brand logo vars (only populated in branded context) ──────────────────
+    $brand_logo_url    = '';
+    $brand_logo_href   = '';
+    $brand_logo_title  = '';
+    $brand_logo_target = '';
+    if ($is_branded_context && $effective_logo_item) {
+        if (!empty($effective_logo_item['media_link'])) {
+            $brand_logo_url = megamenu_get_relative_image_url($effective_logo_item['media_link']);
+        }
+        $brand_logo_title  = $effective_logo_item['title'];
+        $brand_logo_href   = $effective_logo_item['url'] ?: home_url('/');
+        $brand_logo_target = $effective_logo_item['target'] ?? '';
+    }
+
+    // ── Active subnav items (run against final $nav_items after brand swap) ──
+    // megamenu_should_render_active_subnav() suppresses:
+    //   - branded context (nav bar is already the scoped section nav)
+    //   - sections whose children are brand logo items (e.g. Programs)
+    $_snav_candidates    = megamenu_get_active_subnav_items( $nav_items );
+    $active_subnav_items = megamenu_should_render_active_subnav( $_snav_candidates, $is_branded_context )
+        ? $_snav_candidates
+        : null;
+
+    // Legacy aliases used by the mobile logo template below.
+    $first_item_logo   = $root_logo_url;
+    $first_item_url    = $root_logo_href;
+    $first_item_title  = $root_logo_title;
+    $first_item_target = $root_logo_target;
+
+    // ── Desktop logo <li> for single-root mode ───────────────────────────────
+    // Academy context:  one <li> with the root logo.
+    // Branded context:  one <li> containing both logos side by side.
+    //   Both share has-logo so the CSS :first-child margin-right:auto fires on
+    //   the combined item, pushing all nav items to the right.
+    $desktop_logo_li = '';
+    if ($single_root && $root_logo_url) {
+        $li_classes = 'megamenu__item has-logo';
+        if (!empty($root_item['classes'])) {
+            $li_classes .= ' ' . $root_item['classes'];
+        }
+        if ($is_branded_context) {
+            $li_classes .= ' megamenu__item--dual-logo';
+        }
+
+        $root_href_attr   = esc_url($root_logo_href);
+        $root_target_attr = $root_logo_target ? ' target="' . esc_attr($root_logo_target) . '"' : '';
+
+        $desktop_logo_li  = '<li class="' . esc_attr($li_classes) . '"';
+        $desktop_logo_li .= ' id="megamenu-item-' . esc_attr($root_item['id']) . '" role="none">';
+        $desktop_logo_li .= '<a href="' . $root_href_attr . '"' . $root_target_attr;
+        $desktop_logo_li .= ' role="menuitem" class="megamenu__logo-link megamenu__logo-link--root">';
+        $desktop_logo_li .= '<img class="megamenu__logo-img" src="' . esc_attr($root_logo_url) . '"';
+        $desktop_logo_li .= ' alt="' . esc_attr($root_logo_title) . '" />';
+        $desktop_logo_li .= '</a>';
+
+        if ($is_branded_context) {
+            $brand_href_attr   = esc_url($brand_logo_href);
+            $brand_target_attr = $brand_logo_target ? ' target="' . esc_attr($brand_logo_target) . '"' : '';
+            $desktop_logo_li  .= '<a href="' . $brand_href_attr . '"' . $brand_target_attr;
+            $desktop_logo_li  .= ' role="menuitem" class="megamenu__logo-link megamenu__logo-link--brand">';
+            if ($brand_logo_url) {
+                $desktop_logo_li .= '<img class="megamenu__logo-img" src="' . esc_attr($brand_logo_url) . '"';
+                $desktop_logo_li .= ' alt="' . esc_attr($brand_logo_title) . '" />';
+            } else {
+                $desktop_logo_li .= '<span class="megamenu__brand-label">' . esc_html($brand_logo_title) . '</span>';
+            }
+            $desktop_logo_li .= '</a>';
+        }
+
+        $desktop_logo_li .= '</li>';
+    }
+
     ob_start();
     ?>
     <!-- Fixed Header Bar -->
     <nav class="megamenu" role="navigation" aria-label="<?php echo esc_attr($menu_data['menu']['name']); ?>">
         <?php if ($first_item_logo): ?>
-        <!-- Mobile Logo (persistent, left of hamburger) -->
-        <a href="<?php echo esc_url($first_item_url); ?>" class="megamenu__mobile-logo-link" aria-label="<?php echo esc_attr($first_item_title); ?>"<?php echo $first_item_target ? ' target="' . esc_attr($first_item_target) . '"' : ''; ?>>
+        <!-- Mobile: root logo (persistent home) -->
+        <a href="<?php echo esc_url($first_item_url); ?>" class="megamenu__mobile-logo-link megamenu__mobile-logo-link--root" aria-label="<?php echo esc_attr($first_item_title); ?>"<?php echo $first_item_target ? ' target="' . esc_attr($first_item_target) . '"' : ''; ?>>
             <img src="<?php echo esc_attr($first_item_logo); ?>" alt="<?php echo esc_attr($first_item_title); ?>" class="megamenu__mobile-header-logo" />
         </a>
+        <?php if ($is_branded_context && ($brand_logo_url || $brand_logo_title)): ?>
+        <!-- Mobile: active brand logo -->
+        <a href="<?php echo esc_url($brand_logo_href); ?>" class="megamenu__mobile-logo-link megamenu__mobile-logo-link--brand" aria-label="<?php echo esc_attr($brand_logo_title); ?>"<?php echo $brand_logo_target ? ' target="' . esc_attr($brand_logo_target) . '"' : ''; ?>>
+            <?php if ($brand_logo_url): ?>
+            <img src="<?php echo esc_attr($brand_logo_url); ?>" alt="<?php echo esc_attr($brand_logo_title); ?>" class="megamenu__mobile-header-logo" />
+            <?php else: ?>
+            <span class="megamenu__brand-label"><?php echo esc_html($brand_logo_title); ?></span>
+            <?php endif; ?>
+        </a>
         <?php endif; ?>
-        
+        <?php endif; ?>
+
         <!-- Mobile Toggle -->
         <button class="megamenu__toggle" aria-expanded="false" aria-controls="megamenu-mobile" aria-label="Open menu">
             <span class="megamenu__toggle-icon"></span>
             <span class="megamenu__sr-only">Menu</span>
         </button>
-        
-        <!-- Desktop Navigation Bar - Logo comes from menu items with media-link -->
+
+        <!-- Desktop Navigation Bar -->
         <div class="megamenu__bar">
             <ul class="megamenu__list" role="menubar">
-                <?php echo render_megamenu_items($menu_data['items'], 'desktop'); ?>
+                <?php
+                // In single-root mode: logo <li> first, then root's children.
+                // In multi-root mode: original items (logo is part of the items list).
+                echo $desktop_logo_li;
+                echo render_megamenu_items($nav_items, 'desktop');
+                ?>
             </ul>
         </div>
     </nav>
-    
+
     <!-- Mobile Overlay (outside fixed nav) -->
     <div class="megamenu__overlay" aria-hidden="true"></div>
-    
+
     <!-- Mobile Navigation Drawer (outside fixed nav) -->
     <div class="megamenu__mobile" id="megamenu-mobile" aria-hidden="true">
         <div class="megamenu__mobile-header">
@@ -317,9 +514,38 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
             </button>
         </div>
         <nav class="megamenu__mobile-nav">
-            <?php echo render_megamenu_items($menu_data['items'], 'mobile'); ?>
+            <?php
+            // Mobile drawer also uses $nav_items so the root is not repeated
+            // (the root logo already appears as the persistent mobile header logo).
+            echo render_megamenu_items($nav_items, 'mobile');
+            ?>
         </nav>
     </div>
+
+    <?php if (!empty($active_subnav_items)): ?>
+    <!-- Active section subnav: shown when current page is inside a nav-bar section -->
+    <div class="megamenu__subnav" role="navigation" aria-label="Section navigation">
+        <div class="megamenu__subnav-inner">
+            <?php foreach ($active_subnav_items as $snav_item):
+                $snav_current  = is_megamenu_current_item($snav_item);
+                $snav_has_logo = !empty($snav_item['media_link']);
+                $snav_href     = esc_url($snav_item['url'] ?: '#');
+                $snav_cls      = 'megamenu__subnav-link'
+                                 . ($snav_current  ? ' is-current' : '')
+                                 . ($snav_has_logo ? ' has-logo'   : '');
+                $snav_target   = $snav_item['target'] ? ' target="' . esc_attr($snav_item['target']) . '"' : '';
+            ?>
+            <a href="<?= $snav_href ?>"<?= $snav_target ?> class="<?= esc_attr($snav_cls) ?>"<?= $snav_current ? ' aria-current="page"' : '' ?>>
+                <?php if ($snav_has_logo): ?>
+                    <img class="megamenu__subnav-logo" src="<?= esc_attr(megamenu_get_relative_image_url($snav_item['media_link'])) ?>" alt="<?= esc_attr($snav_item['title']) ?>" />
+                <?php else: ?>
+                    <?= esc_html($snav_item['title']) ?>
+                <?php endif; ?>
+            </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
     <?php
     return ob_get_clean();
 }
@@ -367,6 +593,39 @@ function render_megamenu_items($items, $mode = 'desktop') {
 }
 
 /**
+ * Returns true when the menu item links to a real page with meaningful post_content.
+ * Uses the has_content flag populated from the query (CHAR_LENGTH > 20 check).
+ */
+function megamenu_item_has_real_page( $item ) {
+    return !empty( $item['has_content'] )
+        && !empty( $item['url'] )
+        && $item['url'] !== '#';
+}
+
+/**
+ * Returns true when the current queried page lives anywhere in $item's subtree.
+ * Used to add the is-ancestor CSS class for breadcrumb highlighting.
+ */
+function megamenu_item_is_ancestor( $item ) {
+    global $post;
+    if ( ! $post || empty( $item['children'] ) ) {
+        return false;
+    }
+    $flat        = [];
+    _polys_megamenu_flatten_tree( $item['children'], $flat );
+    $current_url = trailingslashit( get_permalink( $post->ID ) );
+    foreach ( $flat as $desc ) {
+        if ( $post->ID && (int) $desc['object_id'] === $post->ID ) {
+            return true;
+        }
+        if ( $current_url && trailingslashit( $desc['url'] ) === $current_url ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Render a desktop menu item
  */
 function render_megamenu_desktop_item($item, $has_children, $is_current) {
@@ -377,7 +636,10 @@ function render_megamenu_desktop_item($item, $has_children, $is_current) {
     if ($is_current) {
         $classes[] = 'is-current';
     }
-    
+    if ( !$is_current && $has_children && megamenu_item_is_ancestor( $item ) ) {
+        $classes[] = 'is-ancestor';
+    }
+
     // Check for media-link (logo image)
     $has_logo = !empty($item['media_link']);
     if ($has_logo) {
@@ -407,10 +669,21 @@ function render_megamenu_desktop_item($item, $has_children, $is_current) {
             $output .= '<span class="megamenu__sr-only">' . esc_html($item['title']) . ' submenu</span>';
             $output .= '</button>';
         } else {
-            // Text trigger for items with children
-            $output .= '<button type="button" aria-expanded="false" aria-controls="' . esc_attr($panel_id) . '" role="menuitem" aria-haspopup="true">';
-            $output .= esc_html($item['title']);
-            $output .= '</button>';
+            // Text item with children: split into navigable link + dropdown trigger when a real page exists
+            if ( megamenu_item_has_real_page( $item ) ) {
+                $nav_target = $item['target'] ? ' target="' . esc_attr( $item['target'] ) . '"' : '';
+                $output .= '<a href="' . esc_url( $item['url'] ) . '"' . $nav_target . ' role="menuitem">';
+                $output .= esc_html( $item['title'] );
+                $output .= '</a>';
+                $output .= '<button type="button" aria-expanded="false" aria-controls="' . esc_attr( $panel_id ) . '" role="none" aria-haspopup="true" class="megamenu__dropdown-trigger">';
+                $output .= '<span class="megamenu__sr-only">' . esc_html( $item['title'] ) . ' submenu</span>';
+                $output .= '</button>';
+            } else {
+                // No real page content — trigger-only behaviour
+                $output .= '<button type="button" aria-expanded="false" aria-controls="' . esc_attr($panel_id) . '" role="menuitem" aria-haspopup="true">';
+                $output .= esc_html($item['title']);
+                $output .= '</button>';
+            }
         }
         
         // Panel with children — add slug class + data-mm for CSS/JS targeting
@@ -445,59 +718,118 @@ function render_megamenu_desktop_item($item, $has_children, $is_current) {
 }
 
 /**
- * Render panel content (L2/L3/L4 items)
+ * Render panel content — direct children of a hovered top-bar item.
+ *
+ * Progressive depth behaviour:
+ *   Items that have their own children get class megamenu__group--has-sub.
+ *   Their child list is hidden by default and revealed on CSS :hover/:focus-within
+ *   (see megamenu.scss .megamenu__group--has-sub rules).
+ *   This means hovering "Programs" shows brand titles only; hovering a brand
+ *   title expands that brand's children without leaving the panel.
+ *
+ * Media/logo:
+ *   If a panel item has a media_link (set in WP Admin → Menus → custom field),
+ *   it is rendered as an image inside the group title instead of text.
+ *
+ * Classes:
+ *   $item['classes'] is propagated to the group <div> so SCSS rules such as
+ *   .megamenu__group.polys and .megamenu__group._event fire correctly.
  */
 function render_megamenu_panel_content($items) {
     $output = '';
-    
+
     foreach ($items as $item) {
         $has_children = !empty($item['children']);
-        
+        $has_logo     = !empty($item['media_link']);
+
+        // Build group class list.
+        // - Always: megamenu__group
+        // - When item has WP menu classes (polys, _event, etc.): add them so SCSS fires
+        // - When item slug exists: add slug for CSS/JS targeting
+        // - When item has children: add megamenu__group--has-sub for progressive reveal
+        $group_classes = ['megamenu__group'];
+        if (!empty($item['classes'])) {
+            $group_classes[] = $item['classes'];
+        }
+        $item_slug = _megamenu_item_slug($item);
+        if ($item_slug) {
+            $group_classes[] = $item_slug;
+        }
         if ($has_children) {
-            // L2 item with children becomes a group
-            $output .= '<div class="megamenu__group">';
+            $group_classes[] = 'megamenu__group--has-sub';
+        }
+
+        $output .= '<div class="' . esc_attr(implode(' ', $group_classes)) . '">';
+
+        // ── Group title ───────────────────────────────────────────────────────
+        // Wraps the item link/image.  For items with children this is the only
+        // visible element until hover; for leaf items the link is shown directly.
+        if ($has_children) {
             $output .= '<h3 class="megamenu__group-title">';
             if ($item['url'] && $item['url'] !== '#') {
-                $output .= '<a href="' . esc_url($item['url']) . '">' . esc_html($item['title']) . '</a>';
+                $output .= '<a href="' . esc_url($item['url']) . '">';
+                if ($has_logo) {
+                    $logo_url = megamenu_get_relative_image_url($item['media_link']);
+                    $output  .= '<img class="megamenu__panel-logo-img" src="' . esc_attr($logo_url) . '" alt="' . esc_attr($item['title']) . '" />';
+                } else {
+                    $output .= esc_html($item['title']);
+                }
+                $output .= '</a>';
+            } else {
+                if ($has_logo) {
+                    $logo_url = megamenu_get_relative_image_url($item['media_link']);
+                    $output  .= '<img class="megamenu__panel-logo-img" src="' . esc_attr($logo_url) . '" alt="' . esc_attr($item['title']) . '" />';
+                } else {
+                    $output .= esc_html($item['title']);
+                }
+            }
+            $output .= '</h3>';
+
+            // ── Children: leaf list OR recursive column grid ──────────────────
+            // If any child itself has children, render the whole level as a
+            // horizontal column grid (same structure as the top-level panel)
+            // so sub-groups spread across rather than stacking into one column.
+            // If all children are leaves, use a simple vertical link list.
+            $children_have_sub = false;
+            foreach ($item['children'] as $child) {
+                if (!empty($child['children'])) {
+                    $children_have_sub = true;
+                    break;
+                }
+            }
+
+            if ($children_have_sub) {
+                $output .= '<div class="megamenu__group-list megamenu__group-list--cols">';
+                $output .= render_megamenu_panel_content($item['children']);
+                $output .= '</div>';
+            } else {
+                $output .= '<ul class="megamenu__group-list">';
+                foreach ($item['children'] as $child) {
+                    $output .= '<li>';
+                    $output .= '<a href="' . esc_url($child['url']) . '" class="megamenu__link">';
+                    $output .= esc_html($child['title']);
+                    $output .= '</a>';
+                    $output .= '</li>';
+                }
+                $output .= '</ul>';
+            }
+
+        } else {
+            // ── Leaf item: simple link, with logo if available ─────────────────
+            $link_url = $item['url'] ?: '#';
+            $output  .= '<a href="' . esc_url($link_url) . '" class="megamenu__link">';
+            if ($has_logo) {
+                $logo_url = megamenu_get_relative_image_url($item['media_link']);
+                $output  .= '<img class="megamenu__panel-logo-img" src="' . esc_attr($logo_url) . '" alt="' . esc_attr($item['title']) . '" />';
             } else {
                 $output .= esc_html($item['title']);
             }
-            $output .= '</h3>';
-            $output .= '<ul class="megamenu__group-list">';
-            
-            foreach ($item['children'] as $child) {
-                $child_has_children = !empty($child['children']);
-                $nested_class = $child['level'] >= 4 ? ' is-nested' : '';
-                
-                $output .= '<li>';
-                $output .= '<a href="' . esc_url($child['url']) . '" class="megamenu__link' . $nested_class . '">';
-                $output .= esc_html($child['title']);
-                $output .= '</a>';
-                
-                // L4 items
-                if ($child_has_children) {
-                    foreach ($child['children'] as $grandchild) {
-                        $output .= '<a href="' . esc_url($grandchild['url']) . '" class="megamenu__link is-nested">';
-                        $output .= esc_html($grandchild['title']);
-                        $output .= '</a>';
-                    }
-                }
-                
-                $output .= '</li>';
-            }
-            
-            $output .= '</ul>';
-            $output .= '</div>';
-        } else {
-            // L2 item without children - simple link in its own group
-            $output .= '<div class="megamenu__group">';
-            $output .= '<a href="' . esc_url($item['url']) . '" class="megamenu__link">';
-            $output .= esc_html($item['title']);
             $output .= '</a>';
-            $output .= '</div>';
         }
+
+        $output .= '</div>';
     }
-    
+
     return $output;
 }
 
@@ -621,11 +953,24 @@ function is_megamenu_current_item($item) {
  * =============================================================================
  * Used by the Section bar to display L2 navigation items from the megamenu.
  * Determines active L1 based on current URL matching.
+ *
+ * LEGACY NOTE: This section assumes brand roots are top-level (L1) menu items
+ * and uses hardcoded URL prefix matching via _sectionbar_detect_brand().
+ * It also hardcodes 'brand-academy', 'polys2', and section_class values.
+ * The next rendering pass should replace this logic with:
+ *   polys_megamenu_get_active_brand_root_node() → use its children as the
+ *   section bar items, its brand_key for the data-brand attribute.
+ * Do not change behaviour here until the new renderer is ready and tested.
+ * =============================================================================
  */
 
 /**
- * Get the active L1 menu item and its L2 children based on current URL
- * 
+ * Get the active L1 menu item and its L2 children based on current URL.
+ *
+ * @deprecated Pending replacement by polys_megamenu_get_active_brand_root_node().
+ *             Hardcoded URL patterns and brand strings will be removed once the
+ *             brand-based renderer is wired in.  Behaviour is preserved intact.
+ *
  * @param string $menu_slug The menu slug (default: 'megamenu')
  * @return array|null Array with 'parent' (L1 item) and 'children' (L2 items), or null if no match
  */
@@ -818,8 +1163,13 @@ function get_sectionbar_data($menu_slug = 'megamenu') {
 }
 
 /**
- * Detect brand from URL path for styling purposes
- * 
+ * Detect brand from URL path for styling purposes.
+ *
+ * @deprecated LEGACY — hardcoded URL slug list.  Brand paths are now derived
+ *             dynamically from the megamenu via polys_megamenu_get_brand_index().
+ *             This function is still called by get_sectionbar_data(); remove
+ *             both together when the section bar renderer is updated.
+ *
  * @param string $path URL path
  * @return string Brand identifier: academy|polys|metatraversal|rpg
  */
@@ -869,6 +1219,12 @@ function is_sectionbar_current($url) {
 /**
  * Build sectionbar data from a section_menu (separate WP nav menu, not the megamenu).
  * Used as fallback when URL-based megamenu matching fails (e.g. red-carpet events).
+ *
+ * @deprecated LEGACY — brand is detected from section_menu slug string using
+ *             hardcoded substring matches (metatraversal, rpg, ready-player, academy).
+ *             When the section bar renderer is updated to use the megamenu brand
+ *             system, this fallback should be replaced with a menu-ancestry lookup
+ *             on the queried object.  Behaviour is preserved intact for now.
  *
  * @param string $section_menu_slug  The nav menu slug from post meta (e.g. 'virtual-red-carpet-1')
  * @param string $section_class      The section_class meta value (e.g. 'red-carpet', 'ceremony')
@@ -1037,6 +1393,488 @@ function render_sectionbar($menu_slug = 'megamenu') {
 }
 
 // Megamenu scripts are enqueued in functions-enqueue.php
+
+// =============================================================================
+// Brand Resolution Helpers
+// =============================================================================
+// These helpers support the new dynamic brand detection architecture.
+// They do NOT affect rendering yet — wire polys_get_active_brand_key() into
+// templates only after testing resolution on all brands.
+// =============================================================================
+
+/**
+ * Extract brand key from a menu item's classes array.
+ *
+ * Strict: only accepts classes starting with "brand-". The exact string
+ * after the prefix is returned as-is — no normalization, no aliases.
+ * If the menu item class is wrong or missing, that is a data issue.
+ *
+ * Expected classes: brand-thepolys, brand-metatraversal, brand-ready-player-golf
+ *
+ * @param  array  $classes_array  Classes array from a processed menu item.
+ * @return string Brand key (e.g. "thepolys", "metatraversal", "ready-player-golf")
+ *                or empty string if no brand- class found.
+ */
+function polys_megamenu_extract_brand_key( $classes_array ) {
+    if ( ! is_array( $classes_array ) ) {
+        return '';
+    }
+    foreach ( $classes_array as $class ) {
+        $raw = trim( (string) $class );
+        if ( strpos( $raw, 'brand-' ) === 0 ) {
+            return substr( $raw, 6 );
+        }
+    }
+    return '';
+}
+
+/**
+ * Recursively flatten a menu item tree into a lookup map keyed by menu item ID.
+ *
+ * Used internally so other helpers can do O(1) parent-chain walks without
+ * re-traversing the tree.  Each entry in $flat is the full processed menu item
+ * array (including children, level, parent_id, classes_array, etc.).
+ *
+ * @param  array $items  Array of processed menu item nodes (from get_megamenu_data).
+ * @param  array &$flat  Accumulator — pass an empty array [], receives all nodes.
+ */
+function _polys_megamenu_flatten_tree( array $items, array &$flat ) {
+    foreach ( $items as $item ) {
+        $flat[ $item['id'] ] = $item;
+        if ( ! empty( $item['children'] ) ) {
+            _polys_megamenu_flatten_tree( $item['children'], $flat );
+        }
+    }
+}
+
+/**
+ * Recursively count all descendant nodes in a subtree.
+ *
+ * @param  array $items  Children array from a processed menu item.
+ * @return int   Total descendant count (not including the root node itself).
+ */
+function _polys_megamenu_count_descendants( array $items ) {
+    $count = 0;
+    foreach ( $items as $item ) {
+        $count++;
+        if ( ! empty( $item['children'] ) ) {
+            $count += _polys_megamenu_count_descendants( $item['children'] );
+        }
+    }
+    return $count;
+}
+
+/**
+ * Build a brand index from the megamenu tree.
+ *
+ * Traverses the ENTIRE menu tree at all depths, not just root items.
+ * Brand roots (items with a brand-* CSS class) can live at any level —
+ * e.g. Academy at depth 1, The Polys at depth 3 inside Programs.
+ *
+ * Returns an associative array keyed by the normalised brand key so
+ * callers can do $index['the-polys'] or array_keys() to discover all
+ * brands without hardcoding them.
+ *
+ * Each record includes:
+ *   brand_key, menu_item_id, object_id, title, url, classes (string),
+ *   classes_array, depth (level), parent_id, children (direct subtree),
+ *   menu_item (full processed item).
+ *
+ * Results are statically cached per menu_slug within a single request.
+ *
+ * @param  string $menu_slug  Menu slug (default: 'megamenu').
+ * @return array  Associative array keyed by brand_key; empty array if menu
+ *                not found or no brand roots present.
+ */
+function polys_megamenu_get_brand_index( $menu_slug = 'megamenu' ) {
+    static $cache = [];
+    if ( isset( $cache[ $menu_slug ] ) ) {
+        return $cache[ $menu_slug ];
+    }
+
+    $menu_data = get_megamenu_data( $menu_slug );
+    if ( ! $menu_data || empty( $menu_data['items'] ) ) {
+        return $cache[ $menu_slug ] = [];
+    }
+
+    // Flatten the entire tree so brand-* items at any depth are found.
+    $flat = [];
+    _polys_megamenu_flatten_tree( $menu_data['items'], $flat );
+
+    $brands = [];
+    foreach ( $flat as $item ) {
+        $brand_key = polys_megamenu_extract_brand_key( $item['classes_array'] );
+        if ( ! $brand_key ) {
+            continue;
+        }
+        $brands[ $brand_key ] = [
+            'brand_key'     => $brand_key,
+            'menu_item_id'  => $item['id'],
+            'object_id'     => $item['object_id'],
+            'title'         => $item['title'],
+            'url'           => $item['url'],
+            'classes'       => $item['classes'],
+            'classes_array' => $item['classes_array'],
+            'depth'         => $item['level'],
+            'parent_id'     => $item['parent_id'],
+            'children'      => $item['children'],
+            'menu_item'     => $item,
+        ];
+    }
+
+    return $cache[ $menu_slug ] = $brands;
+}
+
+/**
+ * Find the active brand by walking the megamenu ancestry.
+ *
+ * Strategy: flatten the entire menu tree into a map keyed by menu item ID,
+ * then for each menu item whose object_id matches the queried object, walk UP
+ * the parent_id chain checking each node for a brand-* class.  The first
+ * brand-* class found is the nearest (most specific) brand ancestor.
+ *
+ * This works at arbitrary menu depth — brand roots do not need to be at the
+ * top level.  It also handles cross-post-type cases: an event placed as a
+ * menu item under The Polys will resolve to "the-polys" even though there is
+ * no post_parent link between them.
+ *
+ * @param  int    $object_id  WordPress object ID (post ID, term ID, etc.).
+ * @param  string $menu_slug  Menu slug (default: 'megamenu').
+ * @return string Brand key, or empty string if object not found under any brand root.
+ */
+function polys_megamenu_find_brand_by_ancestry( $object_id, $menu_slug = 'megamenu' ) {
+    if ( ! $object_id ) {
+        return '';
+    }
+    $object_id = (int) $object_id;
+
+    $menu_data = get_megamenu_data( $menu_slug );
+    if ( ! $menu_data || empty( $menu_data['items'] ) ) {
+        return '';
+    }
+
+    // Build a flat lookup map keyed by menu item ID so parent walks are O(1).
+    $flat = [];
+    _polys_megamenu_flatten_tree( $menu_data['items'], $flat );
+
+    // Find all menu item IDs whose linked object_id matches.
+    $matched_ids = [];
+    foreach ( $flat as $menu_item_id => $node ) {
+        if ( (int) $node['object_id'] === $object_id ) {
+            $matched_ids[] = $menu_item_id;
+        }
+    }
+    if ( empty( $matched_ids ) ) {
+        return '';
+    }
+
+    // For each match, walk the parent chain (starting from the item itself).
+    // Return the nearest brand-* class found, i.e. the most specific brand.
+    foreach ( $matched_ids as $start_id ) {
+        $current_id  = (int) $start_id;
+        $depth_limit = 12; // safety; realistic menus are < 6 levels
+        while ( $current_id && $depth_limit-- > 0 ) {
+            if ( ! isset( $flat[ $current_id ] ) ) {
+                break;
+            }
+            $node      = $flat[ $current_id ];
+            $brand_key = polys_megamenu_extract_brand_key( $node['classes_array'] );
+            if ( $brand_key ) {
+                return $brand_key;
+            }
+            // parent_id is 0 at root; cast to int so the while condition exits cleanly.
+            $current_id = (int) $node['parent_id'];
+        }
+    }
+    return '';
+}
+
+/**
+ * Get brand_key from post meta, walking up the native post_parent chain.
+ *
+ * Checks the post's own "brand_key" meta first.  If not set, walks up
+ * post_parent ancestors (up to 6 levels) and returns the nearest one found.
+ * Falls back to empty string — callers decide whether to continue to the
+ * menu ancestry step.
+ *
+ * NOTE: post_parent only links pages to pages and child posts of the same
+ * type.  Events attached to brand pages via the menu will NOT be covered
+ * here — use polys_megamenu_find_brand_by_ancestry() for that.
+ *
+ * @param  int|null $post_id  Post ID; omit or pass null to use the queried object.
+ * @return string Brand key from meta, or empty string.
+ */
+function polys_get_brand_key_from_meta( $post_id = null ) {
+    if ( ! $post_id ) {
+        $queried = get_queried_object();
+        $post_id = ( $queried && isset( $queried->ID ) ) ? (int) $queried->ID : 0;
+    }
+    if ( ! $post_id ) {
+        return '';
+    }
+    $post_id = (int) $post_id;
+
+    // Direct meta on current post.
+    $brand_key = get_post_meta( $post_id, 'brand_key', true );
+    if ( $brand_key ) {
+        return sanitize_key( $brand_key );
+    }
+
+    // Walk up post_parent chain.
+    $current_id = $post_id;
+    for ( $i = 0; $i < 6; $i++ ) {
+        $post_obj = get_post( $current_id );
+        if ( ! $post_obj || ! $post_obj->post_parent ) {
+            break;
+        }
+        $parent_id    = (int) $post_obj->post_parent;
+        $parent_brand = get_post_meta( $parent_id, 'brand_key', true );
+        if ( $parent_brand ) {
+            return sanitize_key( $parent_brand );
+        }
+        $current_id = $parent_id;
+    }
+    return '';
+}
+
+/**
+ * Main brand resolver.
+ *
+ * Resolution order:
+ *   1. Domain mapping via 'polys_brand_from_domain' filter.
+ *   2. Explicit brand_key post meta (direct or inherited via post_parent).
+ *   3. Menu ancestry — walks the megamenu tree from the queried object's
+ *      menu placement up through parent nodes, returning the first brand-*
+ *      class found (cross-post-type safe).
+ *   Returns empty string if none of the above resolves.
+ *
+ * @param  string $menu_slug  Menu slug (default: 'megamenu').
+ * @return string Resolved brand key, or empty string if undetermined.
+ */
+function polys_get_active_brand_key( $menu_slug = 'megamenu' ) {
+    // 1. Domain mapping (extend by hooking 'polys_brand_from_domain').
+    $host         = isset( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : '';
+    $domain_brand = apply_filters( 'polys_brand_from_domain', '', $host );
+    if ( $domain_brand ) {
+        return sanitize_key( $domain_brand );
+    }
+
+    // 2. Post meta (direct or inherited via post_parent).
+    $queried    = get_queried_object();
+    $queried_id = ( $queried && isset( $queried->ID ) ) ? (int) $queried->ID : 0;
+
+    $meta_brand = polys_get_brand_key_from_meta( $queried_id );
+    if ( $meta_brand ) {
+        return $meta_brand;
+    }
+
+    // 3. Menu ancestry (handles events/CPTs nested under brand roots).
+    if ( $queried_id ) {
+        $ancestry_brand = polys_megamenu_find_brand_by_ancestry( $queried_id, $menu_slug );
+        if ( $ancestry_brand ) {
+            return $ancestry_brand;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Return the full brand index record for the currently active brand.
+ *
+ * Direct lookup only — no aliases, no fallback recovery.
+ * Returns null if brand key is empty or not present in the index.
+ *
+ * @param  string $menu_slug  Menu slug (default: 'megamenu').
+ * @return array|null  Full brand index record, or null.
+ */
+function polys_megamenu_get_active_brand_root_node( $menu_slug = 'megamenu' ) {
+    $brand_key   = polys_get_active_brand_key( $menu_slug );
+    $brand_index = polys_megamenu_get_brand_index( $menu_slug );
+    return $brand_index[ $brand_key ] ?? null;
+}
+
+/**
+ * Debug helper: return structured resolution data for all brand detection steps.
+ *
+ * Intentionally never echoed automatically.  Use the [polys_brand_debug]
+ * shortcode or call this from a template while logged in as admin.
+ *
+ * Returned keys (resolution):
+ *   queried_object_id, queried_object_type, host, path,
+ *   resolved_brand_key, resolution_source,
+ *   meta_brand_key (direct meta only, not inherited),
+ *   inherited_brand_key (first ancestor meta, no direct),
+ *   menu_ancestry_brand_key, path_brand_key,
+ *   available_brand_keys — all brand-* roots found in the menu at any depth,
+ *   brand_index_summary — depth/title/url for each brand root (diagnostics).
+ *
+ * Returned keys (active brand root):
+ *   active_brand_root_title, active_brand_root_menu_item_id,
+ *   active_brand_root_depth, active_brand_root_url,
+ *   active_brand_direct_children (array of title + url),
+ *   active_brand_descendant_count.
+ *
+ * @param  string $menu_slug  Menu slug (default: 'megamenu').
+ * @return array  Structured debug data.
+ */
+function polys_debug_active_brand_resolution( $menu_slug = 'megamenu' ) {
+    $queried      = get_queried_object();
+    $queried_id   = ( $queried && isset( $queried->ID ) ) ? (int) $queried->ID : 0;
+    $queried_type = '';
+    if ( $queried ) {
+        if ( isset( $queried->post_type ) ) {
+            $queried_type = $queried->post_type;
+        } elseif ( isset( $queried->taxonomy ) ) {
+            $queried_type = 'term:' . $queried->taxonomy;
+        }
+    }
+
+    $host        = isset( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : '';
+    $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '';
+    $path        = rtrim( parse_url( $request_uri, PHP_URL_PATH ), '/' );
+
+    // ── Step 1: domain mapping ──────────────────────────────────────────────
+    $domain_brand = sanitize_key( apply_filters( 'polys_brand_from_domain', '', $host ) );
+
+    // ── Step 2: meta — split direct vs inherited ────────────────────────────
+    $direct_meta_brand = '';
+    $inherited_brand   = '';
+    if ( $queried_id ) {
+        $raw_meta = get_post_meta( $queried_id, 'brand_key', true );
+        if ( $raw_meta ) {
+            $direct_meta_brand = sanitize_key( $raw_meta );
+        } else {
+            $current_id = $queried_id;
+            for ( $i = 0; $i < 6; $i++ ) {
+                $post_obj = get_post( $current_id );
+                if ( ! $post_obj || ! $post_obj->post_parent ) {
+                    break;
+                }
+                $parent_id    = (int) $post_obj->post_parent;
+                $parent_brand = get_post_meta( $parent_id, 'brand_key', true );
+                if ( $parent_brand ) {
+                    $inherited_brand = sanitize_key( $parent_brand );
+                    break;
+                }
+                $current_id = $parent_id;
+            }
+        }
+    }
+    $combined_meta_brand = $direct_meta_brand ?: $inherited_brand;
+
+    // ── Step 3: menu ancestry ───────────────────────────────────────────────
+    $ancestry_brand = $queried_id
+        ? polys_megamenu_find_brand_by_ancestry( $queried_id, $menu_slug )
+        : '';
+
+    // ── Step 4: URL path prefix ─────────────────────────────────────────────
+    $brand_index = polys_megamenu_get_brand_index( $menu_slug );
+    $path_brand  = '';
+    $best_length = 0;
+    foreach ( $brand_index as $bk => $brand ) {
+        $brand_path = rtrim( parse_url( $brand['url'], PHP_URL_PATH ), '/' );
+        if ( empty( $brand_path ) || $brand_path === '/' ) {
+            continue;
+        }
+        if ( $path === $brand_path || strpos( $path, $brand_path . '/' ) === 0 ) {
+            $length = strlen( $brand_path );
+            if ( $length > $best_length ) {
+                $path_brand  = $bk;
+                $best_length = $length;
+            }
+        }
+    }
+
+    // ── Determine winner ────────────────────────────────────────────────────
+    $resolved = 'academy';
+    $source   = 'fallback';
+    if ( $domain_brand ) {
+        $resolved = $domain_brand;
+        $source   = 'domain_mapping';
+    } elseif ( $combined_meta_brand ) {
+        $resolved = $combined_meta_brand;
+        $source   = $direct_meta_brand ? 'post_meta' : 'post_meta_inherited';
+    } elseif ( $ancestry_brand ) {
+        $resolved = $ancestry_brand;
+        $source   = 'menu_ancestry';
+    } elseif ( $path_brand ) {
+        $resolved = $path_brand;
+        $source   = 'url_path';
+    }
+
+    // ── Brand index summary (all brands found in menu, with depth/url) ──────
+    $brand_index_summary = [];
+    foreach ( $brand_index as $bk => $brand ) {
+        $brand_index_summary[ $bk ] = [
+            'title'        => $brand['title'],
+            'depth'        => $brand['depth'],
+            'url'          => $brand['url'],
+            'menu_item_id' => $brand['menu_item_id'],
+            'object_id'    => $brand['object_id'],
+        ];
+    }
+
+    // ── Active brand root node details ──────────────────────────────────────
+    $root_node        = $brand_index[ $resolved ] ?? null;
+    $root_title       = $root_node ? $root_node['title'] : '';
+    $root_item_id     = $root_node ? $root_node['menu_item_id'] : 0;
+    $root_depth       = $root_node ? $root_node['depth'] : 0;
+    $root_url         = $root_node ? $root_node['url'] : '';
+    $root_children    = [];
+    $descendant_count = 0;
+    if ( $root_node && ! empty( $root_node['children'] ) ) {
+        foreach ( $root_node['children'] as $child ) {
+            $root_children[] = [ 'title' => $child['title'], 'url' => $child['url'] ];
+        }
+        $descendant_count = _polys_megamenu_count_descendants( $root_node['children'] );
+    }
+
+    return [
+        // ── Request context ──────────────────────────────────────────────────
+        'queried_object_id'            => $queried_id,
+        'queried_object_type'          => $queried_type,
+        'host'                         => $host,
+        'path'                         => $path,
+        // ── Resolution ───────────────────────────────────────────────────────
+        'resolved_brand_key'           => $resolved,
+        'resolution_source'            => $source,
+        'meta_brand_key'               => $direct_meta_brand,
+        'inherited_brand_key'          => $inherited_brand,
+        'menu_ancestry_brand_key'      => $ancestry_brand,
+        'path_brand_key'               => $path_brand,
+        // ── Brand index ───────────────────────────────────────────────────────
+        'available_brand_keys'         => array_keys( $brand_index ),
+        'brand_index_summary'          => $brand_index_summary,
+        // ── Active brand root ─────────────────────────────────────────────────
+        'active_brand_root_title'      => $root_title,
+        'active_brand_root_menu_item_id' => $root_item_id,
+        'active_brand_root_depth'      => $root_depth,
+        'active_brand_root_url'        => $root_url,
+        'active_brand_direct_children' => $root_children,
+        'active_brand_descendant_count' => $descendant_count,
+    ];
+}
+
+/**
+ * [polys_brand_debug] shortcode — admin-only brand resolution inspector.
+ *
+ * Usage: add [polys_brand_debug] to any page/post while logged in as admin.
+ * Renders pre-formatted JSON showing every step of brand resolution for the
+ * current request.  Never outputs anything to non-admins.
+ */
+add_shortcode( 'polys_brand_debug', function( $atts ) {
+    if ( ! current_user_can( 'administrator' ) ) {
+        return '';
+    }
+    $data   = polys_debug_active_brand_resolution( 'megamenu' );
+    $json   = json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+    $output  = '<pre style="background:#111;color:#0f0;padding:1em;border-radius:4px;';
+    $output .= 'font-size:12px;line-height:1.5;overflow:auto;text-align:left;">';
+    $output .= esc_html( $json );
+    $output .= '</pre>';
+    return $output;
+} );
 
 /**
  * =============================================================================

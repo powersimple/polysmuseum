@@ -111,15 +111,19 @@ current_theme_supports(menus): ' . (current_theme_supports('menus') ? 'yes' : 'n
  * =============================================================================
  * Brand Detection - Centralized URL-based brand resolution
  * =============================================================================
- * Determines the active brand based on the current page URL.
- * Used by header.php to set body[data-body-brand] attribute.
- * 
- * Brand Resolution Rules (in order):
- * 1. URL starts with /the-polys → "polys"
- * 2. URL starts with /metatraversal → "metatraversal"  
- * 3. URL starts with /ready-player-golf → "rpg"
- * 4. Default → "academy"
- * 
+ * @deprecated Use polys_get_active_brand_key() from functions-megamenu.php.
+ *
+ * LEGACY — hardcoded URL patterns, no meta or menu-ancestry resolution.
+ * Kept intact because it is called by:
+ *   - header.php:135  (sets data-body-brand on <body>)
+ *   - functions-megamenu.php get_sectionbar_data() ~line 651
+ *   - functions-megamenu.php render_footer_navigation() ~line 1233
+ *
+ * Do NOT make this call polys_get_active_brand_key() yet: the new resolver
+ * returns keys derived from brand-* menu classes (e.g. "ready-player-golf")
+ * while this function returns legacy aliases (e.g. "rpg").  Callers must be
+ * audited and updated before swapping the implementation.
+ *
  * @return string Brand identifier: academy|polys|metatraversal|rpg
  */
 function polys_get_current_brand() {
