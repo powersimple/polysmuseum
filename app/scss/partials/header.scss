@@ -194,6 +194,22 @@
     background-repeat: no-repeat;
 }
 
+// Home hero, mobile only. At the hamburger breakpoint (< $mm-breakpoint-md,
+// i.e. 767px) the front-page hero snaps to a fixed 50vh band instead of
+// following the image aspect ratio; the image fills that height and its
+// sides overflow / crop (cover). Overrides .hero-fit-auto above.
+@media (max-width: 767px) {
+    #dynamic-hero.hero-home-mobile {
+        height: 50vh !important;
+        min-height: 50vh !important;
+        max-height: 50vh !important;
+        aspect-ratio: auto !important;          // cancel hero-fit-auto ratio
+        background-size: cover !important;      // sides overflow / crop
+        background-position: center center !important;
+        background-repeat: no-repeat !important;
+    }
+}
+
 .parallax {
     background-attachment: fixed;
 

@@ -211,7 +211,8 @@ function extract_number($class) {
 
 
         <?php $hero_fit_class = !empty($padding_number) ? 'hero-fit-auto' : ''; ?>
-        <section class="parallax home-fade home-full-height hero-content <?=$section_hero_class?> <?=@$section_class?> <?=$hero_fit_class?>" id="dynamic-hero" style="--hero-img:url(<?=$hero_image?>);background-image:var(--hero-img);<?php if(!empty($padding_number)) echo '--hero-vh:' . intval($padding_number) . 'vh;'; ?>"></section>
+        <?php $hero_home_class = is_front_page() ? 'hero-home-mobile' : ''; ?>
+        <section class="parallax home-fade home-full-height hero-content <?=$section_hero_class?> <?=@$section_class?> <?=$hero_fit_class?> <?=$hero_home_class?>" id="dynamic-hero" style="--hero-img:url(<?=$hero_image?>);background-image:var(--hero-img);<?php if(!empty($padding_number)) echo '--hero-vh:' . intval($padding_number) . 'vh;'; ?>"></section>
        
 
 

@@ -2169,6 +2169,17 @@ body.event--red-carpet .sectionbar__item.red-carpet .sectionbar__link.is-current
   background-repeat: no-repeat;
 }
 
+@media (max-width: 767px) {
+  #dynamic-hero.hero-home-mobile {
+    height: 50vh !important;
+    min-height: 50vh !important;
+    max-height: 50vh !important;
+    aspect-ratio: auto !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-repeat: no-repeat !important;
+  }
+}
 .parallax {
   background-attachment: fixed;
 }
@@ -2506,6 +2517,46 @@ footer #social-menu li {
   outline-offset: 2px;
 }
 
+.footer-polys-menu {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.footer-polys-menu__list {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0 1rem;
+  align-items: center;
+  justify-content: center;
+}
+.footer-polys-menu li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.footer-polys-menu a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  font-family: "Raleway", sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: text-shadow 0.2s ease;
+}
+.footer-polys-menu a:hover, .footer-polys-menu a:focus {
+  color: #fff;
+  text-decoration: underline;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+.footer-polys-menu a:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
 .footer-brand__social {
   flex: 0 0 auto;
   margin-left: auto;
@@ -2696,6 +2747,7 @@ footer #social-menu li {
 
 @media (prefers-reduced-motion: reduce) {
   .footer-brand__nav a,
+  .footer-polys-menu a,
   .footer-brand__social a,
   .footer-academy__nav a,
   .footer-academy__social a {
@@ -7986,7 +8038,7 @@ model-viewer#reveal {
   height: auto;
 }
 .events-sidebar__sections {
-  padding: 0 1rem 1rem;
+  padding: 1.5rem 1rem 1rem;
 }
 .events-sidebar__section {
   margin-bottom: 2rem;
@@ -8216,6 +8268,7 @@ model-viewer#reveal {
     padding-top: 0;
     border-left: 1px solid var(--stroke, rgba(255, 255, 255, 0.1));
     padding-left: 2rem;
+    padding-right: 2rem;
   }
 }
 
@@ -9159,6 +9212,10 @@ ul.awards-list li a.active {
 .metatraversal {
   color: #ae8376;
   font-family: "Goldman";
+}
+
+body[data-body-brand=metatraversal] main h1, body[data-body-brand=metatraversal] main h2, body[data-body-brand=metatraversal] main h3, body[data-body-brand=metatraversal] main h4, body[data-body-brand=metatraversal] main h5, body[data-body-brand=metatraversal] main h6 {
+  font-family: "Goldman", sans-serif;
 }
 
 /*# sourceMappingURL=style.css.map */

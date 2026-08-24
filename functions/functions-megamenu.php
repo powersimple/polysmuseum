@@ -2138,7 +2138,20 @@ function render_footer_navigation() {
             <?php if (!empty($brand_panel_data['description'])): ?>
             <p class="footer-brand__relationship"><?php echo esc_html($brand_panel_data['description']); ?></p>
             <?php endif; ?>
-            
+
+            <?php // Dedicated horizontal Polys footer menu ('polys-footer' nav location) ?>
+            <?php if ($current_brand === 'polys' && has_nav_menu('polys-footer')): ?>
+            <nav class="footer-brand__menu footer-polys-menu" aria-label="The Polys footer menu">
+                <?php wp_nav_menu(array(
+                    'theme_location' => 'polys-footer',
+                    'container'      => false,
+                    'menu_class'     => 'footer-polys-menu__list',
+                    'depth'          => 1,
+                    'fallback_cb'    => false,
+                )); ?>
+            </nav>
+            <?php endif; ?>
+
             <?php if (!empty($brand_panel_data['social_links'])): ?>
             <nav class="footer-brand__social" aria-label="<?php echo esc_attr($brand_panel_data['title']); ?> social links">
                 <ul>

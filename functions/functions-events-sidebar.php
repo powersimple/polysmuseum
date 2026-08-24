@@ -207,7 +207,7 @@ function events_sidebar_render_item($event, $featured = false) {
         <a href="<?php echo esc_url($permalink); ?>" class="events-sidebar-item__thumb-link">
             <div class="events-sidebar-item__thumb">
                 <?php if (has_post_thumbnail($post_id)): ?>
-                    <?php echo get_the_post_thumbnail($post_id, 'thumbnail', ['class' => 'events-sidebar-item__img']); ?>
+                    <?php echo get_the_post_thumbnail($post_id, 'medium', ['class' => 'events-sidebar-item__img']); ?>
                 <?php else: ?>
                     <div class="events-sidebar-item__placeholder"></div>
                 <?php endif; ?>

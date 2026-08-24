@@ -85,9 +85,10 @@ function featured_image_support(){
 
     // Register navigation menus
     register_nav_menus(array(
-        'primary' => __('Primary Menu', 'polysmuseum'),
-        'top'     => __('Top Menu', 'polysmuseum'),
-        'social'  => __('Social Menu', 'polysmuseum'),
+        'primary'      => __('Primary Menu', 'polysmuseum'),
+        'top'          => __('Top Menu', 'polysmuseum'),
+        'social'       => __('Social Menu', 'polysmuseum'),
+        'polys-footer' => __('Polys Footer Menu', 'polysmuseum'),
     ));
 }
 add_action('after_setup_theme', 'featured_image_support');
@@ -137,6 +138,7 @@ function polys_get_current_brand() {
         '/the-polys' => 'polys',
         '/metatraversal' => 'metatraversal',
         '/ready-player-golf' => 'rpg',
+        '/ipn' => 'ipn',
     );
     
     foreach ($brand_patterns as $pattern => $brand) {
@@ -145,9 +147,67 @@ function polys_get_current_brand() {
             return $brand;
         }
     }
-    
+
+    // Event fallback: events nest under a brand-root event
+    // (e.g. /event/metatraversal/portal-crawl-viii/), so the URL patterns above
+    // never match them. Resolve the brand from the event's top-level ancestor
+    // slug instead. NOTE: affects non-Academy surfaces (MetaTr@versal,
+    // Ready Player Golf, The Polys).
+    $queried = get_queried_object();
+    if ($queried instanceof WP_Post && $queried->post_type === 'event') {
+        $root_slug = polys_get_event_root_slug($queried->ID);
+        if ($root_slug === 'metatraversal') {
+            return 'metatraversal';
+        }
+        if ($root_slug === 'ready-player-golf') {
+            return 'rpg';
+        }
+        if ($root_slug !== '' && strpos($root_slug, 'polys') !== false) {
+            return 'polys';
+        }
+    }
+
     // Default brand is Academy
     return 'academy';
+}
+
+/**
+ * Backward-compatibility alias.
+ *
+ * An earlier deploy of header.php calls academy_immersive_get_current_brand(),
+ * which was renamed to polys_get_current_brand(). If a divergent header.php
+ * is still live, that call would fatal ("undefined function"). This shim keeps
+ * the old name working; safe to remove once every deployed header.php uses the
+ * canonical name.
+ */
+if (!function_exists('academy_immersive_get_current_brand')) {
+    function academy_immersive_get_current_brand() {
+        return polys_get_current_brand();
+    }
+}
+
+/**
+ * Resolve the top-level ancestor slug for an event.
+ *
+ * Event permalinks nest under their brand-root event, e.g.
+ *   /event/metatraversal/portal-crawl-viii/  (child of the "metatraversal" event)
+ * The brand is determined by that top-level ancestor, not the URL prefix.
+ * Uses the post_parent chain (get_post_ancestors), so it is unaffected by URL
+ * structure or rewrite rules.
+ *
+ * @param int $post_id Event post ID.
+ * @return string Slug of the top-level ancestor event (its own slug if no parent),
+ *                or '' if the post cannot be resolved.
+ */
+function polys_get_event_root_slug($post_id) {
+    $post_id = (int) $post_id;
+    if (!$post_id) {
+        return '';
+    }
+    $ancestors = get_post_ancestors($post_id); // [immediate parent, ..., top-level]
+    $root_id = !empty($ancestors) ? (int) end($ancestors) : $post_id;
+    $root = get_post($root_id);
+    return $root ? $root->post_name : '';
 }
 
 /**

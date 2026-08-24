@@ -4,3 +4,17 @@ $metatraversal: #ae8376;
     color:$metatraversal;
     font-family: 'Goldman';
 }
+
+// =============================================================================
+// Brand typography — Metatraversal pages & events
+// The body carries data-body-brand="metatraversal" (set in header.php via
+// polys_get_current_brand(), which resolves both /metatraversal/ URLs and
+// events nested under the Metatraversal root). Apply the Goldman brand display
+// font to content headings only. Scoped to <main> so the global header
+// megamenu and footer chrome are left untouched.
+// =============================================================================
+body[data-body-brand="metatraversal"] main {
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Goldman', sans-serif;
+    }
+}
