@@ -403,3 +403,249 @@ function render_run_of_show_tsv($red_carpet_slug, $ceremony_slug, $debug = false
 
 	return $output;
 }
+
+/**
+ * =============================================================================
+ * Run of Show menu rendering (the generic default)
+ * -----------------------------------------------------------------------------
+ * get_menu_array() (functions-navigation.php) is the generic tree builder:
+ *   Level 1 = event   (post_type event)
+ *   Level 2 = session (post_type event)
+ *   Level 3 = speaker (post_type profile)
+ *
+ * get_run_of_show_menu( $menu, $section_class, $run_of_show ) renders that tree.
+ *
+ * Run of Show is OPT-IN via the "Event Menu" checkbox (event_menu meta), passed as
+ * $run_of_show. When ON, section_class is a SINGLE formatting value, emitted as a
+ * CSS class on the container so each variation can be styled:
+ *
+ *   (blank)        → generic run of show (all sessions + speakers)
+ *   metatraversal  → generic + .metatraversal style hook (CSS only)
+ *   red-carpet     → generic + .red-carpet style hook (CSS only)
+ *   ceremony       → only level-2 sessions classed 'nomination'/'honor' render,
+ *                    plus the .ceremony style hook (laurel styling in CSS).
+ *
+ * When the checkbox is OFF ($run_of_show false), rendering falls back to the
+ * original awards page (templates/awards.php + functions-awards.php), unchanged —
+ * so existing ceremonies are undisturbed.
+ *
+ * NOTE: keep section_class single-valued. It is compared as an exact string in
+ * several places (front-page.php, header.php, page.php, page-watch.php,
+ * functions-megamenu.php); putting multiple classes there breaks those checks.
+ * Brand is a SEPARATE concern — use the brand_key field, not section_class.
+ *
+ * Any level-2 session classed 'hide' is skipped in every mode.
+ * =============================================================================
+ */
+if ( ! function_exists( 'get_run_of_show_menu' ) ) {
+	function get_run_of_show_menu( $menu, $section_class = '', $run_of_show = false ) {
+		if ( empty( $menu ) || ! function_exists( 'get_menu_array' ) ) {
+			return '';
+		}
+		$tree = get_menu_array( $menu );
+		if ( empty( $tree ) ) {
+			return '';
+		}
+
+		// section_class is a single formatting value (ceremony/red-carpet/metatraversal).
+		$is_ceremony = ( strpos( strtolower( (string) $section_class ), 'ceremony' ) !== false );
+
+		// Run of Show is opt-in via the Event Menu checkbox. When on, section_class
+		// only selects the formatting variation.
+		if ( $run_of_show ) {
+			return render_run_of_show_menu( $tree, $section_class, $is_ceremony );
+		}
+
+		// Checkbox off → legacy awards page (unchanged for existing ceremonies).
+		require_once get_template_directory() . '/functions/functions-awards.php';
+		$awards = $tree; // templates/awards.php iterates $awards.
+		ob_start();
+		require get_template_directory() . '/templates/awards.php';
+		return ob_get_clean();
+	}
+}
+
+/**
+ * Generic run-of-show renderer. $section_class is emitted as container classes so
+ * variations (metatraversal, red-carpet, ceremony) are styleable. When $ceremony
+ * is true only 'nomination'/'honor' sessions render. 'hide' sessions are skipped.
+ */
+if ( ! function_exists( 'render_run_of_show_menu' ) ) {
+	function render_run_of_show_menu( $tree, $section_class = '', $ceremony = false ) {
+		if ( empty( $tree ) ) {
+			return '';
+		}
+		$is_past_event = true;
+
+		ob_start();
+		?>
+		<div id="schedule" class="run-of-show <?php echo esc_attr( $section_class ); ?>">
+			<?php foreach ( $tree as $event ) : ?>
+				<?php
+				if ( empty( $event['children'] ) ) {
+					continue;
+				}
+				foreach ( $event['children'] as $session ) :
+					$sclasses = ros_node_classes( $session );
+					// Always skip hidden sessions.
+					if ( in_array( 'hide', $sclasses, true ) ) {
+						continue;
+					}
+					// Ceremony treatment: only award categories (nomination/honor).
+					if ( $ceremony && ! array_intersect( array( 'nomination', 'honor' ), $sclasses ) ) {
+						continue;
+					}
+					echo render_event_session_row( $session, $is_past_event );
+				endforeach;
+				?>
+			<?php endforeach; ?>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+}
+
+/**
+ * Flatten a menu node's classes to a simple array of strings.
+ */
+if ( ! function_exists( 'ros_node_classes' ) ) {
+	function ros_node_classes( $node ) {
+		$c = isset( $node['classes'] ) ? $node['classes'] : array();
+		if ( is_array( $c ) ) {
+			return array_values( array_filter( array_map( 'strval', $c ) ) );
+		}
+		return array_values( array_filter( explode( ' ', (string) $c ) ) );
+	}
+}
+
+/**
+ * Normalise a video URL with autoplay params (used by session Watch buttons).
+ */
+if ( ! function_exists( 'event_format_video_url' ) ) {
+	function event_format_video_url( $url ) {
+		if ( empty( $url ) ) {
+			return '';
+		}
+		// Force www.youtube.com — the www-less host redirects inside the iframe
+		// and autoplay is dropped on that redirect (video cues but won't play).
+		$url = preg_replace( '#^(https?://)(?:www\.)?youtube\.com/#i', '$1www.youtube.com/', $url );
+		// youtu.be/<id> short links → proper embed URL.
+		$url = preg_replace( '#^(https?://)(?:www\.)?youtu\.be/([A-Za-z0-9_-]+)#i', '$1www.youtube.com/embed/$2', $url );
+		if ( strpos( $url, '?' ) !== false ) {
+			if ( strpos( $url, 'autoplay' ) === false ) {
+				$url .= '&autoplay=1&rel=0';
+			}
+		} else {
+			$url .= '?autoplay=1&rel=0';
+		}
+		return $url;
+	}
+}
+
+/**
+ * Render one session row (level 2) plus its speakers (level 3).
+ */
+if ( ! function_exists( 'render_event_session_row' ) ) {
+	function render_event_session_row( $session, $is_past_event = false ) {
+		$session_title   = esc_html( $session['title'] );
+		$session_slug    = $session['slug'];
+		$session_content = @$session['post']->post_content;
+		$session_video   = @$session['meta']['embed_video_url'][0];
+		$classes         = is_array( $session['classes'] ) ? implode( ' ', $session['classes'] ) : @$session['classes'];
+
+		ob_start();
+		?>
+		<div id="<?php echo esc_attr( $session_slug ); ?>" class="row session <?php echo esc_attr( $classes ); ?>">
+			<div class="col-sm-3 col-md-2">
+				<?php if ( $is_past_event && ! empty( $session_video ) ) : ?>
+				<a href="#<?php echo esc_attr( $session_slug ); ?>"
+				   class="watch video-button"
+				   onclick="playSessionVideo('<?php echo esc_js( event_format_video_url( $session_video ) ); ?>','<?php echo esc_js( $session_title ); ?>','')">
+					<i title="WATCH" class="fa-brands fa-youtube"></i><br> Watch
+				</a>
+				<?php endif; ?>
+			</div>
+			<div class="col-sm-9 col-md-10">
+				<h3 class="session-title"><?php echo $session_title; ?></h3>
+				<?php if ( ! empty( $session_content ) ) : ?>
+				<div class="session-content"><?php echo do_blocks( $session_content ); ?></div>
+				<?php endif; ?>
+			</div>
+		</div>
+
+		<?php if ( ! empty( $session['children'] ) ) : ?>
+		<div class="row">
+			<div class="col-12">
+				<div class="row speaker-list">
+					<?php foreach ( $session['children'] as $profile ) : ?>
+						<?php echo render_event_profile_card( $profile ); ?>
+					<?php endforeach; ?>
+				</div>
+			</div>
+		</div>
+		<?php endif; ?>
+		<?php
+		return ob_get_clean();
+	}
+}
+
+/**
+ * Render one speaker/profile card (level 3).
+ */
+if ( ! function_exists( 'render_event_profile_card' ) ) {
+	function render_event_profile_card( $profile ) {
+		$meta          = $profile['meta'];
+		$thumbnail     = getThumbnail( @$meta['_thumbnail_id'][0], 'thumbnail' );
+		$title         = esc_html( $profile['title'] );
+		$profile_title = @$meta['profile_title'][0];
+		$company       = @$meta['company'][0];
+		$twitter       = @$meta['twitter'][0];
+		$linkedin      = @$meta['linkedin'][0];
+		$github        = @$meta['github'][0];
+		$classes       = is_array( $profile['classes'] ) ? implode( ' ', $profile['classes'] ) : $profile['classes'];
+
+		ob_start();
+		?>
+		<div class="profile-card col <?php echo esc_attr( $classes ); ?>">
+			<?php if ( $thumbnail ) : ?>
+			<div class="profile-thumbnail">
+				<img src="<?php echo esc_url( $thumbnail ); ?>" alt="<?php echo $title; ?>" title="<?php echo $title; ?>">
+			</div>
+			<?php endif; ?>
+			<span class="profile-info">
+				<span class="profile-name"><?php echo $title; ?></span>
+				<?php if ( $profile_title || $company ) : ?>
+				<span class="credential">
+					<?php if ( $profile_title ) : ?>
+					<span><?php echo esc_html( trim( $profile_title ) ); ?></span>
+					<?php endif; ?>
+					<?php if ( $company ) : ?>
+					<span><?php echo esc_html( trim( $company ) ); ?></span>
+					<?php endif; ?>
+				</span>
+				<?php endif; ?>
+				<?php if ( $twitter || $linkedin || $github ) : ?>
+				<span class="social">
+					<?php if ( $twitter ) : ?>
+					<a target="_blank" class="twitter" href="<?php echo esc_url( $twitter ); ?>">
+						<i class="fa-brands fa-x-twitter social-icon" title="<?php echo $title; ?> on Twitter"></i>
+					</a>
+					<?php endif; ?>
+					<?php if ( $linkedin ) : ?>
+					<a target="_blank" class="linkedin" href="<?php echo esc_url( $linkedin ); ?>">
+						<i class="fa-brands fa-linkedin social-icon" title="<?php echo $title; ?> on LinkedIn"></i>
+					</a>
+					<?php endif; ?>
+					<?php if ( $github ) : ?>
+					<a target="_blank" class="github" href="<?php echo esc_url( $github ); ?>">
+						<i class="fa-brands fa-github social-icon" title="<?php echo $title; ?> on GitHub"></i>
+					</a>
+					<?php endif; ?>
+				</span>
+				<?php endif; ?>
+			</span>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+}

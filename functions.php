@@ -55,6 +55,15 @@ function load_theme_functions() {
     
     // Events sidebar functions
     require_once get_template_directory() . '/functions/functions-events-sidebar.php';
+
+    // Screen Image carousel (modern replacement for the jQuery/Slick slideshow)
+    require_once get_template_directory() . '/functions/functions-screen-carousel.php';
+
+    // Hero video player (supersedes the hero image when a hero_video is set)
+    require_once get_template_directory() . '/functions/functions-hero-video.php';
+
+    // Brand ↔ domain registry (menu link rewriting + brand canonical redirect)
+    require_once get_template_directory() . '/functions/functions-brands.php';
     
     // Image audit functions (admin-only)
     require_once get_template_directory() . '/functions/functions-audit-images.php';
@@ -68,6 +77,31 @@ function load_theme_functions() {
     }
 }
 add_action('init', 'load_theme_functions');
+
+// Dev-only: let the ?brand= preview override (see polys_get_current_brand) also
+// drive the NEW brand resolver used for the header logo, by mapping legacy brand
+// keys to the slug keys the megamenu uses (brand-* classes). Local host only —
+// inert in production because the host guard fails there.
+add_filter('polys_brand_from_domain', function($brand, $host) {
+    if ( ! isset($_GET['brand']) ) {
+        return $brand;
+    }
+    $h = strtolower( $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? '' );
+    $is_local = ( strpos($h, 'obi-wan-v') !== false
+               || strpos($h, 'localhost') !== false
+               || strpos($h, '127.0.0.1') !== false );
+    if ( ! $is_local ) {
+        return $brand;
+    }
+    $forced = sanitize_key($_GET['brand']);
+    $map = array(
+        'polys'         => 'the-polys',
+        'rpg'           => 'ready-player-golf',
+        'metatraversal' => 'metatraversal',
+        'academy'       => 'academy',
+    );
+    return isset($map[$forced]) ? $map[$forced] : $forced;
+}, 10, 2);
 
 function featured_image_support(){
     add_theme_support('post-thumbnails', array(
@@ -128,6 +162,22 @@ current_theme_supports(menus): ' . (current_theme_supports('menus') ? 'yes' : 'n
  * @return string Brand identifier: academy|polys|metatraversal|rpg
  */
 function polys_get_current_brand() {
+    // ── Dev-only brand preview override ──────────────────────────────────────
+    // On the LOCAL dev host only, ?brand=polys (or metatraversal|rpg|academy|ipn)
+    // forces the brand so you can preview any brand's styling on any page without
+    // the production vanity domain. Inert in production: the host guard below only
+    // matches local hostnames, so ?brand=… does nothing on the live site.
+    if ( isset($_GET['brand']) ) {
+        $host = strtolower( $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? '' );
+        $is_local = ( strpos($host, 'obi-wan-v') !== false
+                   || strpos($host, 'localhost') !== false
+                   || strpos($host, '127.0.0.1') !== false );
+        $forced = sanitize_key( $_GET['brand'] );
+        if ( $is_local && $forced ) {
+            return $forced;
+        }
+    }
+
     // Get current request URI (path only, no query string)
     $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
     $path = parse_url($request_uri, PHP_URL_PATH);
@@ -138,6 +188,7 @@ function polys_get_current_brand() {
         '/the-polys' => 'polys',
         '/metatraversal' => 'metatraversal',
         '/ready-player-golf' => 'rpg',
+        '/rpg' => 'rpg', // short vanity slug — same brand as /ready-player-golf
         '/ipn' => 'ipn',
     );
     

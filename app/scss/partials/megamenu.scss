@@ -114,7 +114,14 @@ body.megamenu-open {
     height: auto;
     padding: 0 1rem;
     margin: 0 !important;
-    background: linear-gradient(180deg, rgba(8, 8, 12, 0.98) 0%, rgba(15, 15, 20, 0.95) 100%);
+    // Experiment (Ben, 2026-08-24): fade the header to transparent at its lower
+    // edge so the hero video/image shows through beneath the nav.
+    background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 1) 0%,
+        rgba(0, 0, 0, 1) 60%,
+        rgba(0, 0, 0, 0) 100%
+    );
     backdrop-filter: blur(16px) saturate(180%);
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
     border: none;
@@ -413,6 +420,40 @@ body.megamenu-open {
     }
 }
 
+// -----------------------------------------------------------------------------
+// Dropdown variant — used when a top-bar item's subtree is level-2 only (no L3;
+// class set in render_megamenu_desktop_item()). Instead of the full-width mega
+// panel, it renders as a traditional vertical dropdown anchored under its
+// trigger (.megamenu__item is position:relative). Items with an L3 keep the
+// full-width horizontal mega layout.
+// -----------------------------------------------------------------------------
+.megamenu__panel--dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: auto;
+    width: max-content;
+    min-width: 220px;
+    max-width: min(90vw, 420px);
+
+    .megamenu__panel-inner {
+        flex-direction: column;
+        flex-wrap: nowrap;
+    }
+
+    .megamenu__group {
+        flex: 1 1 auto;
+        width: 100%;
+        min-width: 0;
+        border-right: none;
+        border-bottom: 1px solid $mm-color-border;
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+}
+
 .megamenu__panel-inner {
     display: flex;
     flex-wrap: wrap;
@@ -545,6 +586,23 @@ body.megamenu-open {
     width: auto;
     max-width: 100%;
     object-fit: contain;
+}
+
+// Mobile bar alignment: the bar uses align-items:flex-start (for desktop
+// panels), which pins the logo to the top on mobile. On mobile, centre the
+// logo + toggle vertically in the 50px bar and give the logo an even 5px left
+// inset, so it is evenly spaced from the top, left and bottom edges
+// (50px bar − 40px logo = 10px → 5px top/bottom).
+@media (max-width: $mm-breakpoint-md - 1) {
+    .megamenu {
+        align-items: center;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    .megamenu__mobile-logo-link {
+        padding: 0; // left inset now comes from the bar's 5px padding
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -1050,7 +1108,7 @@ body {
             transform: translateY(-50%);
             width: 18px;
             height: 18px;
-            background: url('/wp-content/themes/polysmuseum/images/icons/Trophy.png') no-repeat center / contain;
+            background: url('images/icons/Trophy.png') no-repeat center / contain;
             opacity: 0.95;
             pointer-events: none;
         }
@@ -1069,7 +1127,7 @@ body {
             transform: translateY(-50%);
             width: 14px;
             height: 14px;
-            background: url('/wp-content/themes/polysmuseum/images/icons/Trophy.png') no-repeat center / contain;
+            background: url('images/icons/Trophy.png') no-repeat center / contain;
             opacity: 0.9;
             pointer-events: none;
         }

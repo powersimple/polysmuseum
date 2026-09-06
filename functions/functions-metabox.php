@@ -564,6 +564,15 @@ function selectHeroImage( $meta_boxes ) {
 				'desc' => esc_html__( '', 'metabox-online-generator' ),
 			),
 			array(
+				'id' => $prefix . 'hero_video',
+				'type' => 'video', // mp4/video picker — image_advanced filters video files out of the modal
+				'name' => esc_html__( 'Hero video', 'metabox-online-generator' ),
+				'desc' => esc_html__( 'Select an uploaded video (e.g. mp4).', 'metabox-online-generator' ),
+				'max_file_uploads' => 1,     // single hero video
+				'force_delete'     => false, // never hard-delete the source file from the library
+			),
+			
+			array(
 				'id' => $prefix . 'tile-image',
 				'type' => 'image_advanced',
 				'name' => esc_html__( 'Tile Image', 'metabox-online-generator' ),
@@ -984,13 +993,6 @@ function sectionProperties( $meta_boxes ) {
 			'fields' => [
 				
 				[
-					'id' => $prefix . 'brand_key',
-					'type' => 'text',
-					'name' => esc_html__( 'Section Class', 'ps-social' ),
-					'desc' => esc_html__( 'governs the style of this and sub-posts' ),
-				],
-
-				[
 					'type'       => 'taxonomy_advanced',
 					'name'       => esc_html__( 'Section Menu', 'online-generator' ),
 					'id'         => 'section_menu',
@@ -999,6 +1001,17 @@ function sectionProperties( $meta_boxes ) {
 					'query_args' => [
 						'' => '',
 					],
+				],
+				[
+					'id' => $prefix . 'event_menu',
+					'type' => 'checkbox',
+					'name' => esc_html__( 'Event Menu (Run of Show)', 'ps-social' ),
+				],
+				[
+					'id' => $prefix . 'brand_key',
+					'type' => 'text',
+					'name' => esc_html__( 'Brand Key', 'ps-social' ),
+					'desc' => esc_html__( 'Authoritative brand for this and sub-posts (e.g. the-polys, metatraversal, ready-player-golf). Separate from Section Class.' ),
 				],
 				[
 					'type'       => 'taxonomy_advanced',
@@ -1020,7 +1033,13 @@ function sectionProperties( $meta_boxes ) {
 					'id' => $prefix . 'section_class',
 					'type' => 'text',
 					'name' => esc_html__( 'Section Class', 'ps-social' ),
-					'desc' => esc_html__( 'governs the style of this and sub-posts' ),
+					'desc' => esc_html__( 'Single formatting value (e.g. ceremony, red-carpet, metatraversal). Not used for Event Menu — kept for other occasions.' ),
+				],
+				[
+					'id' => $prefix . 'sidebar_list',
+					'type' => 'text',
+					'name' => esc_html__( 'Sidebar List (appearances)', 'ps-social' ),
+					'desc' => esc_html__( 'A person\'s sort name (e.g. "Moshasha, Sophia") to preload their appearances in the sidebar.' ),
 				],
 				[
 					'id' => $prefix . 'section_hero_class',

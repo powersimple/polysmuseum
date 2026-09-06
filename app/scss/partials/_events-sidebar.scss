@@ -534,3 +534,55 @@
         margin-bottom: 0;
     }
 }
+
+// ── Prevent the right column from being stretched by long content, and make the
+//    curated sidebar menu behave outside .events-sidebar (e.g. single-event). ──
+.container-flex {
+    // Flex items default to min-width:auto, which lets a long word/URL widen the
+    // whole column. min-width:0 lets it shrink so content wraps instead.
+    > .col-md-7,
+    > .col-md-5 {
+        min-width: 0;
+    }
+}
+
+.sidebar-curated {
+    max-width: 100%;
+    text-align: center;
+
+    .sidebar-item {
+        min-width: 0;
+        max-width: 100%;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .sidebar-item-title {
+        overflow-wrap: break-word;
+        word-break: break-word;
+        text-align: center;
+    }
+
+    // Menu-item description shown as a caption / tagline under the partner:
+    // smaller and lighter than the name.
+    .sidebar-item-desc {
+        margin-top: 0.35rem;
+        font-size: 0.8rem;
+        font-weight: 300;
+        line-height: 1.4;
+        opacity: 0.85;
+        text-align: center;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+
+    .sidebar-item-image img,
+    .sidebar-item-img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+

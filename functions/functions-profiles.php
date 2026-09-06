@@ -82,13 +82,15 @@
         print "</div>";
         return ob_get_clean();
     }
-    function displayProfileMeta($profile_id){
+    function displayProfileMeta($profile_id, $social_only = false){
         
          $profile_meta = get_post_meta($profile_id);
          ?>
         <div class="speaker-meta">
+        <?php if (!$social_only) : ?>
         <?= wrapMeta($profile_meta,'profile_title','h5');?>
         <?= wrapMeta($profile_meta,'company','h5');?>
+        <?php endif; ?>
         <?= wrapMeta($profile_meta,'linkedin','a');?>
         <?= wrapMeta($profile_meta,'github','a');?>
         <?= wrapMeta($profile_meta,'website','a');?>
@@ -188,14 +190,18 @@ return ob_get_clean();
         return $profile_children;
     }
 
-    function displayTeam($team,$className){
+    function displayTeam($team,$className,$show_titles=false,$show_links=false){
         $is_partners = strpos($className, 'partners-page') !== false;
 
         if (!$is_partners) {
-            print "<div class='row'>";
+            // Modern responsive grid — auto-fit by card width, and the last
+            // row's remainder centres (see .profile-grid in profile.scss).
+            // Replaces the old Bootstrap .row / col-* columns. The passed
+            // $className (e.g. "team-member") is kept for card-content styling.
+            print "<div class='profile-grid'>";
             foreach($team as $key => $member){
-              print "<div class='$className'>";
-                displayTeamMember($member, $className);
+              print "<div class='profile-card " . esc_attr($className) . "'>";
+                displayTeamMember($member, $className, $show_titles, $show_links);
               print "</div>";
             }
             print "</div>";
@@ -233,7 +239,7 @@ return ob_get_clean();
                     $row_open = true;
                 }
                 print "<div class='$className'>";
-                  displayTeamMember($member, $className);
+                  displayTeamMember($member, $className, $show_titles, $show_links);
                 print "</div>";
             }
         }
@@ -241,7 +247,7 @@ return ob_get_clean();
         if ($row_open) { print "</div></div>"; }
         return $team;
     }
-    function displayTeamMember($member, $className = ''){
+    function displayTeamMember($member, $className = '', $show_titles = false, $show_links = false){
         extract((array)$member);
         $is_partners = strpos($className, 'partners-page') !== false;
 
@@ -265,26 +271,36 @@ return ob_get_clean();
         $thumbnail = getThumbnail($thumbnail_id);
         $custom_class= @$classes[0];
         $link_title = ($is_partners) ? $attr_title : $title;
+        // Partners always link (to their site); team members link to their
+        // profile only when links="true".
+        $use_link = $is_partners || $show_links;
        ?>
 
-       <a href='<?=esc_url($link)?>'<?php if (!$is_partners) echo " title='" . esc_attr($link_title) . "'"; ?><?=$link_target?><?=$link_rel?>>
-        <?php if ($is_partners) : ?>
+       <?php if ($is_partners) : ?>
+
+        <?php // Partners — link wraps meta + title + logo, then description. ?>
+        <?php if ($use_link) : ?><a href='<?=esc_url($link)?>'<?=$link_target?><?=$link_rel?>><?php endif; ?>
         <?php if (!empty($attr_title)) : ?><h6 class="partner-meta"><?=esc_html($attr_title)?></h6><?php endif; ?>
         <h3 class="partner-title"><?=esc_html($title)?></h3>
-        <?php else : ?>
-        <h5><?=$attr_title?></h5>
-        <h4><?=$title?></h4>
-        <?php endif; ?>
         <img class="<?=$custom_class?>" src="<?=$thumbnail?>" alt="<?=$title?>" title="<?=$title?>">
-        </a>
-
-        <?php if (!$is_partners) : ?>
-        <h6><div class="social-icons profile-meta"><?=displayProfileMeta($post->ID)?></div></h6>
-        <?php endif; ?>
+        <?php if ($use_link) : ?></a><?php endif; ?>
         <?php if (!empty($description)) : ?><p><?=wp_kses_post($description)?></p><?php endif; ?>
-        <?php if ($is_partners && is_user_logged_in() && current_user_can('edit_post', $post->ID)) : ?>
+        <?php if (is_user_logged_in() && current_user_can('edit_post', $post->ID)) : ?>
             <a href="<?=esc_url(admin_url('post.php?post=' . $post->ID . '&action=edit'))?>" class="partner-edit-link" target="_blank" title="Edit this partner">&#9998;&#65039;</a>
         <?php endif; ?>
+
+       <?php else : ?>
+
+        <?php // Team member — photo, name, menu description, social icons (flex stack). ?>
+        <?php if ($use_link) : ?><a href='<?=esc_url($link)?>' title='<?=esc_attr($link_title)?>'><?php endif; ?>
+        <img class="<?=$custom_class?>" src="<?=$thumbnail?>" alt="<?=$title?>" title="<?=$title?>">
+        <?php if ($use_link) : ?></a><?php endif; ?>
+        <h4 class="team-member__name"><?=esc_html($title)?></h4>
+        <?php if ($show_titles && !empty($attr_title)) : ?><h5 class="team-member__meta"><?=esc_html($attr_title)?></h5><?php endif; ?>
+        <?php if (!empty($description)) : ?><p class="team-member__desc"><?=wp_kses_post($description)?></p><?php endif; ?>
+        <h6 class="team-member__social"><div class="social-icons profile-meta"><?=displayProfileMeta($post->ID, true)?></div></h6>
+
+       <?php endif; ?>
 
         <?php
 
@@ -311,8 +327,13 @@ return ob_get_clean();
 			'className'	=> $atts['class'],
 		), $atts );
 
+		// titles="true" shows each member's name + company (h4/h5); off by default.
+		$show_titles = isset($atts['titles']) && filter_var($atts['titles'], FILTER_VALIDATE_BOOLEAN);
+		// links="true" wraps each card in a link to the person's profile; off by default.
+		$show_links = isset($atts['links']) && filter_var($atts['links'], FILTER_VALIDATE_BOOLEAN);
+
 		ob_start();
-       displayTeam($menu,$atts['class']);
+       displayTeam($menu,$atts['class'],$show_titles,$show_links);
 
 		?>
 	

@@ -1,0 +1,150 @@
+// =============================================================================
+// Ready Player Golf (rpg) — brand theme
+// Activated by body[data-body-brand="rpg"] (set in header.php via
+// polys_get_current_brand(); resolves /rpg and /ready-player-golf URLs and
+// events nested under the Ready Player Golf root).
+//
+// Palette:
+//   - Solid brand green  #135607   (band title text — see _page-title.scss)
+//   - 3-stop green gradient (dark → olive) for the nav + page backgrounds
+// Display font: Exodar (embedded via @font-face in typography.scss).
+// =============================================================================
+
+@use "sass:color";
+
+$rpg-green: #135607;
+$rpg-gradient: linear-gradient(180deg, #164400 0%, #5f8400 50%, #658900 100%);
+
+// Metallic brand gradient for nav surfaces — same stops as the RPG footer
+// panel (_footer-brand.scss), at 0deg. Used on the desktop bar and the mobile
+// drawer so the responsive menu carries the brand background too.
+$rpg-nav-gradient: linear-gradient(
+    0deg,
+    rgba(color.adjust($rpg-green, $lightness: 20%), 0.9) 0%,
+    rgba($rpg-green, 0.95) 40%,
+    rgba(color.adjust($rpg-green, $lightness: -10%), 1) 100%
+);
+
+// Same stops at 180deg (descending) — for the subnav dropdown panels; flips to
+// the 0deg variant on hover.
+$rpg-panel-gradient: linear-gradient(
+    180deg,
+    rgba(color.adjust($rpg-green, $lightness: 20%), 0.9) 0%,
+    rgba($rpg-green, 0.95) 40%,
+    rgba(color.adjust($rpg-green, $lightness: -10%), 1) 100%
+);
+
+body[data-body-brand='rpg'] {
+
+    // ── Page background ──────────────────────────────────────────────────────
+    // The gradient lives on .flex-wrapper (the full-height header→main→footer
+    // container), not the body: a body-level fixed background left a black gap
+    // below the fold, so painting the wrapper guarantees full-document coverage.
+    // Still fixed so it reads per-viewport; the body keeps a solid green base as
+    // a final backstop so nothing is ever black.
+    background-color: #164400;
+    min-height: 100vh;
+
+    .flex-wrapper {
+        background: $rpg-gradient fixed no-repeat;
+        background-color: #658900; // fills any area the fixed layer doesn't cover
+    }
+
+    // Content column is transparent so the page gradient shows through.
+    // (Base .main paints var(--ink-0) in main.scss.)
+    .main {
+        background-color: transparent;
+    }
+
+    // Events sidebar: drop the dark panel fill (rgb(11,15,21) / --ink-1, which
+    // is meant for The Polys) so the page gradient shows through for RPG.
+    .events-sidebar {
+        background: none;
+    }
+
+    // Partner logos sit on a solid default-green tile — many are transparent
+    // PNGs, so the green backs them consistently. Only the logo image is
+    // filled; the sidebar / section-menu container stays unfilled (above).
+    .sidebar-item-image img {
+        background: $rpg-green;
+    }
+
+    // ── Nav background ───────────────────────────────────────────────────────
+    // The visible nav bar is the .megamenu element (its default black
+    // fade-to-transparent lives in megamenu.scss). Swap it for the brand
+    // gradient on RPG pages. This selector outranks `.container .megamenu`, so
+    // no !important is needed.
+    // Brand metallic gradient on both the desktop bar and the mobile drawer
+    // (the responsive menu), so both carry the brand background. 180deg
+    // (descending) to match the footer/panels.
+    .megamenu,
+    .megamenu__mobile {
+        background: $rpg-panel-gradient;
+    }
+    // Fixed header container behind the bar — drop the ≥768px rgba fill so no
+    // dark edge peeks around the brand gradient.
+    #header.navbar-transparent {
+        background-color: transparent;
+    }
+
+    // Current nav item — brand yellow accent.
+    .megamenu__item[aria-current="page"] > a,
+    .megamenu__item.is-current > a {
+        color: #FFD54A;
+    }
+
+    // Subnav dropdown panels — same 180deg brand gradient as the footer, with
+    // a transition so the direction flips to 0deg on hover.
+    .megamenu__panel {
+        background: $rpg-panel-gradient;
+        transition: background 250ms ease;
+
+        &:hover {
+            background: $rpg-nav-gradient; // flip to 0deg on hover
+        }
+    }
+    // Active subnav link — brand yellow.
+    .megamenu__link[aria-current="page"],
+    .megamenu__link.is-current {
+        color: #FFD54A;
+    }
+
+    // Each subnav item shows the brand gradient on hover, with a slight opacity
+    // lift on the hovered text.
+    .megamenu__link {
+        transition: background 200ms ease, color 200ms ease, opacity 200ms ease;
+
+        &:hover,
+        &:focus-visible {
+            background: $rpg-nav-gradient;
+            color: #fff;
+            opacity: 0.9;
+        }
+    }
+
+    // RPG brand logo — nudge down 5px from the centred position.
+    .megamenu__mobile-header-logo {
+        margin-top: 5px;
+    }
+
+    // ── Page-title band ──────────────────────────────────────────────────────
+    // Solid brand green band with white title text (overrides the per-brand
+    // green *text* colour emitted by _page-title.scss).
+    .page-title-band {
+        background-color: $rpg-green;
+    }
+    .page-title__text {
+        color: #fff;
+        // Blue glow — brighter than the green band so it reads; no offset so
+        // it haloes all sides.
+        text-shadow: 0 0 3px rgba(70, 140, 255, 0.95),
+                     0 0 7px rgba(40, 110, 235, 0.7);
+    }
+
+    // Exodar display face; drop the base 900 weight so the real (single-weight)
+    // face renders instead of a synthesised faux-bold.
+    .page-title {
+        font-family: 'Exodar', sans-serif;
+        font-weight: 400;
+    }
+}

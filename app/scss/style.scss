@@ -37,6 +37,11 @@ DO NOT EDIT IN STYLE.CSS
 @use "partials/hero";
 @use "partials/page-frame";  // Canonical page layout system
 @use "partials/slick";
+@use "partials/screen-carousel";  // Modern screen_image carousel (replaces slick)
+@use "partials/hero-video";        // Hero video player (supersedes hero image)
+@use "partials/page-title";        // Brand-coloured page title under the hero
+@use "partials/red-carpet";        // Lush red gradient backdrop for red-carpet events
+@use "partials/events-index";      // Profile appearance index + appearances sidebar
 @use "partials/sponsors";
 
 // =============================================================================
@@ -64,6 +69,7 @@ DO NOT EDIT IN STYLE.CSS
 @use "partials/_summit-series";
 @use "partials/_the-polys";
 @use "partials/_metatraversal";
+@use "partials/_rpg";
 
 // =============================================================================
 // External Fonts

@@ -1,0 +1,74 @@
+// =============================================================================
+// Events Profile Index + Appearances sidebar
+// Markup: app/js/custom/events-index.js (from data/profile-index.json)
+// =============================================================================
+
+.profile-index-list {
+	display: flex;
+	flex-direction: column;
+	gap: 1.25rem;
+}
+
+.index-profile {
+	&-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 0.5rem;
+	}
+
+	.index-name {
+		font-weight: 700;
+		font-size: 1.05rem;
+		color: inherit;
+	}
+
+	.cred {
+		font-size: 0.9rem;
+		opacity: 0.8;
+	}
+
+	.index-count {
+		margin-left: auto;
+		font-size: 0.8rem;
+		font-weight: 400;
+		opacity: 0.7;
+		white-space: nowrap;
+	}
+}
+
+.appearance-list {
+	list-style: none;
+	margin: 0.4rem 0 0;
+	padding: 0;
+
+	.appearance {
+		padding: 0.15rem 0;
+		font-size: 0.92rem;
+		overflow-wrap: break-word;
+		word-break: break-word;
+	}
+
+	.appearance-link {
+		text-decoration: none;
+		border-bottom: 1px solid currentColor;
+		cursor: pointer;
+	}
+
+	.appearance-event {
+		opacity: 0.75;
+		font-size: 0.85rem;
+	}
+}
+
+#appearances {
+	.appearances-heading {
+		margin: 0 0 0.5rem;
+		font-size: 1.05rem;
+	}
+}
+
+.index-empty {
+	opacity: 0.7;
+	font-style: italic;
+}

@@ -65,34 +65,8 @@ if (!$has_sidebar_menu) {
     <div class="events-sidebar__sections">
         
         <?php if ($has_sidebar_menu): ?>
-            <?php
-            // Fetch menu items in menu order
-            $menu_items = wp_get_nav_menu_items($sidebar_menu_id);
-            if (!empty($menu_items)):
-            ?>
-            <div class="sidebar-curated">
-                <?php foreach ($menu_items as $menu_item):
-                    $item_post_id = (int) $menu_item->object_id;
-                    $item_post = ($menu_item->type === 'post_type' && $item_post_id) ? get_post($item_post_id) : null;
-                    $item_title = !empty($menu_item->title) ? $menu_item->title : ($item_post ? get_the_title($item_post_id) : '');
-                ?>
-                <div class="sidebar-item">
-                    <?php if ($item_post && has_post_thumbnail($item_post_id)): ?>
-                    <div class="sidebar-item-image">
-                        <?php echo get_the_post_thumbnail($item_post_id, 'medium', ['class' => 'sidebar-item-img']); ?>
-                    </div>
-                    <?php endif; ?>
-                    <div class="sidebar-item-title"><?php echo esc_html($item_title); ?></div>
-                    <?php if ($item_post && !empty($item_post->post_content)): ?>
-                    <div class="sidebar-item-content">
-                        <?php echo do_blocks(do_shortcode($item_post->post_content)); ?>
-                    </div>
-                    <?php endif; ?>
-                </div>
-                <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
-        
+            <?php echo render_curated_sidebar_menu($sidebar_menu_id); ?>
+
         <?php else: ?>
             
             <section class="events-sidebar__section events-sidebar__section--upcoming">

@@ -240,7 +240,16 @@ if (!function_exists('display_LookingGlass')) {
 }
 ?>
 
-<main id="main" class="main <?php echo esc_attr($section_class); ?>" role="main">
+<!-- single-event.php deployed 2026-08-24 — video-player + awards list + single branded title -->
+<?php
+// Authoritative brand key (from the brand_key field, inheriting up parents) as a
+// class on <main>, so brand overrides can target it (e.g. .main.the-polys).
+$brand_key = function_exists('polys_get_brand_key_from_meta')
+    ? polys_get_brand_key_from_meta($post->ID)
+    : (string) get_post_meta($post->ID, 'brand_key', true);
+$main_classes = array_filter(array('main', (string) $section_class, (string) $brand_key), 'strlen');
+?>
+<main id="main" class="<?php echo esc_attr(implode(' ', $main_classes)); ?>" role="main">
     <div class="d-flex container-flex">
         <div class="col-md-7 left event-post">
             <?php
@@ -252,9 +261,11 @@ if (!function_exists('display_LookingGlass')) {
             <div id="ros-table">
                 <?php
                 if (!empty($section_menu)) {
-                    require_once "functions/functions-awards.php";
-                    $awards = get_menu_array($section_menu);
-                    require_once('templates/awards.php');
+                    // Modular run-of-show renderer (functions-run-of-show.php).
+                    // Event Menu checkbox opts into run of show; section_class is the
+                    // single formatting variation (ceremony / red-carpet / metatraversal).
+                    $event_menu = get_post_meta($post->ID, "event_menu", true);
+                    echo get_run_of_show_menu($section_menu, $section_class, !empty($event_menu));
                 }
                 ?>
             </div>
@@ -280,6 +291,15 @@ if (!function_exists('display_LookingGlass')) {
                     <div id="video-wrap-footer"></div>
                 </div>
                 <?php endif; ?>
+
+                <?php
+                // Curated Sidebar Menu (the "Sidebar Menu" metabox field) — renders
+                // under the video when one is assigned to this event.
+                $sidebar_menu_id = get_post_meta($post->ID, 'sidbebar_menu', true);
+                if (!empty($sidebar_menu_id) && function_exists('render_curated_sidebar_menu')) {
+                    echo render_curated_sidebar_menu($sidebar_menu_id);
+                }
+                ?>
 
                 <?php if (!empty($sponsor_board)): ?>
                 <div class="sponsor-board">

@@ -1,0 +1,55 @@
+// =============================================================================
+// Page Title
+// Markup: header.php (rendered directly under the hero)
+//   <div class="page-title-band"><h1 class="page-title">
+//     <span class="page-title__text">…</span>
+//   </h1></div>
+//
+// Full-width band; the title colour keys off body[data-body-brand] so each
+// brand gets its own colour. Values mirror the brand palette used in
+// _brandbar.scss / _footer-brand.scss.
+// =============================================================================
+
+$page-title-brand-colors: (
+	academy: #275689,       // Metallic blue
+	polys: #E79633,         // Gold
+	metatraversal: #9934a6, // Violet
+	rpg: #135607,           // Green
+);
+
+.page-title-band {
+	width: 100%;
+	padding: 0.5rem 6%; // minimal vertical padding — slim title band
+	text-align: center;
+}
+
+// When the band is the top-of-page element (no hero / carousel / slideshow
+// above it) it must clear the fixed nav (megamenu + optional section bar).
+// The hero branches already clear the nav, so only the --top variant offsets.
+.page-title-band--top {
+	margin-top: var(--total-header-offset, 50px);
+
+	& + .main {
+		padding-top: 0; // band already cleared the nav — don't double the offset
+	}
+}
+
+.page-title {
+	margin: 0;
+	font-size: clamp(1.9rem, 5vw, 3.6rem);
+	font-weight: 900;
+	line-height: 1.05;
+	letter-spacing: 0.01em;
+
+	&__text {
+		// Default / fallback colour (also covers unmapped brands like ipn).
+		color: map-get($page-title-brand-colors, academy);
+	}
+}
+
+// Per-brand colour overrides.
+@each $brand, $color in $page-title-brand-colors {
+	body[data-body-brand='#{$brand}'] .page-title__text {
+		color: $color;
+	}
+}

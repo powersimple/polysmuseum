@@ -46,7 +46,7 @@ $gradient-metatraversal: linear-gradient(
 );
 
 $gradient-rpg: linear-gradient(
-    135deg,
+    180deg,
     rgba(color.adjust($brand-rpg, $lightness: 20%), 0.9) 0%,
     rgba($brand-rpg, 0.95) 40%,
     rgba(color.adjust($brand-rpg, $lightness: -10%), 1) 100%

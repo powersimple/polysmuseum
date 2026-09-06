@@ -306,3 +306,63 @@ function events_sidebar_render_recent($events) {
     }
     echo '</div>';
 }
+
+/**
+ * Render a curated sidebar menu (the `sidbebar_menu` metabox value) as a vertical
+ * stack of items. Shared by templates/sidebar-events.php and single-event.php so
+ * the markup stays identical wherever the sidebar menu appears.
+ *
+ * @param int|string $menu_id Nav menu ID (term_id) or name/slug accepted by
+ *                            wp_get_nav_menu_items().
+ * @return string HTML, or '' when the menu is empty/unset.
+ */
+function render_curated_sidebar_menu($menu_id) {
+    if (empty($menu_id)) {
+        return '';
+    }
+    $menu_items = wp_get_nav_menu_items($menu_id);
+    if (empty($menu_items)) {
+        return '';
+    }
+
+    ob_start();
+    ?>
+    <div class="sidebar-curated">
+        <?php foreach ($menu_items as $menu_item):
+            $item_post_id = (int) $menu_item->object_id;
+            $item_post = ($menu_item->type === 'post_type' && $item_post_id) ? get_post($item_post_id) : null;
+            $item_title = !empty($menu_item->title) ? $menu_item->title : ($item_post ? get_the_title($item_post_id) : '');
+            // Menu item "Description" field — shown as a caption/tagline under the
+            // partner (NOT the post_content, which is long and stretches the column).
+            $item_desc  = !empty($menu_item->description) ? trim($menu_item->description) : '';
+
+            // Carry the menu item's own CSS classes (e.g. tier colours like
+            // "purple-tier", "gold-tier" from _profile.scss) onto the item.
+            $item_class_arr = (!empty($menu_item->classes) && is_array($menu_item->classes)) ? $menu_item->classes : array();
+            $item_classes = 'sidebar-item';
+            $extra = implode(' ', array_filter(array_map('sanitize_html_class', $item_class_arr)));
+            if ($extra !== '') {
+                $item_classes .= ' ' . $extra;
+            }
+
+        ?>
+        <div class="<?php echo esc_attr($item_classes); ?>">
+            <?php if ($item_post && has_post_thumbnail($item_post_id)): ?>
+            <div class="sidebar-item-image">
+                <?php // Partner name goes into the image's title + alt (no visible title row).
+                echo get_the_post_thumbnail($item_post_id, 'medium', array(
+                    'class' => 'sidebar-item-img',
+                    'alt'   => $item_title,
+                    'title' => $item_title,
+                )); ?>
+            </div>
+            <?php endif; ?>
+            <?php if ($item_desc !== ''): ?>
+            <div class="sidebar-item-desc"><?php echo esc_html($item_desc); ?></div>
+            <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}

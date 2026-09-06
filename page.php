@@ -39,11 +39,9 @@ $has_sidebar_menu = !empty($sidebar_menu_id);
 
     <article id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
         
-        <?php if (!$hero_image): ?>
-        <header class="page-header">
-            <h1 class="page-title"><?php the_title(); ?></h1>
-        </header>
-        <?php endif; ?>
+        <?php // Page title now renders once in the page-title-band (header.php)
+              // directly under the hero; the in-article <h1> was removed to
+              // avoid a duplicate page heading. ?>
         
      
       <div class="widget-container">

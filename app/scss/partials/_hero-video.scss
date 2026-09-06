@@ -1,0 +1,23 @@
+// =============================================================================
+// Hero Video
+// Markup: functions/functions-hero-video.php  →  render_hero_video()
+//
+// Full-bleed, autoplaying, looped, muted hero video. Fills the viewport width;
+// consistent height band with object-fit: cover. Supersedes the hero image.
+// =============================================================================
+
+.hero-video {
+	position: relative;
+	width: 100%;
+	margin: 0;
+	background: #000;
+	line-height: 0; // kill inline-video descender gap
+
+	&__media {
+		display: block;
+		width: 100%;
+		height: clamp(360px, 80vh, 900px);
+		object-fit: cover;
+		background: #000;
+	}
+}

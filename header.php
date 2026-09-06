@@ -195,8 +195,10 @@ function extract_number($class) {
         $padding_bottom = '';
       }
 
-      $hero = $current_post_id ? get_post_meta($current_post_id, 'hero', true) : '';
-   $hero_image = $hero ? getThumbnail($hero) : '';
+      $hero_ids   = $current_post_id ? get_hero_image_ids($current_post_id) : array();
+      $hero_count = count($hero_ids);
+      $hero       = $hero_count ? $hero_ids[0] : '';
+      $hero_image = $hero ? getThumbnail($hero) : '';
 
       $slides = $current_post_id ? get_slides($current_post_id) : [];
       if($current_post_name != 'nominees'){
@@ -206,7 +208,30 @@ function extract_number($class) {
 
 <?php
 }
-      if($hero){
+      // Page title band — rendered directly below the top hero item. When there
+      // is no hero / carousel / slideshow above it, the band is the first
+      // element under the fixed nav and must clear it (page-title-band--top).
+      $has_hero_video = has_hero_video($current_post_id);
+      $has_top_media  = $has_hero_video
+          || $hero_count > 0
+          || (is_array($slides) && count($slides) > 0);
+      $band_top_class = $has_top_media ? '' : ' page-title-band--top';
+      $page_title = $current_post_id ? get_the_title($current_post_id) : '';
+      $page_title_html = ($page_title !== '')
+          ? '<div class="page-title-band' . $band_top_class . '"><h1 class="page-title"><span class="page-title__text">' . esc_html($page_title) . '</span></h1></div>'
+          : '';
+
+      if($has_hero_video){
+        // Hero = video (top item). The title sits directly below the video; the
+        // screen_image slideshow (if any) renders below the title.
+        echo render_hero_video($current_post_id);
+        echo $page_title_html;
+        echo render_screen_carousel($current_post_id);
+      } else if($hero_count > 1){
+        // Multiple hero images → slideshow carousel (distinct hero transition).
+        $hero_label = $page_title !== '' ? $page_title . ' — hero' : 'Hero';
+        echo render_image_carousel($hero_ids, array('variant' => 'hero', 'label' => $hero_label));
+      } else if($hero){
       ?>
 
 
@@ -230,9 +255,8 @@ function extract_number($class) {
    
     <section class="home-section home-parallax home-fade <?=@$section_hero_class?>" id="home" style="top:25px;">
 
-    <div class="hero-slideshow">
-  <!-- Slides will be dynamically added here -->
-</div>
+    <?php // Screen Image carousel (modern, zero-dependency module). ?>
+    <?php echo render_screen_carousel($current_post_id); ?>
 
         
         </section>
@@ -247,7 +271,9 @@ function extract_number($class) {
 
     <?php
   
-          foreach ($slides as $key => $media_id) {
+          // Retired: legacy hero_slides JS builder disabled (carousel renders via
+          // render_screen_carousel()). Loop over an empty set to skip the work.
+          foreach (array() as $key => $media_id) {
               $versions = getThumbnailVersions($media_id);
               $version_list = array();
             // var_dump($versions);
@@ -284,10 +310,15 @@ function extract_number($class) {
           <?php
         
 
-        $slick = $current_post_id ? get_post_meta($current_post_id, "use_slick", true) : '';  
-        if(@$slick == 1){
-          require_once("functions/slick.php");
-        }
+        // Old jQuery/Slick slideshow retired — the carousel is now rendered by
+        // render_screen_carousel() above. The use_slick gate is gone.
+      }
+
+      // Title for the non-video branches (image hero / slideshow-as-hero / no
+      // hero): render it directly below the single top item. The video branch
+      // above already placed the title between the video and the slideshow.
+      if (!$has_hero_video) {
+          echo $page_title_html;
       }
 
    

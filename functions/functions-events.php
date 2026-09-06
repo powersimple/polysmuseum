@@ -349,15 +349,263 @@ function eventIndex($event_menus){
         print "<br>";
     }
     $lists['profile_sort'] = $profile_sort;
- 
+
     $lists['company_list'] = array_unique($lists['company_list']);
-    
+
   // $lists['profile_list'] = array_unique($lists['profile_list']);
-    
-    
+
+
 
        return $lists;
 }
+
+/**
+ * Build a LEAN profile appearance index from a comma-list of event menu slugs.
+ *
+ * Unlike eventIndex(), this embeds NEITHER the full event_list tree NOR the full
+ * profile objects — each appearance carries its own inlined video URL, so the
+ * client needs no lookup table. Output is a small, flat, alpha-sortable list:
+ *
+ *   {
+ *     generated, menus[], count,
+ *     profiles: [ { id, name, sort:"Last, First", slug, title, company,
+ *                   has_content, count, events:[ { event_title, event_slug,
+ *                   event_key, session_id, session_title, session_slug, video } ] } ]
+ *   }
+ *
+ * Heavy walk — run only on an explicit rebuild (see rebuild_profile_index()),
+ * then serve the static JSON. Result is sorted by last name.
+ *
+ * @param string $event_menus Comma-separated menu slugs.
+ * @return array
+ */
+function build_lean_profile_index($event_menus) {
+    $menus    = array_values(array_filter(array_map('trim', explode(',', (string) $event_menus))));
+    $profiles = array(); // keyed by profile ID
+
+    foreach ($menus as $menu_slug) {
+        $tree = function_exists('get_menu_array') ? get_menu_array($menu_slug) : null;
+        if (empty($tree)) {
+            continue;
+        }
+        foreach ($tree as $event) {
+            if (empty($event['children'])) {
+                continue;
+            }
+            foreach ($event['children'] as $session) {
+                $raw_video = isset($session['meta']['embed_video_url'][0]) ? $session['meta']['embed_video_url'][0] : '';
+                $video     = ($raw_video && function_exists('event_format_video_url'))
+                    ? event_format_video_url($raw_video)
+                    : (string) $raw_video;
+
+                if (empty($session['children'])) {
+                    continue;
+                }
+                foreach ($session['children'] as $profile) {
+                    if (empty($profile['post']->ID)) {
+                        continue;
+                    }
+                    $pid = (int) $profile['post']->ID;
+
+                    // People only — skip event / resource / product nominees etc.
+                    $ptype = isset($profile['post']->post_type) ? $profile['post']->post_type : get_post_type($pid);
+                    if ('profile' !== $ptype) {
+                        continue;
+                    }
+
+                    if (!isset($profiles[$pid])) {
+                        $ptitle = isset($profile['title']) ? $profile['title'] : get_the_title($pid);
+                        $sort   = isset($profile['meta']['sort_name'][0]) ? $profile['meta']['sort_name'][0] : '';
+                        if ('' === $sort) {
+                            $sort = sortByLastName($ptitle);
+                        }
+                        $profiles[$pid] = array(
+                            'id'          => $pid,
+                            'name'        => $ptitle,
+                            'sort'        => $sort,
+                            'slug'        => isset($profile['post']->post_name) ? $profile['post']->post_name : '',
+                            'title'       => (string) get_post_meta($pid, 'profile_title', true),
+                            'company'     => (string) get_post_meta($pid, 'company', true),
+                            'has_content' => ( '' !== trim((string) ($profile['post']->post_content ?? '')) ),
+                            'events'      => array(),
+                        );
+                    }
+
+                    $profiles[$pid]['events'][] = array(
+                        'event_title'   => isset($event['title']) ? $event['title'] : '',
+                        'event_slug'    => isset($event['slug']) ? $event['slug'] : '',
+                        'event_key'     => $menu_slug,
+                        'session_id'    => isset($session['post']->ID) ? (int) $session['post']->ID : 0,
+                        'session_title' => isset($session['title']) ? $session['title'] : '',
+                        'session_slug'  => isset($session['slug']) ? $session['slug'] : '',
+                        'video'         => $video,
+                    );
+                }
+            }
+        }
+    }
+
+    $list = array_values($profiles);
+    foreach ($list as &$p) {
+        $p['count'] = count($p['events']);
+    }
+    unset($p);
+
+    // Alpha by last name (sort field), case-insensitive.
+    usort($list, static function ($a, $b) {
+        return strcasecmp((string) $a['sort'], (string) $b['sort']);
+    });
+
+    return array(
+        'generated' => gmdate('c'),
+        'menus'     => $menus,
+        'count'     => count($list),
+        'profiles'  => $list,
+    );
+}
+
+/**
+ * Rebuild + publish the lean profile index to data/profile-index.json.
+ * Admins only. Returns the built array (or null if not permitted).
+ *
+ * @param string $event_menus
+ * @return array|null
+ */
+function rebuild_profile_index($event_menus) {
+    if (!current_user_can('manage_options')) {
+        return null;
+    }
+    $index = build_lean_profile_index($event_menus);
+    if (function_exists('publishThis')) {
+        publishThis('profile-index', $index);
+    }
+    return $index;
+}
+
+/**
+ * Load + statically cache the lean index JSON (data/profile-index.json).
+ *
+ * @return array  Decoded index ('profiles' key) or empty array.
+ */
+function get_profile_index_data() {
+    static $data = null;
+    if (null !== $data) {
+        return $data;
+    }
+    $file = get_template_directory() . '/data/profile-index.json';
+    if (!file_exists($file)) {
+        return $data = array();
+    }
+    $decoded = json_decode((string) file_get_contents($file), true);
+    return $data = is_array($decoded) ? $decoded : array();
+}
+
+/**
+ * Markup for one person's appearance list (shared by index rows + sidebar).
+ *
+ * @param array $events
+ * @return string
+ */
+function render_appearance_list_html($events) {
+    if (empty($events)) {
+        return '';
+    }
+    $html = '<ul class="appearance-list">';
+    foreach ($events as $ev) {
+        $html .= '<li class="appearance"><a href="#' . esc_attr($ev['event_slug']) . '" class="appearance-link"'
+            . ' data-video="' . esc_attr($ev['video']) . '"'
+            . ' data-title="' . esc_attr($ev['session_title']) . '">'
+            . esc_html($ev['session_title']) . '</a> '
+            . '<span class="appearance-event ' . esc_attr($ev['event_slug']) . '">'
+            . esc_html($ev['event_title']) . '</span></li>';
+    }
+    return $html . '</ul>';
+}
+
+/**
+ * Server-rendered alphabetical profile directory (from the pre-built lean JSON).
+ * Cheap file read — no DB walk — and fully cacheable by LiteSpeed.
+ *
+ * @return string
+ */
+function render_profile_index_html() {
+    $data = get_profile_index_data();
+    if (empty($data['profiles'])) {
+        return '<p class="index-empty">Profile index unavailable. Rebuild it via <code>?rebuild-index</code> as an admin.</p>';
+    }
+    $out = '<div id="profiles" class="profile-index-list">';
+    foreach ($data['profiles'] as $pr) {
+        if (empty($pr['sort'])) {
+            continue;
+        }
+        $cred = '';
+        if (!empty($pr['title']))   { $cred .= esc_html($pr['title']); }
+        if (!empty($pr['title']) && !empty($pr['company'])) { $cred .= ', '; }
+        if (!empty($pr['company'])) { $cred .= esc_html($pr['company']); }
+
+        $count = isset($pr['count']) ? (int) $pr['count'] : count($pr['events']);
+        $name  = !empty($pr['has_content'])
+            ? '<a href="/profile/' . esc_attr($pr['slug']) . '" class="index-name">' . esc_html($pr['sort']) . '</a>'
+            : '<span class="index-name">' . esc_html($pr['sort']) . '</span>';
+
+        $out .= '<div class="index-profile" id="' . esc_attr($pr['slug']) . '" data-profile="' . esc_attr($pr['id']) . '" data-name="' . esc_attr($pr['name']) . '">'
+            . '<div class="index-profile-head">' . $name
+            . ($cred ? ' <span class="cred">' . $cred . '</span>' : '')
+            . ' <span class="index-count">' . $count . ' appearance' . (1 === $count ? '' : 's') . '</span></div>'
+            . render_appearance_list_html($pr['events'])
+            . '</div>';
+    }
+    return $out . '</div>';
+}
+
+/**
+ * Server-rendered "Appearances by X" for the sidebar, matched by sort name
+ * (e.g. "Moshasha, Sophia"). Empty string when not found.
+ *
+ * @param string $sort_name
+ * @return string
+ */
+function render_appearances_html($sort_name) {
+    if (empty($sort_name)) {
+        return '';
+    }
+    $data = get_profile_index_data();
+    if (empty($data['profiles'])) {
+        return '';
+    }
+    $target = strtolower(trim($sort_name));
+    foreach ($data['profiles'] as $pr) {
+        if (strtolower(trim((string) $pr['sort'])) === $target) {
+            return '<h4 class="appearances-heading">Appearances by ' . esc_html($pr['name']) . '</h4>'
+                . render_appearance_list_html($pr['events']);
+        }
+    }
+    return '';
+}
+
+/**
+ * Is the lean profile index stale? True when an event/profile was saved more
+ * recently than data/profile-index.json was written.
+ *
+ * @return bool
+ */
+function profile_index_is_stale() {
+    $dirty = (int) get_option('profile_index_dirty', 0);
+    $file  = get_template_directory() . '/data/profile-index.json';
+    $mtime = file_exists($file) ? (int) filemtime($file) : 0;
+    return ( $dirty > $mtime );
+}
+
+// Mark the index stale whenever an event or profile is saved — cheap flag only,
+// no heavy walk on save. The events page then prompts an admin to rebuild.
+add_action('save_post', function ($post_id, $post) {
+    if (wp_is_post_revision($post_id) || wp_is_post_autosave($post_id)) {
+        return;
+    }
+    if ($post && in_array($post->post_type, array('event', 'profile'), true)) {
+        update_option('profile_index_dirty', time(), false);
+    }
+}, 10, 2);
 
 function sortByLastName($name){
 

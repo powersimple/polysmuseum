@@ -18,14 +18,14 @@ if($default_video_url == ''){
     <div class="video-wrap">
         <div id="video-wrap-header"></div>
         <div class="video-wrap">
-            <iframe id="video-player" src="<?=$default_video_url?>"  frameborder="0" allowfullscreen></iframe>
+            <iframe id="video-player" src="<?=$default_video_url?>" frameborder="0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
                 
         </div> 
 
             <div id="video-wrap-footer"></div>
             
         
-    </div><div id="appearances"></div>
+    </div><div id="appearances"><?php echo isset($appearances_html) ? $appearances_html : ''; ?></div>
         <?php
 
         if(@$video_playlist){

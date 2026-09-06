@@ -3,12 +3,12 @@
 //ENQUE
 
     function admin_q() {
-		wp_enqueue_style('admin-styles', get_template_directory_uri().'/profiler/admin.css');
+		wp_enqueue_style('admin-styles', get_template_directory_uri().'/functions/profiler/admin.css');
 		wp_enqueue_style( 'font-awesome','https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');
 
-		wp_register_script('admin_js', get_template_directory_uri() . '/profiler/admin.js'); 
+		wp_register_script('admin_js', get_template_directory_uri() . '/functions/profiler/admin.js'); 
         wp_enqueue_script('admin_js');
-		wp_register_script('ajax_js', get_template_directory_uri() . '/profiler/ajax.js'); 
+		wp_register_script('ajax_js', get_template_directory_uri() . '/functions/profiler/ajax.js'); 
         wp_enqueue_script('ajax_js');
     }
 	add_action('admin_enqueue_scripts', 'admin_q');

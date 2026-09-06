@@ -135,6 +135,10 @@ h1.profile-header {
 // Team Member
 // ---------------------------------------------------------------------------
 .team-member {
+    display: flex;
+    flex-direction: column;
+    align-items: center;   // centre the stacked photo / name / desc / social
+    gap: 0.4rem;
     margin-bottom: 50px;
 
     h4 {
@@ -159,6 +163,13 @@ h1.profile-header {
 
     p {
         font-size: .8rem;
+        margin-bottom: 0;   // keep the social row close to the description
+    }
+
+    // Remove the gray divider under the social meta (from .profile-meta).
+    .profile-meta {
+        border-bottom: none;
+        margin-bottom: 0;
     }
 
     img {
@@ -171,6 +182,27 @@ h1.profile-header {
         @media (max-width: 768px) {
             max-width: 50%;
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Profile list grid (profile_list shortcode, non-partners path)
+// Auto-fit by card width; cards wrap and the last row's remainder centres
+// (justify-content: center). Replaces the old Bootstrap .row / col-* layout.
+// ---------------------------------------------------------------------------
+.profile-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;   // centres the last-row remainder
+    align-items: stretch;      // equal-height cells within each row
+    gap: 1.5rem 2rem;
+    width: 100%;
+    margin: 1rem 0;
+
+    .profile-card {
+        flex: 1 1 200px;       // min ~200px, grows to fill, wraps → dynamic columns
+        max-width: 240px;      // keep cards from sprawling on wide screens
+        margin-bottom: 0;      // grid gap handles vertical spacing
     }
 }
 
@@ -211,8 +243,11 @@ h1.profile-header {
 .tier {
     font-weight: 700;
     letter-spacing: 0.04em;
-    margin: 28px 0 14px;
     text-align: center;
+    border-top: 1px solid #ccc;
+    padding: 2rem 0;
+    margin-top: 2rem;
+    font-size: 1.5rem;
 }
 .blue-tier     { color: #4EA1FF; }
 .red-tier      { color: #FF4D5A; }

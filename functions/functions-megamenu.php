@@ -86,7 +86,7 @@ function get_megamenu_data($menu_slug = 'megamenu') {
         LEFT JOIN {$wpdb->postmeta} pm_classes ON p.ID = pm_classes.post_id AND pm_classes.meta_key = '_menu_item_classes'
         LEFT JOIN {$wpdb->postmeta} pm_xfn ON p.ID = pm_xfn.post_id AND pm_xfn.meta_key = '_menu_item_xfn'
         LEFT JOIN {$wpdb->postmeta} pm_description ON p.ID = pm_description.post_id AND pm_description.meta_key = '_menu_item_description'
-        LEFT JOIN {$wpdb->posts} linked_post ON pm_object_id.meta_value = linked_post.ID
+        LEFT JOIN {$wpdb->posts} linked_post ON linked_post.ID = CAST(pm_object_id.meta_value AS UNSIGNED)
         WHERE tr.term_taxonomy_id = %d
         AND p.post_type = 'nav_menu_item'
         AND p.post_status = 'publish'
@@ -111,7 +111,12 @@ function get_megamenu_data($menu_slug = 'megamenu') {
         if (empty($url) && $item->object_id) {
             $url = get_permalink($item->object_id);
         }
-        
+        // Brand section links use the full vanity domain (thepolys.com …) on
+        // production; a no-op locally unless ?brand_urls=1. See functions-brands.php.
+        if (function_exists('rewrite_url_to_brand_domain')) {
+            $url = rewrite_url_to_brand_domain($url);
+        }
+
         // Use linked post title if menu item title is empty
         $title = !empty($item->post_title) ? $item->post_title : $item->linked_title;
         
@@ -360,8 +365,10 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
 
     // ── Active brand override (single-root mode only) ────────────────────────
     // When the resolved brand ≠ menu root brand, swap nav_items to the active
-    // brand's children.  The root (Academy) logo is ALWAYS kept visible as a
-    // persistent home link; the brand logo is added alongside it.
+    // brand's children.  Logo policy (updated 2026-08-24): in a branded context
+    // the header shows ONLY the active brand's logo — the Academy root logo is no
+    // longer pinned alongside it.  Per-brand Academy awareness is handled case by
+    // case, not globally forced here.
     $effective_logo_item = $root_item; // default: menu root (usually Academy)
     $is_branded_context  = false;
     if ($single_root && $root_item) {
@@ -425,28 +432,21 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
     // Branded context:  one <li> containing both logos side by side.
     //   Both share has-logo so the CSS :first-child margin-right:auto fires on
     //   the combined item, pushing all nav items to the right.
+    // Branded context => show ONLY the brand logo. Unbranded => root logo.
     $desktop_logo_li = '';
-    if ($single_root && $root_logo_url) {
-        $li_classes = 'megamenu__item has-logo';
-        if (!empty($root_item['classes'])) {
-            $li_classes .= ' ' . $root_item['classes'];
-        }
-        if ($is_branded_context) {
-            $li_classes .= ' megamenu__item--dual-logo';
-        }
+    $show_brand_logo = $is_branded_context && ($brand_logo_url || $brand_logo_title);
+    if ($single_root && ($root_logo_url || $show_brand_logo)) {
+        $logo_source_item = $show_brand_logo ? $effective_logo_item : $root_item;
 
-        $root_href_attr   = esc_url($root_logo_href);
-        $root_target_attr = $root_logo_target ? ' target="' . esc_attr($root_logo_target) . '"' : '';
+        $li_classes = 'megamenu__item has-logo';
+        if (!empty($logo_source_item['classes'])) {
+            $li_classes .= ' ' . $logo_source_item['classes'];
+        }
 
         $desktop_logo_li  = '<li class="' . esc_attr($li_classes) . '"';
-        $desktop_logo_li .= ' id="megamenu-item-' . esc_attr($root_item['id']) . '" role="none">';
-        $desktop_logo_li .= '<a href="' . $root_href_attr . '"' . $root_target_attr;
-        $desktop_logo_li .= ' role="menuitem" class="megamenu__logo-link megamenu__logo-link--root">';
-        $desktop_logo_li .= '<img class="megamenu__logo-img" src="' . esc_attr($root_logo_url) . '"';
-        $desktop_logo_li .= ' alt="' . esc_attr($root_logo_title) . '" />';
-        $desktop_logo_li .= '</a>';
+        $desktop_logo_li .= ' id="megamenu-item-' . esc_attr($logo_source_item['id']) . '" role="none">';
 
-        if ($is_branded_context) {
+        if ($show_brand_logo) {
             $brand_href_attr   = esc_url($brand_logo_href);
             $brand_target_attr = $brand_logo_target ? ' target="' . esc_attr($brand_logo_target) . '"' : '';
             $desktop_logo_li  .= '<a href="' . $brand_href_attr . '"' . $brand_target_attr;
@@ -458,6 +458,14 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
                 $desktop_logo_li .= '<span class="megamenu__brand-label">' . esc_html($brand_logo_title) . '</span>';
             }
             $desktop_logo_li .= '</a>';
+        } else {
+            $root_href_attr   = esc_url($root_logo_href);
+            $root_target_attr = $root_logo_target ? ' target="' . esc_attr($root_logo_target) . '"' : '';
+            $desktop_logo_li .= '<a href="' . $root_href_attr . '"' . $root_target_attr;
+            $desktop_logo_li .= ' role="menuitem" class="megamenu__logo-link megamenu__logo-link--root">';
+            $desktop_logo_li .= '<img class="megamenu__logo-img" src="' . esc_attr($root_logo_url) . '"';
+            $desktop_logo_li .= ' alt="' . esc_attr($root_logo_title) . '" />';
+            $desktop_logo_li .= '</a>';
         }
 
         $desktop_logo_li .= '</li>';
@@ -467,13 +475,8 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
     ?>
     <!-- Fixed Header Bar -->
     <nav class="megamenu" role="navigation" aria-label="<?php echo esc_attr($menu_data['menu']['name']); ?>">
-        <?php if ($first_item_logo): ?>
-        <!-- Mobile: root logo (persistent home) -->
-        <a href="<?php echo esc_url($first_item_url); ?>" class="megamenu__mobile-logo-link megamenu__mobile-logo-link--root" aria-label="<?php echo esc_attr($first_item_title); ?>"<?php echo $first_item_target ? ' target="' . esc_attr($first_item_target) . '"' : ''; ?>>
-            <img src="<?php echo esc_attr($first_item_logo); ?>" alt="<?php echo esc_attr($first_item_title); ?>" class="megamenu__mobile-header-logo" />
-        </a>
         <?php if ($is_branded_context && ($brand_logo_url || $brand_logo_title)): ?>
-        <!-- Mobile: active brand logo -->
+        <!-- Mobile: active brand logo only (Academy root logo retired in branded context) -->
         <a href="<?php echo esc_url($brand_logo_href); ?>" class="megamenu__mobile-logo-link megamenu__mobile-logo-link--brand" aria-label="<?php echo esc_attr($brand_logo_title); ?>"<?php echo $brand_logo_target ? ' target="' . esc_attr($brand_logo_target) . '"' : ''; ?>>
             <?php if ($brand_logo_url): ?>
             <img src="<?php echo esc_attr($brand_logo_url); ?>" alt="<?php echo esc_attr($brand_logo_title); ?>" class="megamenu__mobile-header-logo" />
@@ -481,7 +484,11 @@ function render_megamenu_with_logo($menu_slug = 'megamenu') {
             <span class="megamenu__brand-label"><?php echo esc_html($brand_logo_title); ?></span>
             <?php endif; ?>
         </a>
-        <?php endif; ?>
+        <?php elseif ($first_item_logo): ?>
+        <!-- Mobile: root logo (persistent home) -->
+        <a href="<?php echo esc_url($first_item_url); ?>" class="megamenu__mobile-logo-link megamenu__mobile-logo-link--root" aria-label="<?php echo esc_attr($first_item_title); ?>"<?php echo $first_item_target ? ' target="' . esc_attr($first_item_target) . '"' : ''; ?>>
+            <img src="<?php echo esc_attr($first_item_logo); ?>" alt="<?php echo esc_attr($first_item_title); ?>" class="megamenu__mobile-header-logo" />
+        </a>
         <?php endif; ?>
 
         <!-- Mobile Toggle -->
@@ -686,15 +693,27 @@ function render_megamenu_desktop_item($item, $has_children, $is_current) {
             }
         }
         
-        // Panel with children — add slug class + data-mm for CSS/JS targeting
+        // Panel with children — add slug class + data-mm for CSS/JS targeting.
+        // Layout rule: if any level-2 child has its own children (an L3 exists)
+        // the panel is a horizontal mega panel; if the children are all leaf
+        // links (level-2 only) it renders as a traditional vertical dropdown.
         $item_slug = _megamenu_item_slug($item);
-        $panel_classes = 'megamenu__panel';
+        $has_l3 = false;
+        foreach ($item['children'] as $l2_child) {
+            if (!empty($l2_child['children'])) {
+                $has_l3 = true;
+                break;
+            }
+        }
+        $panel_classes  = 'megamenu__panel';
+        $panel_classes .= $has_l3 ? ' megamenu__panel--mega' : ' megamenu__panel--dropdown';
         if ($item_slug) {
             $panel_classes .= ' ' . $item_slug;
         }
+        $inner_cols = $has_l3 ? 'cols-auto' : 'cols-1';
         $data_mm = $item_slug ? ' data-mm="mm_' . esc_attr($item_slug) . '"' : '';
         $output .= '<div class="' . esc_attr($panel_classes) . '" id="' . esc_attr($panel_id) . '" data-state="closed" role="menu"' . $data_mm . '>';
-        $output .= '<div class="megamenu__panel-inner cols-auto">';
+        $output .= '<div class="megamenu__panel-inner ' . $inner_cols . '">';
         $output .= render_megamenu_panel_content($item['children']);
         $output .= '</div>';
         $output .= '</div>';
@@ -1114,9 +1133,13 @@ function get_sectionbar_data($menu_slug = 'megamenu') {
             $ancestor_id = $ancestor ? $ancestor->post_parent : 0;
         }
 
-        // Last resort: check section_class meta for brand hint and match to megamenu L1
+        // Last resort: brand hint. Prefer the authoritative brand_key meta; the
+        // section_class formatting value (ceremony/red-carpet) is only a fallback.
         $section_class = get_post_meta($post->ID, 'section_class', true);
-        if ($section_class && in_array($section_class, ['ceremony', 'red-carpet'], true)) {
+        $brand_key     = sanitize_key( (string) get_post_meta($post->ID, 'brand_key', true) );
+        $polys_hint = in_array($brand_key, ['polys', 'the-polys'], true)
+                   || ( $section_class && in_array($section_class, ['ceremony', 'red-carpet'], true) );
+        if ($polys_hint) {
             // These are Polys events — find the Polys L1 item by slug, class, or URL
             foreach ($menu_data['items'] as $l1_item) {
                 if (empty($l1_item['children'])) continue;
@@ -1981,7 +2004,7 @@ function get_footer_menu_data($menu_slug = 'footermenu') {
             $link_data = [
                 'id' => $l2_item->ID,
                 'title' => $l2_item->title,
-                'url' => $l2_item->url,
+                'url' => rewrite_url_to_brand_domain($l2_item->url),
                 'target' => $l2_item->target ?: '',
                 'title_attr' => $title_attr,
                 'fa_classes' => $fa_classes,
@@ -1998,7 +2021,7 @@ function get_footer_menu_data($menu_slug = 'footermenu') {
         $brands[$brand_key] = [
             'id' => $l1_item->ID,
             'title' => $l1_item->title,
-            'url' => $l1_item->url,
+            'url' => rewrite_url_to_brand_domain($l1_item->url),
             'description' => $l1_item->description ?: '',
             'has_children' => !empty($l2_items),
             'children_count' => count($l2_items),
@@ -2135,7 +2158,8 @@ function render_footer_navigation() {
             </nav>
             <?php endif; ?>
             
-            <?php if (!empty($brand_panel_data['description'])): ?>
+            <?php // The Polys stands alone — no "fiscally sponsored project of the Academy" relationship line. ?>
+            <?php if (!empty($brand_panel_data['description']) && $current_brand !== 'polys'): ?>
             <p class="footer-brand__relationship"><?php echo esc_html($brand_panel_data['description']); ?></p>
             <?php endif; ?>
 
@@ -2174,7 +2198,12 @@ function render_footer_navigation() {
     </div>
     <?php endif; ?>
     
-    <!-- Persistent Academy Footer (always visible) -->
+    <?php
+    // Academy footer: shown for Academy and academy-aware brands. Retired for
+    // stand-alone brands — The Polys uses its own brand footer (above) instead.
+    $show_academy_footer = ! ( $current_brand === 'polys' && $brand_panel_data );
+    if ( $show_academy_footer ): ?>
+    <!-- Academy Footer -->
     <div class="footer-academy" data-brand="academy">
         <div class="footer-academy__inner">
             <?php if ($academy_data && !empty($academy_data['nav_links'])): ?>
@@ -2222,7 +2251,8 @@ function render_footer_navigation() {
             </div>
         </div>
     </div>
-    
+    <?php endif; ?>
+
     <?php
     return ob_get_clean();
 }
